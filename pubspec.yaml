@@ -1,0 +1,48 @@
+name: athlos_app
+description: "Workout and diet tracking app inspired by Greek mythology."
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
+
+  # State + DI
+  flutter_riverpod: ^3.2.1
+  riverpod_annotation: ^4.0.2
+
+  # Navigation
+  go_router: ^17.1.0
+
+  # Database
+  drift: ^2.31.0
+  sqlite3_flutter_libs: ^0.5.41
+  path_provider: ^2.1.5
+  path: ^1.9.1
+
+  # UI
+  gap: ^3.0.1
+  google_fonts: ^8.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+  # Code generation
+  build_runner: ^2.11.1
+  riverpod_generator: ^4.0.3
+  drift_dev: ^2.31.0
+
+  # Linting
+  riverpod_lint: ^3.1.3
+
+flutter:
+  generate: true
+  uses-material-design: true

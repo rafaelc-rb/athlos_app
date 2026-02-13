@@ -5,6 +5,7 @@ import 'l10n/app_localizations.dart';
 
 import 'core/router/app_router.dart';
 import 'core/theme/athlos_theme.dart';
+import 'core/theme/theme_mode_provider.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,13 +18,14 @@ class AthlosApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
+    final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
       title: 'Athlos',
       debugShowCheckedModeBanner: false,
       theme: AthlosTheme.light,
       darkTheme: AthlosTheme.dark,
-      themeMode: ThemeMode.system,
+      themeMode: themeMode,
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,

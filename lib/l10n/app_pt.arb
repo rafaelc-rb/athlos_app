@@ -3,5 +3,53 @@
   "appTitle": "Athlos",
   "@appTitle": {
     "description": "Título do aplicativo"
+  },
+  "hubGreeting": "Olympus",
+  "@hubGreeting": {
+    "description": "Título da tela Hub"
+  },
+  "hubSubtitle": "Escolha sua jornada",
+  "@hubSubtitle": {
+    "description": "Subtítulo da tela Hub"
+  },
+  "trainingModule": "Treino",
+  "@trainingModule": {
+    "description": "Nome do módulo de treino"
+  },
+  "trainingModuleDescription": "Planeje e registre seus treinos",
+  "@trainingModuleDescription": {
+    "description": "Descrição do módulo de treino no Hub"
+  },
+  "dietModule": "Dieta",
+  "@dietModule": {
+    "description": "Nome do módulo de dieta"
+  },
+  "dietModuleDescription": "Controle sua alimentação e macros",
+  "@dietModuleDescription": {
+    "description": "Descrição do módulo de dieta no Hub"
+  },
+  "comingSoon": "Em breve",
+  "@comingSoon": {
+    "description": "Label para features ainda não disponíveis"
+  },
+  "profile": "Perfil",
+  "@profile": {
+    "description": "Label do perfil"
+  },
+  "tabHome": "Início",
+  "@tabHome": {
+    "description": "Label da tab Home na bottom bar"
+  },
+  "tabWorkouts": "Treinos",
+  "@tabWorkouts": {
+    "description": "Label da tab Workouts na bottom bar"
+  },
+  "tabExercises": "Exercícios",
+  "@tabExercises": {
+    "description": "Label da tab Exercises na bottom bar"
+  },
+  "tabHistory": "Histórico",
+  "@tabHistory": {
+    "description": "Label da tab History na bottom bar"
   }
 }

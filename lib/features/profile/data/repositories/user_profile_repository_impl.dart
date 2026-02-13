@@ -27,8 +27,7 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
           age: Value(profile.age),
           goal: Value(profile.goal),
           bodyAesthetic: Value(profile.bodyAesthetic),
-          selectedModules:
-              Value(profile.selectedModules.map((m) => m.name).join(',')),
+          lastActiveModule: Value(profile.lastActiveModule),
         ),
       );
 
@@ -41,40 +40,30 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
           age: Value(profile.age),
           goal: Value(profile.goal),
           bodyAesthetic: Value(profile.bodyAesthetic),
-          selectedModules:
-              Value(profile.selectedModules.map((m) => m.name).join(',')),
+          lastActiveModule: Value(profile.lastActiveModule),
         ),
       );
 
   @override
-  Future<void> updateSelectedModules(List<SelectedModule> modules) async {
+  Future<void> updateLastActiveModule(AppModule module) async {
     final profile = await _dao.get();
     if (profile == null) return;
     await _dao.updateById(
       profile.id,
-      UserProfilesCompanion(
-        selectedModules: Value(modules.map((m) => m.name).join(',')),
-      ),
+      UserProfilesCompanion(lastActiveModule: Value(module)),
     );
   }
 
   @override
   Future<bool> hasProfile() => _dao.hasProfile();
 
-  domain.UserProfile _toDomain(dynamic row) {
-    final modulesStr = row.selectedModules as String;
-    final modules = modulesStr.isEmpty
-        ? <SelectedModule>[]
-        : modulesStr.split(',').map((s) => SelectedModule.values.byName(s)).toList();
-
-    return domain.UserProfile(
-      id: row.id as int,
-      weight: row.weight as double?,
-      height: row.height as double?,
-      age: row.age as int?,
-      goal: row.goal as TrainingGoal?,
-      bodyAesthetic: row.bodyAesthetic as BodyAesthetic?,
-      selectedModules: modules,
-    );
-  }
+  domain.UserProfile _toDomain(dynamic row) => domain.UserProfile(
+        id: row.id as int,
+        weight: row.weight as double?,
+        height: row.height as double?,
+        age: row.age as int?,
+        goal: row.goal as TrainingGoal?,
+        bodyAesthetic: row.bodyAesthetic as BodyAesthetic?,
+        lastActiveModule: row.lastActiveModule as AppModule,
+      );
 }

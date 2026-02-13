@@ -6,6 +6,6 @@ abstract interface class UserProfileRepository {
   Future<UserProfile?> get();
   Future<int> create(UserProfile profile);
   Future<void> update(UserProfile profile);
-  Future<void> updateSelectedModules(List<SelectedModule> modules);
+  Future<void> updateLastActiveModule(AppModule module);
   Future<bool> hasProfile();
 }

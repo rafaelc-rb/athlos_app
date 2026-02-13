@@ -1,5 +1,5 @@
-/// Modules the user has chosen to use.
-enum SelectedModule {
+/// Available app modules.
+enum AppModule {
   training,
   diet,
 }

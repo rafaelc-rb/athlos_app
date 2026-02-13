@@ -15,7 +15,9 @@ class UserProfile {
   final int? age;
   final TrainingGoal? goal;
   final BodyAesthetic? bodyAesthetic;
-  final List<SelectedModule> selectedModules;
+
+  /// Last module the user was in. Defaults to training.
+  final AppModule lastActiveModule;
 
   const UserProfile({
     required this.id,
@@ -24,6 +26,6 @@ class UserProfile {
     this.age,
     this.goal,
     this.bodyAesthetic,
-    this.selectedModules = const [],
+    this.lastActiveModule = AppModule.training,
   });
 }

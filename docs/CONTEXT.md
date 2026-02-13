@@ -6,24 +6,48 @@ The name **Athlos** comes from *Dodekathlos* (Δωδέκαθλος) — the Twel
 
 ## Overview
 
-Athlos is a workout and diet tracking app composed of two main modules: **Training** and **Diet**. The initial focus is on the Training module.
+Athlos is a modular health and fitness app built around independent modules. The initial focus is on the **Training** module, with **Diet** and other modules planned for future releases.
 
-On first interaction, the user chooses which module to use — training, diet, or both. The interface adapts accordingly, showing or hiding features to keep the experience clean and focused.
+The app is designed as a **hub-based** system: a central screen (the Hub) provides access to each module. Each module is a self-contained experience with its own home dashboard and navigation. New modules can be added without restructuring the app.
 
 ## Modules
 
-| Module   | Status        | Description                                    |
-| -------- | ------------- | ---------------------------------------------- |
-| Training | 🔨 Priority   | Workout registration, planning, and tracking   |
-| Diet     | 📋 Planned    | Food registration, meals, and caloric control  |
+| Module       | Status        | Description                                         |
+| ------------ | ------------- | --------------------------------------------------- |
+| Training     | 🔨 Priority   | Workout registration, planning, and tracking        |
+| Diet         | 📋 Planned    | Food registration, meals, and caloric control       |
+| Assessments  | 💡 Idea       | Physical assessments, body measurements, progress photos |
+| Progress     | 💡 Idea       | Consolidated dashboard across all modules           |
 
 See each module's documentation for details:
 
 - [Training Module](./modules/TRAINING.md)
 - [Diet Module](./modules/DIET.md)
 
+## Navigation
+
+### Hub ("Olympus")
+
+The Hub is the app's main screen — a central point from which the user accesses each module. Each module is represented as a card with a quick summary (e.g. last workout, today's macros). Profile/Settings is accessible from the Hub's app bar.
+
+### Module Navigation
+
+Each module has its own bottom navigation bar with sections relevant to that module. Entering a module takes the user into a focused experience; they can return to the Hub at any time.
+
+```
+Hub (Olympus)
+├── Training → [Home] [Workouts] [Exercises] [History]
+├── Diet     → [Home] [Meals]    [Foods]     [Log]
+├── (future modules follow the same pattern)
+└── Profile (via Hub app bar)
+```
+
+Each module's **Home** tab is a dashboard showing relevant summary data for that module.
+
 ## Future Ideas
 
-- **AI assistant (Quíron)** — inspired by **Chiron** (Χείρων), the wise centaur from Greek mythology who mentored heroes like Achilles and Heracles. The idea is to use Chiron as the AI persona, reinforcing the mythological theme. Features include personalized workout/diet suggestions and a Q&A chat.
+- **AI assistant (Quíron)** — inspired by **Chiron** (Χείρων), the wise centaur from Greek mythology who mentored heroes like Achilles and Heracles. The idea is to use Chiron as the AI persona, reinforcing the mythological theme. Features include personalized workout/diet suggestions and a Q&A chat. Could have its own card on the Hub.
 - **Health app integrations** — Apple Health, Google Fit, etc. for importing activity data and body metrics.
 - **Kleos (κλέος)** — gamification system named after the Greek concept of eternal glory and renown that heroes pursued. Achievements, streaks, challenges, and progression rewards to keep users motivated on their journey.
+- **Assessments** — physical evaluations, body measurements, bioimpedance records, and progress photos to enrich AI context and track body changes over time.
+- **Consultations** — log visits to nutritionists, personal trainers, and doctors, keeping all health-related records in one place.

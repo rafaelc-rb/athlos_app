@@ -91,6 +91,29 @@ Defines **how** data is obtained. Contains:
 
 Flutter screens and widgets. Consumes repositories through interfaces only — never knows if data comes from SQLite or an API.
 
+### Navigation Pattern
+
+Hub-based architecture using go_router:
+
+- **Hub** — central screen with module cards. Uses a simple `GoRoute`.
+- **Module shells** — each module uses `StatefulShellRoute` with its own `NavigationBar` (bottom bar). Tabs are specific to each module.
+- **Profile** — accessible from the Hub's app bar, not tied to any module.
+
+```
+/                       → Hub (Olympus)
+/profile                → User profile
+/training               → Training shell
+/training/home          → Training dashboard
+/training/workouts      → Workout list
+/training/exercises     → Exercise catalog
+/training/history       → Execution history
+/diet                   → Diet shell (future)
+/diet/home              → Diet dashboard
+/diet/meals             → Meal list
+/diet/foods             → Food catalog
+/diet/log               → Daily log
+```
+
 ## Evolution Plan
 
 ### V1 — Local & Free

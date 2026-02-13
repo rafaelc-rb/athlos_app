@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../domain/enums/body_aesthetic.dart';
+import '../../../domain/enums/selected_module.dart';
 import '../../../domain/enums/training_goal.dart';
 
 class UserProfiles extends Table {
@@ -16,6 +17,7 @@ class UserProfiles extends Table {
   TextColumn get goal => textEnum<TrainingGoal>().nullable()();
   TextColumn get bodyAesthetic => textEnum<BodyAesthetic>().nullable()();
 
-  /// Comma-separated module names (e.g. "training,diet").
-  TextColumn get selectedModules => text().withDefault(const Constant(''))();
+  /// Last module the user was in.
+  TextColumn get lastActiveModule =>
+      textEnum<AppModule>().withDefault(Constant(AppModule.training.name))();
 }

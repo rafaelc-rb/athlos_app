@@ -46,7 +46,8 @@ Each module's **Home** tab is a dashboard showing relevant summary data for that
 
 ## Future Ideas
 
-- **AI assistant (Quíron)** — inspired by **Chiron** (Χείρων), the wise centaur from Greek mythology who mentored heroes like Achilles and Heracles. The idea is to use Chiron as the AI persona, reinforcing the mythological theme. Features include personalized workout/diet suggestions and a Q&A chat. Could have its own card on the Hub.
+- **AI assistant (Chiron / Χείρων)** — inspired by Chiron, the wise centaur from Greek mythology who mentored heroes like Achilles and Heracles. The idea is to use Chiron as the AI persona, reinforcing the mythological theme. Features include personalized workout/diet suggestions and a Q&A chat. Could have its own card on the Hub.
+  - **Conversational onboarding** — instead of the current form-based profile setup, Chiron could conduct a natural chat to understand the user's profile (goals, aesthetic, training style, experience level, equipment, etc.). The conversation format allows the user to ask *why* Chiron is asking each question and get contextual explanations, making the process more human and less like filling out a form. The structured setup would remain as a fallback/quick option. This approach also opens the door for Chiron to gather richer context that static forms can't capture (e.g. injury history, schedule preferences, past training experience).
 - **Health app integrations** — Apple Health, Google Fit, etc. for importing activity data and body metrics.
 - **Kleos (κλέος)** — gamification system named after the Greek concept of eternal glory and renown that heroes pursued. Achievements, streaks, challenges, and progression rewards to keep users motivated on their journey.
 - **Assessments** — physical evaluations, body measurements, bioimpedance records, and progress photos to enrich AI context and track body changes over time.

@@ -11,6 +11,7 @@ import '../../features/profile/data/datasources/tables/user_profiles_table.dart'
 import '../../features/profile/domain/enums/body_aesthetic.dart';
 import '../../features/profile/domain/enums/selected_module.dart';
 import '../../features/profile/domain/enums/training_goal.dart';
+import '../../features/profile/domain/enums/training_style.dart';
 import '../../features/training/data/datasources/daos/equipment_dao.dart';
 import '../../features/training/data/datasources/daos/exercise_dao.dart';
 import '../../features/training/data/datasources/daos/workout_dao.dart';
@@ -55,7 +56,19 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          // During early development, recreate all tables on schema change.
+          for (final table in allTables) {
+            await m.deleteTable(table.actualTableName);
+          }
+          await m.createAll();
+        },
+      );
 }
 
 LazyDatabase _openConnection() {

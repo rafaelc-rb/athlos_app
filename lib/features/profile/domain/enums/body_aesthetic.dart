@@ -1,11 +1,11 @@
 /// Desired body aesthetic that guides workout suggestions.
 enum BodyAesthetic {
-  /// Gymnast / calisthenics style.
+  /// Lean, defined, and functional — gymnast / calisthenics style.
   athletic,
 
-  /// Focus on muscle volume.
-  hypertrophy,
+  /// Big and muscular — classic bodybuilder style.
+  bulky,
 
-  /// Focus on load and performance.
-  strength,
+  /// Dense and strong without focus on definition — powerlifter style.
+  robust,
 }

@@ -1,6 +1,7 @@
 import '../enums/body_aesthetic.dart';
 import '../enums/selected_module.dart';
 import '../enums/training_goal.dart';
+import '../enums/training_style.dart';
 
 /// User profile with personal data and preferences.
 class UserProfile {
@@ -15,6 +16,7 @@ class UserProfile {
   final int? age;
   final TrainingGoal? goal;
   final BodyAesthetic? bodyAesthetic;
+  final TrainingStyle? trainingStyle;
 
   /// Last module the user was in. Defaults to training.
   final AppModule lastActiveModule;
@@ -26,6 +28,7 @@ class UserProfile {
     this.age,
     this.goal,
     this.bodyAesthetic,
+    this.trainingStyle,
     this.lastActiveModule = AppModule.training,
   });
 }

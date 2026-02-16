@@ -51,5 +51,304 @@
   "tabHistory": "Histórico",
   "@tabHistory": {
     "description": "Label da tab History na bottom bar"
+  },
+
+  "profileSetupTitle": "Configurar Perfil",
+  "@profileSetupTitle": {
+    "description": "Título da tela de setup do perfil"
+  },
+  "profileSetupSubtitle": "Precisamos de algumas informações para personalizar sua experiência",
+  "@profileSetupSubtitle": {
+    "description": "Subtítulo da tela de setup"
+  },
+
+  "stepPersonalData": "Dados",
+  "@stepPersonalData": {
+    "description": "Título do step 1 — dados pessoais"
+  },
+  "stepGoal": "Objetivo",
+  "@stepGoal": {
+    "description": "Título do step 2 — objetivo de treino"
+  },
+  "stepAesthetic": "Estética",
+  "@stepAesthetic": {
+    "description": "Título do step 3 — estética corporal"
+  },
+
+  "weightLabel": "Peso (kg)",
+  "@weightLabel": {
+    "description": "Label do campo de peso"
+  },
+  "weightHint": "Ex: 75.5",
+  "@weightHint": {
+    "description": "Hint do campo de peso"
+  },
+  "heightLabel": "Altura (cm)",
+  "@heightLabel": {
+    "description": "Label do campo de altura"
+  },
+  "heightHint": "Ex: 175",
+  "@heightHint": {
+    "description": "Hint do campo de altura"
+  },
+  "ageLabel": "Idade",
+  "@ageLabel": {
+    "description": "Label do campo de idade"
+  },
+  "ageHint": "Ex: 25",
+  "@ageHint": {
+    "description": "Hint do campo de idade"
+  },
+
+  "goalSelectTitle": "Qual seu objetivo principal?",
+  "@goalSelectTitle": {
+    "description": "Título da seleção de objetivo"
+  },
+  "goalHypertrophy": "Hipertrofia",
+  "@goalHypertrophy": {
+    "description": "Objetivo: ganho de massa muscular"
+  },
+  "goalHypertrophyDesc": "Ganho de massa muscular",
+  "@goalHypertrophyDesc": {
+    "description": "Descrição do objetivo hipertrofia"
+  },
+  "goalHypertrophyImpact": "O sistema vai priorizar treinos com volume alto (séries e repetições), sugerir divisões focadas em grupos musculares específicos e ajustar descanso para hipertrofia.",
+  "@goalHypertrophyImpact": {
+    "description": "Impacto no sistema ao escolher hipertrofia"
+  },
+  "goalWeightLoss": "Emagrecimento",
+  "@goalWeightLoss": {
+    "description": "Objetivo: perda de peso"
+  },
+  "goalWeightLossDesc": "Perda de gordura corporal",
+  "@goalWeightLossDesc": {
+    "description": "Descrição do objetivo emagrecimento"
+  },
+  "goalWeightLossImpact": "Treinos com maior gasto calórico, circuitos, supersets e intervalos curtos. Futuramente, a dieta vai priorizar déficit calórico controlado.",
+  "@goalWeightLossImpact": {
+    "description": "Impacto no sistema ao escolher emagrecimento"
+  },
+  "goalEndurance": "Resistência",
+  "@goalEndurance": {
+    "description": "Objetivo: resistência"
+  },
+  "goalEnduranceDesc": "Melhorar condicionamento físico",
+  "@goalEnduranceDesc": {
+    "description": "Descrição do objetivo resistência"
+  },
+  "goalEnduranceImpact": "Séries com mais repetições, menor carga relativa, tempos de descanso reduzidos e exercícios compostos para trabalhar resistência muscular.",
+  "@goalEnduranceImpact": {
+    "description": "Impacto no sistema ao escolher resistência"
+  },
+  "goalStrength": "Força",
+  "@goalStrength": {
+    "description": "Objetivo: força"
+  },
+  "goalStrengthDesc": "Aumentar cargas e potência",
+  "@goalStrengthDesc": {
+    "description": "Descrição do objetivo força"
+  },
+  "goalStrengthImpact": "Treinos com cargas altas, poucas repetições (1-5), descanso longo entre séries e foco em movimentos compostos como agachamento, supino e terra.",
+  "@goalStrengthImpact": {
+    "description": "Impacto no sistema ao escolher força"
+  },
+  "goalGeneralFitness": "Saúde Geral",
+  "@goalGeneralFitness": {
+    "description": "Objetivo: saúde geral"
+  },
+  "goalGeneralFitnessDesc": "Manter-se ativo e saudável",
+  "@goalGeneralFitnessDesc": {
+    "description": "Descrição do objetivo saúde geral"
+  },
+  "goalGeneralFitnessImpact": "Treinos equilibrados com variedade de exercícios, volume e intensidade moderados. Ideal para quem quer consistência sem foco específico.",
+  "@goalGeneralFitnessImpact": {
+    "description": "Impacto no sistema ao escolher saúde geral"
+  },
+
+  "stepStyle": "Estilo",
+  "@stepStyle": {
+    "description": "Título do step 4 — preferência de estilo de treino"
+  },
+
+  "styleSelectTitle": "Que estilo de treino você curte mais?",
+  "@styleSelectTitle": {
+    "description": "Título da seleção de estilo — preferência, não restrição"
+  },
+  "styleTraditional": "Musculação",
+  "@styleTraditional": {
+    "description": "Estilo: musculação tradicional"
+  },
+  "styleTraditionalDesc": "Prefiro pesos livres e máquinas",
+  "@styleTraditionalDesc": {
+    "description": "Descrição do estilo musculação"
+  },
+  "styleTraditionalImpact": "O sistema vai priorizar exercícios com halteres, barras e máquinas nas sugestões, mas ainda pode incluir outros conforme seus equipamentos e objetivo.",
+  "@styleTraditionalImpact": {
+    "description": "Impacto no sistema ao preferir musculação"
+  },
+  "styleCalisthenics": "Calistenia",
+  "@styleCalisthenics": {
+    "description": "Estilo: calistenia"
+  },
+  "styleCalisthenicsDesc": "Prefiro peso corporal e barras",
+  "@styleCalisthenicsDesc": {
+    "description": "Descrição do estilo calistenia"
+  },
+  "styleCalisthenicsImpact": "O sistema vai priorizar exercícios com peso corporal e progressões por alavanca, mas pode sugerir carga externa se seus equipamentos e objetivo pedirem.",
+  "@styleCalisthenicsImpact": {
+    "description": "Impacto no sistema ao preferir calistenia"
+  },
+  "styleFunctional": "Funcional",
+  "@styleFunctional": {
+    "description": "Estilo: funcional"
+  },
+  "styleFunctionalDesc": "Prefiro circuitos e movimentos variados",
+  "@styleFunctionalDesc": {
+    "description": "Descrição do estilo funcional"
+  },
+  "styleFunctionalImpact": "O sistema vai priorizar circuitos e exercícios compostos variados, mas adapta conforme seus equipamentos disponíveis e objetivo escolhido.",
+  "@styleFunctionalImpact": {
+    "description": "Impacto no sistema ao preferir funcional"
+  },
+  "styleHybrid": "Sem preferência",
+  "@styleHybrid": {
+    "description": "Estilo: sem preferência específica"
+  },
+  "styleHybridDesc": "Gosto de variar entre métodos",
+  "@styleHybridDesc": {
+    "description": "Descrição do estilo sem preferência"
+  },
+  "styleHybridImpact": "O sistema escolhe livremente o melhor de cada método com base no seu objetivo, estética desejada e equipamentos disponíveis.",
+  "@styleHybridImpact": {
+    "description": "Impacto no sistema ao não ter preferência"
+  },
+
+  "profileStyle": "Método",
+  "@profileStyle": {
+    "description": "Label de método de treino no perfil"
+  },
+
+  "aestheticSelectTitle": "Qual estética desejada?",
+  "@aestheticSelectTitle": {
+    "description": "Título da seleção de estética"
+  },
+  "aestheticAthletic": "Atlético",
+  "@aestheticAthletic": {
+    "description": "Estética atlética"
+  },
+  "aestheticAthleticDesc": "Definido, funcional e proporcional",
+  "@aestheticAthleticDesc": {
+    "description": "Descrição da estética atlética"
+  },
+  "aestheticAthleticImpact": "Equilíbrio entre definição e funcionalidade. Treinos combinam hipertrofia leve com exercícios funcionais e cardio. Referência: ginasta, atleta olímpico.",
+  "@aestheticAthleticImpact": {
+    "description": "Impacto no sistema ao escolher estética atlética"
+  },
+  "aestheticBulky": "Volumoso",
+  "@aestheticBulky": {
+    "description": "Estética volumosa / bodybuilder"
+  },
+  "aestheticBulkyDesc": "Grande e musculoso, estilo bodybuilder",
+  "@aestheticBulkyDesc": {
+    "description": "Descrição da estética volumosa"
+  },
+  "aestheticBulkyImpact": "Volume máximo muscular com treinos de alto volume, exercícios de isolamento e técnicas avançadas (drop sets, rest-pause). Referência: bodybuilding clássico.",
+  "@aestheticBulkyImpact": {
+    "description": "Impacto no sistema ao escolher estética volumosa"
+  },
+  "aestheticRobust": "Robusto",
+  "@aestheticRobust": {
+    "description": "Estética robusta / powerlifter"
+  },
+  "aestheticRobustDesc": "Forte e denso, sem foco em definição",
+  "@aestheticRobustDesc": {
+    "description": "Descrição da estética robusta"
+  },
+  "aestheticRobustImpact": "Prioriza força bruta com treinos densos em compostos pesados. Corpo sólido e funcional, sem preocupação com definição. Referência: powerlifter, strongman.",
+  "@aestheticRobustImpact": {
+    "description": "Impacto no sistema ao escolher estética robusta"
+  },
+
+  "next": "Próximo",
+  "@next": {
+    "description": "Botão de avançar"
+  },
+  "back": "Voltar",
+  "@back": {
+    "description": "Botão de voltar"
+  },
+  "finish": "Concluir",
+  "@finish": {
+    "description": "Botão de finalizar"
+  },
+  "save": "Salvar",
+  "@save": {
+    "description": "Botão de salvar"
+  },
+  "edit": "Editar",
+  "@edit": {
+    "description": "Botão de editar"
+  },
+  "cancel": "Cancelar",
+  "@cancel": {
+    "description": "Botão de cancelar"
+  },
+  "skip": "Pular",
+  "@skip": {
+    "description": "Botão de pular etapa/tela"
+  },
+  "helpModeTooltip": "Ver detalhes de cada opção",
+  "@helpModeTooltip": {
+    "description": "Tooltip do botão de ativar modo ajuda"
+  },
+
+  "fieldRequired": "Campo obrigatório",
+  "@fieldRequired": {
+    "description": "Mensagem de validação para campo obrigatório"
+  },
+  "invalidNumber": "Número inválido",
+  "@invalidNumber": {
+    "description": "Mensagem de validação para número inválido"
+  },
+  "selectOption": "Selecione uma opção",
+  "@selectOption": {
+    "description": "Mensagem de validação para seleção obrigatória"
+  },
+
+  "profileWeight": "Peso",
+  "@profileWeight": {
+    "description": "Label de peso no perfil"
+  },
+  "profileHeight": "Altura",
+  "@profileHeight": {
+    "description": "Label de altura no perfil"
+  },
+  "profileAge": "Idade",
+  "@profileAge": {
+    "description": "Label de idade no perfil"
+  },
+  "profileGoal": "Objetivo",
+  "@profileGoal": {
+    "description": "Label de objetivo no perfil"
+  },
+  "profileAesthetic": "Estética",
+  "@profileAesthetic": {
+    "description": "Label de estética no perfil"
+  },
+  "profileNotSet": "Não definido",
+  "@profileNotSet": {
+    "description": "Valor quando o campo não foi preenchido"
+  },
+  "weightUnit": "kg",
+  "@weightUnit": {
+    "description": "Unidade de peso"
+  },
+  "heightUnit": "cm",
+  "@heightUnit": {
+    "description": "Unidade de altura"
+  },
+  "yearsUnit": "anos",
+  "@yearsUnit": {
+    "description": "Unidade de idade"
   }
 }

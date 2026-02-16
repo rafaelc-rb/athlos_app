@@ -5,6 +5,7 @@ import '../../domain/entities/user_profile.dart' as domain;
 import '../../domain/enums/body_aesthetic.dart';
 import '../../domain/enums/selected_module.dart';
 import '../../domain/enums/training_goal.dart';
+import '../../domain/enums/training_style.dart';
 import '../../domain/repositories/user_profile_repository.dart';
 import '../datasources/daos/user_profile_dao.dart';
 
@@ -27,6 +28,7 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
           age: Value(profile.age),
           goal: Value(profile.goal),
           bodyAesthetic: Value(profile.bodyAesthetic),
+          trainingStyle: Value(profile.trainingStyle),
           lastActiveModule: Value(profile.lastActiveModule),
         ),
       );
@@ -40,6 +42,7 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
           age: Value(profile.age),
           goal: Value(profile.goal),
           bodyAesthetic: Value(profile.bodyAesthetic),
+          trainingStyle: Value(profile.trainingStyle),
           lastActiveModule: Value(profile.lastActiveModule),
         ),
       );
@@ -64,6 +67,7 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
         age: row.age as int?,
         goal: row.goal as TrainingGoal?,
         bodyAesthetic: row.bodyAesthetic as BodyAesthetic?,
+        trainingStyle: row.trainingStyle as TrainingStyle?,
         lastActiveModule: row.lastActiveModule as AppModule,
       );
 }

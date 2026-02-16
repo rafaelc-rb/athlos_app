@@ -8,6 +8,7 @@ abstract final class RoutePaths {
 
   // Profile
   static const profile = '/profile';
+  static const profileSetup = '/profile/setup';
 
   // Training module
   static const training = '/training';

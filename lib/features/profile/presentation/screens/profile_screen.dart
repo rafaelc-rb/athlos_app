@@ -66,12 +66,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text('$error')),
         data: (profile) {
-          if (profile == null) {
-            return const Center(child: CircularProgressIndicator());
-          }
+          final resolved = profile ?? const UserProfile(id: 0);
           return _isEditing
-              ? _buildEditView(profile, l10n)
-              : _buildReadView(profile, l10n);
+              ? _buildEditView(resolved, l10n)
+              : _buildReadView(resolved, l10n);
         },
       ),
     );

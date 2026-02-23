@@ -78,4 +78,13 @@ class HasProfile extends _$HasProfile {
   void markAsCreated() {
     state = const AsyncData(true);
   }
+
+  /// Creates an empty profile (used when skipping setup) and marks as created.
+  Future<void> createEmpty() async {
+    final repo = ref.read(userProfileRepositoryProvider);
+    const emptyProfile = UserProfile(id: 0);
+    final result = await repo.create(emptyProfile);
+    result.getOrThrow();
+    state = const AsyncData(true);
+  }
 }

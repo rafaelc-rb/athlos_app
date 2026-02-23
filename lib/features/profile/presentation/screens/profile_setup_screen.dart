@@ -296,9 +296,12 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     }
   }
 
-  void _onSkip() {
-    ref.read(hasProfileProvider.notifier).markAsCreated();
-    context.go(RoutePaths.hub);
+  Future<void> _onSkip() async {
+    await ref.read(hasProfileProvider.notifier).createEmpty();
+    ref.invalidate(profileProvider);
+    if (mounted) {
+      context.go(RoutePaths.hub);
+    }
   }
 
   Future<void> _saveProfile() async {

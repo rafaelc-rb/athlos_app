@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../../core/errors/app_exception.dart';
+import '../../../../core/errors/result.dart';
 import '../../domain/entities/exercise.dart' as domain;
 import '../../domain/enums/muscle_group.dart';
 import '../../domain/repositories/exercise_repository.dart';
@@ -12,85 +14,137 @@ class ExerciseRepositoryImpl implements ExerciseRepository {
   ExerciseRepositoryImpl(this._dao);
 
   @override
-  Future<List<domain.Exercise>> getAll() async {
-    final rows = await _dao.getAll();
-    return rows.map(_toDomain).toList();
+  Future<Result<List<domain.Exercise>>> getAll() async {
+    try {
+      final rows = await _dao.getAll();
+      return Success(rows.map(_toDomain).toList());
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to load exercises: $e'));
+    }
   }
 
   @override
-  Future<domain.Exercise?> getById(int id) async {
-    final row = await _dao.getById(id);
-    return row != null ? _toDomain(row) : null;
+  Future<Result<domain.Exercise?>> getById(int id) async {
+    try {
+      final row = await _dao.getById(id);
+      return Success(row != null ? _toDomain(row) : null);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to load exercise $id: $e'));
+    }
   }
 
   @override
-  Future<List<domain.Exercise>> getByMuscleGroup(MuscleGroup group) async {
-    final rows = await _dao.getByMuscleGroup(group);
-    return rows.map(_toDomain).toList();
+  Future<Result<List<domain.Exercise>>> getByMuscleGroup(
+      MuscleGroup group) async {
+    try {
+      final rows = await _dao.getByMuscleGroup(group);
+      return Success(rows.map(_toDomain).toList());
+    } on Exception catch (e) {
+      return Failure(
+          DatabaseException('Failed to load exercises by muscle group: $e'));
+    }
   }
 
   @override
-  Future<List<domain.Exercise>> getVariations(int exerciseId) async {
-    final rows = await _dao.getVariations(exerciseId);
-    return rows.map(_toDomain).toList();
+  Future<Result<List<domain.Exercise>>> getVariations(int exerciseId) async {
+    try {
+      final rows = await _dao.getVariations(exerciseId);
+      return Success(rows.map(_toDomain).toList());
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to load variations: $e'));
+    }
   }
 
   @override
-  Future<List<int>> getEquipmentIds(int exerciseId) =>
-      _dao.getEquipmentIds(exerciseId);
+  Future<Result<List<int>>> getEquipmentIds(int exerciseId) async {
+    try {
+      final ids = await _dao.getEquipmentIds(exerciseId);
+      return Success(ids);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to load equipment ids: $e'));
+    }
+  }
 
   @override
-  Future<int> create(
+  Future<Result<int>> create(
     domain.Exercise exercise, {
     List<int> equipmentIds = const [],
   }) async {
-    final id = await _dao.create(
-      ExercisesCompanion.insert(
-        name: exercise.name,
-        muscleGroup: exercise.muscleGroup,
-        targetMuscles: Value(exercise.targetMuscles),
-        muscleRegion: Value(exercise.muscleRegion),
-        description: Value(exercise.description),
-        isCustom: Value(exercise.isCustom),
-      ),
-    );
-    if (equipmentIds.isNotEmpty) {
-      await _dao.setEquipments(id, equipmentIds);
+    try {
+      final id = await _dao.create(
+        ExercisesCompanion.insert(
+          name: exercise.name,
+          muscleGroup: exercise.muscleGroup,
+          targetMuscles: Value(exercise.targetMuscles),
+          muscleRegion: Value(exercise.muscleRegion),
+          description: Value(exercise.description),
+          isCustom: Value(exercise.isCustom),
+        ),
+      );
+      if (equipmentIds.isNotEmpty) {
+        await _dao.setEquipments(id, equipmentIds);
+      }
+      return Success(id);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to create exercise: $e'));
     }
-    return id;
   }
 
   @override
-  Future<void> update(
+  Future<Result<void>> update(
     domain.Exercise exercise, {
     List<int>? equipmentIds,
   }) async {
-    await _dao.updateById(
-      exercise.id,
-      ExercisesCompanion(
-        name: Value(exercise.name),
-        muscleGroup: Value(exercise.muscleGroup),
-        targetMuscles: Value(exercise.targetMuscles),
-        muscleRegion: Value(exercise.muscleRegion),
-        description: Value(exercise.description),
-        isCustom: Value(exercise.isCustom),
-      ),
-    );
-    if (equipmentIds != null) {
-      await _dao.setEquipments(exercise.id, equipmentIds);
+    try {
+      await _dao.updateById(
+        exercise.id,
+        ExercisesCompanion(
+          name: Value(exercise.name),
+          muscleGroup: Value(exercise.muscleGroup),
+          targetMuscles: Value(exercise.targetMuscles),
+          muscleRegion: Value(exercise.muscleRegion),
+          description: Value(exercise.description),
+          isCustom: Value(exercise.isCustom),
+        ),
+      );
+      if (equipmentIds != null) {
+        await _dao.setEquipments(exercise.id, equipmentIds);
+      }
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to update exercise: $e'));
     }
   }
 
   @override
-  Future<void> delete(int id) => _dao.deleteById(id);
+  Future<Result<void>> delete(int id) async {
+    try {
+      await _dao.deleteById(id);
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to delete exercise $id: $e'));
+    }
+  }
 
   @override
-  Future<void> addVariation(int exerciseId, int variationId) =>
-      _dao.addVariation(exerciseId, variationId);
+  Future<Result<void>> addVariation(int exerciseId, int variationId) async {
+    try {
+      await _dao.addVariation(exerciseId, variationId);
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to add variation: $e'));
+    }
+  }
 
   @override
-  Future<void> removeVariation(int exerciseId, int variationId) =>
-      _dao.removeVariation(exerciseId, variationId);
+  Future<Result<void>> removeVariation(int exerciseId, int variationId) async {
+    try {
+      await _dao.removeVariation(exerciseId, variationId);
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to remove variation: $e'));
+    }
+  }
 
   domain.Exercise _toDomain(dynamic row) => domain.Exercise(
         id: row.id as int,

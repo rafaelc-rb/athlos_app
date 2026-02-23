@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../../core/errors/app_exception.dart';
+import '../../../../core/errors/result.dart';
 import '../../domain/entities/user_profile.dart' as domain;
 import '../../domain/enums/body_aesthetic.dart';
 import '../../domain/enums/selected_module.dart';
@@ -15,13 +17,19 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
   UserProfileRepositoryImpl(this._dao);
 
   @override
-  Future<domain.UserProfile?> get() async {
-    final row = await _dao.get();
-    return row != null ? _toDomain(row) : null;
+  Future<Result<domain.UserProfile?>> get() async {
+    try {
+      final row = await _dao.get();
+      return Success(row != null ? _toDomain(row) : null);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to load profile: $e'));
+    }
   }
 
   @override
-  Future<int> create(domain.UserProfile profile) => _dao.create(
+  Future<Result<int>> create(domain.UserProfile profile) async {
+    try {
+      final id = await _dao.create(
         UserProfilesCompanion.insert(
           weight: Value(profile.weight),
           height: Value(profile.height),
@@ -32,9 +40,16 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
           lastActiveModule: Value(profile.lastActiveModule),
         ),
       );
+      return Success(id);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to create profile: $e'));
+    }
+  }
 
   @override
-  Future<void> update(domain.UserProfile profile) => _dao.updateById(
+  Future<Result<void>> update(domain.UserProfile profile) async {
+    try {
+      await _dao.updateById(
         profile.id,
         UserProfilesCompanion(
           weight: Value(profile.weight),
@@ -46,19 +61,40 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
           lastActiveModule: Value(profile.lastActiveModule),
         ),
       );
-
-  @override
-  Future<void> updateLastActiveModule(AppModule module) async {
-    final profile = await _dao.get();
-    if (profile == null) return;
-    await _dao.updateById(
-      profile.id,
-      UserProfilesCompanion(lastActiveModule: Value(module)),
-    );
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to update profile: $e'));
+    }
   }
 
   @override
-  Future<bool> hasProfile() => _dao.hasProfile();
+  Future<Result<void>> updateLastActiveModule(AppModule module) async {
+    try {
+      final profile = await _dao.get();
+      if (profile == null) {
+        return const Failure(
+            NotFoundException('No profile found to update module'));
+      }
+      await _dao.updateById(
+        profile.id,
+        UserProfilesCompanion(lastActiveModule: Value(module)),
+      );
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(
+          DatabaseException('Failed to update active module: $e'));
+    }
+  }
+
+  @override
+  Future<Result<bool>> hasProfile() async {
+    try {
+      final exists = await _dao.hasProfile();
+      return Success(exists);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to check profile: $e'));
+    }
+  }
 
   domain.UserProfile _toDomain(dynamic row) => domain.UserProfile(
         id: row.id as int,

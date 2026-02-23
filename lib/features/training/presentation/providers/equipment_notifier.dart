@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../../core/errors/result.dart';
 import '../../data/repositories/training_providers.dart';
 import '../../domain/entities/equipment.dart';
 import '../../domain/enums/equipment_category.dart';
@@ -12,7 +13,8 @@ class EquipmentList extends _$EquipmentList {
   @override
   Future<List<Equipment>> build() async {
     final repo = ref.watch(equipmentRepositoryProvider);
-    return repo.getAll();
+    final result = await repo.getAll();
+    return result.getOrThrow();
   }
 
   /// Adds a user-created equipment and refreshes the list.
@@ -26,9 +28,9 @@ class EquipmentList extends _$EquipmentList {
       name: name,
       category: category,
     );
-    final id = await repo.create(equipment);
+    final createResult = await repo.create(equipment);
+    final id = createResult.getOrThrow();
 
-    // Also mark as owned immediately
     await repo.toggleUserEquipment(id, owns: true);
 
     ref.invalidateSelf();
@@ -41,8 +43,9 @@ class UserEquipmentIds extends _$UserEquipmentIds {
   @override
   Future<Set<int>> build() async {
     final repo = ref.watch(equipmentRepositoryProvider);
-    final userEquipments = await repo.getByUser();
-    return userEquipments.map((e) => e.id).toSet();
+    final result = await repo.getByUser();
+    final equipments = result.getOrThrow();
+    return equipments.map((e) => e.id).toSet();
   }
 
   /// Toggles ownership of an equipment item.

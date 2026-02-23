@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../../core/errors/app_exception.dart';
+import '../../../../core/errors/result.dart';
 import '../../domain/entities/execution_set.dart' as domain;
 import '../../domain/entities/workout_execution.dart' as domain;
 import '../../domain/repositories/workout_execution_repository.dart';
@@ -12,43 +14,83 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
   WorkoutExecutionRepositoryImpl(this._dao);
 
   @override
-  Future<List<domain.WorkoutExecution>> getAll() async {
-    final rows = await _dao.getAll();
-    return rows.map(_executionToDomain).toList();
+  Future<Result<List<domain.WorkoutExecution>>> getAll() async {
+    try {
+      final rows = await _dao.getAll();
+      return Success(rows.map(_executionToDomain).toList());
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to load executions: $e'));
+    }
   }
 
   @override
-  Future<List<domain.WorkoutExecution>> getByWorkout(int workoutId) async {
-    final rows = await _dao.getByWorkout(workoutId);
-    return rows.map(_executionToDomain).toList();
+  Future<Result<List<domain.WorkoutExecution>>> getByWorkout(
+      int workoutId) async {
+    try {
+      final rows = await _dao.getByWorkout(workoutId);
+      return Success(rows.map(_executionToDomain).toList());
+    } on Exception catch (e) {
+      return Failure(
+          DatabaseException('Failed to load executions for workout: $e'));
+    }
   }
 
   @override
-  Future<domain.WorkoutExecution?> getById(int id) async {
-    final row = await _dao.getById(id);
-    return row != null ? _executionToDomain(row) : null;
+  Future<Result<domain.WorkoutExecution?>> getById(int id) async {
+    try {
+      final row = await _dao.getById(id);
+      return Success(row != null ? _executionToDomain(row) : null);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to load execution $id: $e'));
+    }
   }
 
   @override
-  Future<int> start(int workoutId) => _dao.create(
+  Future<Result<int>> start(int workoutId) async {
+    try {
+      final id = await _dao.create(
         WorkoutExecutionsCompanion.insert(workoutId: workoutId),
       );
-
-  @override
-  Future<void> finish(int executionId, {String? notes}) =>
-      _dao.finish(executionId, notes: notes);
-
-  @override
-  Future<void> delete(int id) => _dao.deleteById(id);
-
-  @override
-  Future<List<domain.ExecutionSet>> getSets(int executionId) async {
-    final rows = await _dao.getSets(executionId);
-    return rows.map(_setToDomain).toList();
+      return Success(id);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to start execution: $e'));
+    }
   }
 
   @override
-  Future<int> logSet(domain.ExecutionSet set) => _dao.insertSet(
+  Future<Result<void>> finish(int executionId, {String? notes}) async {
+    try {
+      await _dao.finish(executionId, notes: notes);
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to finish execution: $e'));
+    }
+  }
+
+  @override
+  Future<Result<void>> delete(int id) async {
+    try {
+      await _dao.deleteById(id);
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to delete execution $id: $e'));
+    }
+  }
+
+  @override
+  Future<Result<List<domain.ExecutionSet>>> getSets(int executionId) async {
+    try {
+      final rows = await _dao.getSets(executionId);
+      return Success(rows.map(_setToDomain).toList());
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to load sets: $e'));
+    }
+  }
+
+  @override
+  Future<Result<int>> logSet(domain.ExecutionSet set) async {
+    try {
+      final id = await _dao.insertSet(
         ExecutionSetsCompanion.insert(
           executionId: set.executionId,
           exerciseId: set.exerciseId,
@@ -58,9 +100,16 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
           isCompleted: Value(set.isCompleted),
         ),
       );
+      return Success(id);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to log set: $e'));
+    }
+  }
 
   @override
-  Future<void> updateSet(domain.ExecutionSet set) => _dao.updateSet(
+  Future<Result<void>> updateSet(domain.ExecutionSet set) async {
+    try {
+      await _dao.updateSet(
         set.id,
         ExecutionSetsCompanion(
           reps: Value(set.reps),
@@ -68,6 +117,11 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
           isCompleted: Value(set.isCompleted),
         ),
       );
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to update set: $e'));
+    }
+  }
 
   domain.WorkoutExecution _executionToDomain(dynamic row) =>
       domain.WorkoutExecution(

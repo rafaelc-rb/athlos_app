@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../../core/errors/app_exception.dart';
+import '../../../../core/errors/result.dart';
 import '../../domain/entities/workout.dart' as domain;
 import '../../domain/entities/workout_exercise.dart' as domain;
 import '../../domain/repositories/workout_repository.dart';
@@ -12,87 +14,119 @@ class WorkoutRepositoryImpl implements WorkoutRepository {
   WorkoutRepositoryImpl(this._dao);
 
   @override
-  Future<List<domain.Workout>> getAll() async {
-    final rows = await _dao.getAll();
-    return rows.map(_toDomain).toList();
+  Future<Result<List<domain.Workout>>> getAll() async {
+    try {
+      final rows = await _dao.getAll();
+      return Success(rows.map(_toDomain).toList());
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to load workouts: $e'));
+    }
   }
 
   @override
-  Future<domain.Workout?> getById(int id) async {
-    final row = await _dao.getById(id);
-    return row != null ? _toDomain(row) : null;
+  Future<Result<domain.Workout?>> getById(int id) async {
+    try {
+      final row = await _dao.getById(id);
+      return Success(row != null ? _toDomain(row) : null);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to load workout $id: $e'));
+    }
   }
 
   @override
-  Future<int> create(
+  Future<Result<int>> create(
     domain.Workout workout,
     List<domain.WorkoutExercise> exercises,
   ) async {
-    final id = await _dao.create(
-      WorkoutsCompanion.insert(
-        name: workout.name,
-        description: Value(workout.description),
-      ),
-    );
-    await _dao.setExercises(
-      id,
-      exercises
-          .map((e) => WorkoutExercisesCompanion.insert(
-                workoutId: id,
-                exerciseId: e.exerciseId,
-                order: e.order,
-                sets: e.sets,
-                reps: e.reps,
-                restSeconds: Value(e.restSeconds),
-              ))
-          .toList(),
-    );
-    return id;
+    try {
+      final id = await _dao.create(
+        WorkoutsCompanion.insert(
+          name: workout.name,
+          description: Value(workout.description),
+        ),
+      );
+      await _dao.setExercises(
+        id,
+        exercises
+            .map((e) => WorkoutExercisesCompanion.insert(
+                  workoutId: id,
+                  exerciseId: e.exerciseId,
+                  order: e.order,
+                  sets: e.sets,
+                  reps: e.reps,
+                  restSeconds: Value(e.restSeconds),
+                ))
+            .toList(),
+      );
+      return Success(id);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to create workout: $e'));
+    }
   }
 
   @override
-  Future<void> update(
+  Future<Result<void>> update(
     domain.Workout workout,
     List<domain.WorkoutExercise> exercises,
   ) async {
-    await _dao.updateById(
-      workout.id,
-      WorkoutsCompanion(
-        name: Value(workout.name),
-        description: Value(workout.description),
-      ),
-    );
-    await _dao.setExercises(
-      workout.id,
-      exercises
-          .map((e) => WorkoutExercisesCompanion.insert(
-                workoutId: workout.id,
-                exerciseId: e.exerciseId,
-                order: e.order,
-                sets: e.sets,
-                reps: e.reps,
-                restSeconds: Value(e.restSeconds),
-              ))
-          .toList(),
-    );
+    try {
+      await _dao.updateById(
+        workout.id,
+        WorkoutsCompanion(
+          name: Value(workout.name),
+          description: Value(workout.description),
+        ),
+      );
+      await _dao.setExercises(
+        workout.id,
+        exercises
+            .map((e) => WorkoutExercisesCompanion.insert(
+                  workoutId: workout.id,
+                  exerciseId: e.exerciseId,
+                  order: e.order,
+                  sets: e.sets,
+                  reps: e.reps,
+                  restSeconds: Value(e.restSeconds),
+                ))
+            .toList(),
+      );
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to update workout: $e'));
+    }
   }
 
   @override
-  Future<void> delete(int id) => _dao.deleteById(id);
+  Future<Result<void>> delete(int id) async {
+    try {
+      await _dao.deleteById(id);
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to delete workout $id: $e'));
+    }
+  }
 
   @override
-  Future<List<domain.WorkoutExercise>> getExercises(int workoutId) async {
-    final rows = await _dao.getExercises(workoutId);
-    return rows
-        .map((row) => domain.WorkoutExercise(
-              workoutId: row.workoutId,
-              exerciseId: row.exerciseId,
-              order: row.order,
-              sets: row.sets,
-              reps: row.reps,
-              restSeconds: row.restSeconds,
-            ))
-        .toList();
+  Future<Result<List<domain.WorkoutExercise>>> getExercises(
+      int workoutId) async {
+    try {
+      final rows = await _dao.getExercises(workoutId);
+      return Success(
+        rows
+            .map((row) => domain.WorkoutExercise(
+                  workoutId: row.workoutId,
+                  exerciseId: row.exerciseId,
+                  order: row.order,
+                  sets: row.sets,
+                  reps: row.reps,
+                  restSeconds: row.restSeconds,
+                ))
+            .toList(),
+      );
+    } on Exception catch (e) {
+      return Failure(
+          DatabaseException('Failed to load workout exercises: $e'));
+    }
   }
 
   domain.Workout _toDomain(dynamic row) => domain.Workout(

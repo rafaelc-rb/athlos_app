@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../../core/errors/result.dart';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/enums/body_aesthetic.dart';
 import '../../domain/enums/training_goal.dart';
@@ -17,7 +18,8 @@ class ProfileNotifier extends _$ProfileNotifier {
   @override
   Future<UserProfile?> build() async {
     final repo = ref.watch(userProfileRepositoryProvider);
-    return repo.get();
+    final result = await repo.get();
+    return result.getOrThrow();
   }
 
   /// Creates a new user profile and updates the state.
@@ -39,7 +41,8 @@ class ProfileNotifier extends _$ProfileNotifier {
       bodyAesthetic: bodyAesthetic,
       trainingStyle: trainingStyle,
     );
-    final id = await repo.create(profile);
+    final result = await repo.create(profile);
+    final id = result.getOrThrow();
     state = AsyncData(UserProfile(
       id: id,
       weight: weight,
@@ -54,7 +57,8 @@ class ProfileNotifier extends _$ProfileNotifier {
   /// Updates an existing user profile and refreshes the state.
   Future<void> updateProfile(UserProfile profile) async {
     final repo = ref.read(userProfileRepositoryProvider);
-    await repo.update(profile);
+    final result = await repo.update(profile);
+    result.getOrThrow();
     state = AsyncData(profile);
   }
 }
@@ -66,7 +70,8 @@ class HasProfile extends _$HasProfile {
   @override
   Future<bool> build() async {
     final repo = ref.watch(userProfileRepositoryProvider);
-    return repo.hasProfile();
+    final result = await repo.hasProfile();
+    return result.getOrThrow();
   }
 
   /// Force refresh after profile creation.

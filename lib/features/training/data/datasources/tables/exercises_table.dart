@@ -14,5 +14,5 @@ class Exercises extends Table {
   TextColumn get muscleRegion => text().nullable()();
 
   TextColumn get description => text().nullable()();
-  BoolColumn get isCustom => boolean().withDefault(const Constant(false))();
+  BoolColumn get isVerified => boolean().withDefault(const Constant(false))();
 }

@@ -19,7 +19,7 @@ Future<void> seedExercises(AppDatabase db) async {
             muscleGroup: item.muscleGroup,
             targetMuscles: Value(item.targetMuscles),
             muscleRegion: Value(item.muscleRegion),
-            isCustom: const Value(false),
+            isVerified: const Value(true),
           ),
         );
     exerciseIds[item.name] = id;

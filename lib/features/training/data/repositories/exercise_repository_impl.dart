@@ -78,7 +78,7 @@ class ExerciseRepositoryImpl implements ExerciseRepository {
           targetMuscles: Value(exercise.targetMuscles),
           muscleRegion: Value(exercise.muscleRegion),
           description: Value(exercise.description),
-          isCustom: Value(exercise.isCustom),
+          isVerified: Value(exercise.isVerified),
         ),
       );
       if (equipmentIds.isNotEmpty) {
@@ -104,7 +104,7 @@ class ExerciseRepositoryImpl implements ExerciseRepository {
           targetMuscles: Value(exercise.targetMuscles),
           muscleRegion: Value(exercise.muscleRegion),
           description: Value(exercise.description),
-          isCustom: Value(exercise.isCustom),
+          isVerified: Value(exercise.isVerified),
         ),
       );
       if (equipmentIds != null) {
@@ -153,6 +153,6 @@ class ExerciseRepositoryImpl implements ExerciseRepository {
         targetMuscles: row.targetMuscles as String?,
         muscleRegion: row.muscleRegion as String?,
         description: row.description as String?,
-        isCustom: row.isCustom as bool,
+        isVerified: row.isVerified as bool,
       );
 }

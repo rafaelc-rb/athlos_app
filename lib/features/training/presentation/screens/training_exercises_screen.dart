@@ -122,7 +122,7 @@ class _TrainingExercisesScreenState
                     key: ValueKey(exercise.id),
                     displayName: localizedExerciseName(
                       exercise.name,
-                      isCustom: exercise.isCustom,
+                      isVerified: exercise.isVerified,
                       l10n: l10n,
                     ),
                     muscleGroupLabel:
@@ -156,7 +156,7 @@ class _TrainingExercisesScreenState
       filtered = filtered.where((e) {
         final name = localizedExerciseName(
           e.name,
-          isCustom: e.isCustom,
+          isVerified: e.isVerified,
           l10n: l10n,
         ).toLowerCase();
         return name.contains(query);
@@ -165,9 +165,9 @@ class _TrainingExercisesScreenState
 
     filtered.sort((a, b) {
       final nameA = localizedExerciseName(a.name,
-          isCustom: a.isCustom, l10n: l10n);
+          isVerified: a.isVerified, l10n: l10n);
       final nameB = localizedExerciseName(b.name,
-          isCustom: b.isCustom, l10n: l10n);
+          isVerified: b.isVerified, l10n: l10n);
       return nameA.compareTo(nameB);
     });
 

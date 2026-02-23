@@ -5,10 +5,10 @@ import '../../domain/enums/muscle_group.dart';
 /// Falls back to [name] directly for custom (user-created) items.
 String localizedExerciseName(
   String name, {
-  required bool isCustom,
+  required bool isVerified,
   required AppLocalizations l10n,
 }) {
-  if (isCustom) return name;
+  if (!isVerified) return name;
   return _exerciseNameMap(l10n)[name] ?? name;
 }
 

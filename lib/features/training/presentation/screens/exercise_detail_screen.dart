@@ -47,7 +47,7 @@ class ExerciseDetailScreen extends ConsumerWidget {
 
         final displayName = localizedExerciseName(
           exercise.name,
-          isCustom: exercise.isCustom,
+          isVerified: exercise.isVerified,
           l10n: l10n,
         );
 
@@ -284,7 +284,7 @@ class _VariationsSection extends ConsumerWidget {
                 children: variations.map((v) {
                   final name = localizedExerciseName(
                     v.name,
-                    isCustom: v.isCustom,
+                    isVerified: v.isVerified,
                     l10n: l10n,
                   );
                   return ListTile(

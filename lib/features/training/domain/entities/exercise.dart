@@ -13,7 +13,7 @@ class Exercise {
   final String? muscleRegion;
 
   final String? description;
-  final bool isCustom;
+  final bool isVerified;
 
   const Exercise({
     required this.id,
@@ -22,6 +22,6 @@ class Exercise {
     this.targetMuscles,
     this.muscleRegion,
     this.description,
-    this.isCustom = false,
+    this.isVerified = false,
   });
 }

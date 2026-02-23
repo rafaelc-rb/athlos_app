@@ -35,6 +35,22 @@ class EquipmentList extends _$EquipmentList {
 
     ref.invalidateSelf();
   }
+
+  /// Updates a user-created equipment.
+  Future<void> updateEquipment(Equipment equipment) async {
+    final repo = ref.read(equipmentRepositoryProvider);
+    final result = await repo.update(equipment);
+    result.getOrThrow();
+    ref.invalidateSelf();
+  }
+
+  /// Deletes a user-created equipment.
+  Future<void> deleteEquipment(int id) async {
+    final repo = ref.read(equipmentRepositoryProvider);
+    final result = await repo.delete(id);
+    result.getOrThrow();
+    ref.invalidateSelf();
+  }
 }
 
 /// Manages the set of equipment IDs the user owns.

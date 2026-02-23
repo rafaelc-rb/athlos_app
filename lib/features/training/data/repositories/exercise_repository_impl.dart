@@ -5,6 +5,8 @@ import '../../../../core/errors/app_exception.dart';
 import '../../../../core/errors/result.dart';
 import '../../domain/entities/exercise.dart' as domain;
 import '../../domain/enums/muscle_group.dart';
+import '../../domain/enums/muscle_region.dart' as domain_region;
+import '../../domain/enums/target_muscle.dart' as domain_muscle;
 import '../../domain/repositories/exercise_repository.dart';
 import '../datasources/daos/exercise_dao.dart';
 
@@ -17,7 +19,12 @@ class ExerciseRepositoryImpl implements ExerciseRepository {
   Future<Result<List<domain.Exercise>>> getAll() async {
     try {
       final rows = await _dao.getAll();
-      return Success(rows.map(_toDomain).toList());
+      final results = <domain.Exercise>[];
+      for (final row in rows) {
+        final muscles = await _loadMuscleFoci(row.id);
+        results.add(_toDomain(row, muscles));
+      }
+      return Success(results);
     } on Exception catch (e) {
       return Failure(DatabaseException('Failed to load exercises: $e'));
     }
@@ -27,7 +34,9 @@ class ExerciseRepositoryImpl implements ExerciseRepository {
   Future<Result<domain.Exercise?>> getById(int id) async {
     try {
       final row = await _dao.getById(id);
-      return Success(row != null ? _toDomain(row) : null);
+      if (row == null) return const Success(null);
+      final muscles = await _loadMuscleFoci(row.id);
+      return Success(_toDomain(row, muscles));
     } on Exception catch (e) {
       return Failure(DatabaseException('Failed to load exercise $id: $e'));
     }
@@ -38,7 +47,12 @@ class ExerciseRepositoryImpl implements ExerciseRepository {
       MuscleGroup group) async {
     try {
       final rows = await _dao.getByMuscleGroup(group);
-      return Success(rows.map(_toDomain).toList());
+      final results = <domain.Exercise>[];
+      for (final row in rows) {
+        final muscles = await _loadMuscleFoci(row.id);
+        results.add(_toDomain(row, muscles));
+      }
+      return Success(results);
     } on Exception catch (e) {
       return Failure(
           DatabaseException('Failed to load exercises by muscle group: $e'));
@@ -49,7 +63,12 @@ class ExerciseRepositoryImpl implements ExerciseRepository {
   Future<Result<List<domain.Exercise>>> getVariations(int exerciseId) async {
     try {
       final rows = await _dao.getVariations(exerciseId);
-      return Success(rows.map(_toDomain).toList());
+      final results = <domain.Exercise>[];
+      for (final row in rows) {
+        final muscles = await _loadMuscleFoci(row.id);
+        results.add(_toDomain(row, muscles));
+      }
+      return Success(results);
     } on Exception catch (e) {
       return Failure(DatabaseException('Failed to load variations: $e'));
     }
@@ -66,23 +85,36 @@ class ExerciseRepositoryImpl implements ExerciseRepository {
   }
 
   @override
+  Future<Result<List<domain.ExerciseMuscleFocus>>> getMuscleFoci(
+      int exerciseId) async {
+    try {
+      return Success(await _loadMuscleFoci(exerciseId));
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to load muscle foci: $e'));
+    }
+  }
+
+  @override
   Future<Result<int>> create(
     domain.Exercise exercise, {
     List<int> equipmentIds = const [],
+    List<({domain_muscle.TargetMuscle muscle, domain_region.MuscleRegion? region})>
+        muscles = const [],
   }) async {
     try {
       final id = await _dao.create(
         ExercisesCompanion.insert(
           name: exercise.name,
           muscleGroup: exercise.muscleGroup,
-          targetMuscles: Value(exercise.targetMuscles),
-          muscleRegion: Value(exercise.muscleRegion),
           description: Value(exercise.description),
           isVerified: Value(exercise.isVerified),
         ),
       );
       if (equipmentIds.isNotEmpty) {
         await _dao.setEquipments(id, equipmentIds);
+      }
+      if (muscles.isNotEmpty) {
+        await _dao.setMuscleFoci(id, muscles);
       }
       return Success(id);
     } on Exception catch (e) {
@@ -94,6 +126,8 @@ class ExerciseRepositoryImpl implements ExerciseRepository {
   Future<Result<void>> update(
     domain.Exercise exercise, {
     List<int>? equipmentIds,
+    List<({domain_muscle.TargetMuscle muscle, domain_region.MuscleRegion? region})>?
+        muscles,
   }) async {
     try {
       await _dao.updateById(
@@ -101,14 +135,15 @@ class ExerciseRepositoryImpl implements ExerciseRepository {
         ExercisesCompanion(
           name: Value(exercise.name),
           muscleGroup: Value(exercise.muscleGroup),
-          targetMuscles: Value(exercise.targetMuscles),
-          muscleRegion: Value(exercise.muscleRegion),
           description: Value(exercise.description),
           isVerified: Value(exercise.isVerified),
         ),
       );
       if (equipmentIds != null) {
         await _dao.setEquipments(exercise.id, equipmentIds);
+      }
+      if (muscles != null) {
+        await _dao.setMuscleFoci(exercise.id, muscles);
       }
       return const Success(null);
     } on Exception catch (e) {
@@ -146,13 +181,24 @@ class ExerciseRepositoryImpl implements ExerciseRepository {
     }
   }
 
-  domain.Exercise _toDomain(dynamic row) => domain.Exercise(
+  Future<List<domain.ExerciseMuscleFocus>> _loadMuscleFoci(
+      int exerciseId) async {
+    final rows = await _dao.getMuscleFoci(exerciseId);
+    return rows
+        .map((r) => domain.ExerciseMuscleFocus(r.targetMuscle, r.muscleRegion))
+        .toList();
+  }
+
+  domain.Exercise _toDomain(
+    dynamic row,
+    List<domain.ExerciseMuscleFocus> muscles,
+  ) =>
+      domain.Exercise(
         id: row.id as int,
         name: row.name as String,
         muscleGroup: row.muscleGroup as MuscleGroup,
-        targetMuscles: row.targetMuscles as String?,
-        muscleRegion: row.muscleRegion as String?,
         description: row.description as String?,
         isVerified: row.isVerified as bool,
+        muscles: muscles,
       );
 }

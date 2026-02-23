@@ -2,15 +2,24 @@ import 'package:drift/drift.dart';
 
 import '../../../../../core/database/app_database.dart';
 import '../../../../training/domain/enums/muscle_group.dart';
+import '../../../../training/domain/enums/muscle_region.dart';
+import '../../../../training/domain/enums/target_muscle.dart';
 import '../tables/equipments_table.dart';
 import '../tables/exercise_equipments_table.dart';
+import '../tables/exercise_target_muscles_table.dart';
 import '../tables/exercise_variations_table.dart';
 import '../tables/exercises_table.dart';
 
 part 'exercise_dao.g.dart';
 
 @DriftAccessor(
-  tables: [Exercises, ExerciseEquipments, ExerciseVariations, Equipments],
+  tables: [
+    Exercises,
+    ExerciseEquipments,
+    ExerciseVariations,
+    ExerciseTargetMuscles,
+    Equipments,
+  ],
 )
 class ExerciseDao extends DatabaseAccessor<AppDatabase>
     with _$ExerciseDaoMixin {
@@ -51,6 +60,31 @@ class ExerciseDao extends DatabaseAccessor<AppDatabase>
         ExerciseEquipmentsCompanion(
           exerciseId: Value(exerciseId),
           equipmentId: Value(eqId),
+        ),
+      );
+    }
+  }
+
+  // --- Muscle targeting relations ---
+
+  Future<List<ExerciseTargetMuscle>> getMuscleFoci(int exerciseId) =>
+      (select(exerciseTargetMuscles)
+            ..where((e) => e.exerciseId.equals(exerciseId)))
+          .get();
+
+  Future<void> setMuscleFoci(
+    int exerciseId,
+    List<({TargetMuscle muscle, MuscleRegion? region})> foci,
+  ) async {
+    await (delete(exerciseTargetMuscles)
+          ..where((e) => e.exerciseId.equals(exerciseId)))
+        .go();
+    for (final focus in foci) {
+      await into(exerciseTargetMuscles).insert(
+        ExerciseTargetMusclesCompanion(
+          exerciseId: Value(exerciseId),
+          targetMuscle: Value(focus.muscle),
+          muscleRegion: Value(focus.region),
         ),
       );
     }

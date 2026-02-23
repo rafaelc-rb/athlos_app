@@ -1,5 +1,7 @@
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/enums/muscle_group.dart';
+import '../../domain/enums/muscle_region.dart';
+import '../../domain/enums/target_muscle.dart';
 
 /// Maps a verified exercise's English key [name] to its localized display name.
 /// Falls back to [name] directly for custom (user-created) items.
@@ -29,25 +31,55 @@ String localizedMuscleGroupName(MuscleGroup group, AppLocalizations l10n) =>
       MuscleGroup.fullBody => l10n.muscleGroupFullBody,
     };
 
-/// Maps target muscle English keys to localized names.
-String localizedTargetMuscle(String key, AppLocalizations l10n) =>
-    _targetMuscleMap(l10n)[key] ?? key;
+/// Returns the localized display name for a [TargetMuscle].
+String localizedTargetMuscle(TargetMuscle muscle, AppLocalizations l10n) =>
+    switch (muscle) {
+      TargetMuscle.pectoralisMajor => l10n.musclePectoralisMajor,
+      TargetMuscle.pectoralisMinor => l10n.musclePectoralisMinor,
+      TargetMuscle.latissimusDorsi => l10n.muscleLatissimusDorsi,
+      TargetMuscle.rhomboids => l10n.muscleRhomboids,
+      TargetMuscle.trapezius => l10n.muscleTrapezius,
+      TargetMuscle.erectorSpinae => l10n.muscleErectorSpinae,
+      TargetMuscle.teresMajor => l10n.muscleTeresMajor,
+      TargetMuscle.anteriorDeltoid => l10n.muscleAnteriorDeltoid,
+      TargetMuscle.lateralDeltoid => l10n.muscleLateralDeltoid,
+      TargetMuscle.rearDeltoid => l10n.muscleRearDeltoid,
+      TargetMuscle.bicepsBrachii => l10n.muscleBicepsBrachii,
+      TargetMuscle.brachialis => l10n.muscleBrachialis,
+      TargetMuscle.brachioradialis => l10n.muscleBrachioradialis,
+      TargetMuscle.tricepsBrachii => l10n.muscleTricepsBrachii,
+      TargetMuscle.wristFlexors => l10n.muscleWristFlexors,
+      TargetMuscle.wristExtensors => l10n.muscleWristExtensors,
+      TargetMuscle.rectusAbdominis => l10n.muscleRectusAbdominis,
+      TargetMuscle.transverseAbdominis => l10n.muscleTransverseAbdominis,
+      TargetMuscle.obliques => l10n.muscleObliques,
+      TargetMuscle.rectusFemoris => l10n.muscleRectusFemoris,
+      TargetMuscle.vastusLateralis => l10n.muscleVastusLateralis,
+      TargetMuscle.vastusMedialis => l10n.muscleVastusMedialis,
+      TargetMuscle.vastusIntermedius => l10n.muscleVastusIntermedius,
+      TargetMuscle.bicepsFemoris => l10n.muscleBicepsFemoris,
+      TargetMuscle.semitendinosus => l10n.muscleSemitendinosus,
+      TargetMuscle.semimembranosus => l10n.muscleSemimembranosus,
+      TargetMuscle.gluteusMaximus => l10n.muscleGluteusMaximus,
+      TargetMuscle.gluteusMedius => l10n.muscleGluteusMedius,
+      TargetMuscle.gluteusMinimus => l10n.muscleGluteusMinimus,
+      TargetMuscle.gastrocnemius => l10n.muscleGastrocnemius,
+      TargetMuscle.soleus => l10n.muscleSoleus,
+      TargetMuscle.hipFlexors => l10n.muscleHipFlexors,
+      TargetMuscle.serratus => l10n.muscleSerratus,
+    };
 
-/// Parses a comma-separated target muscles string into localized names.
-String localizedTargetMuscles(String? raw, AppLocalizations l10n) {
-  if (raw == null || raw.isEmpty) return '';
-  return raw
-      .split(',')
-      .map((s) => s.trim())
-      .map((key) => localizedTargetMuscle(key, l10n))
-      .join(', ');
-}
-
-/// Maps muscle region English keys to localized names.
-String localizedMuscleRegion(String? key, AppLocalizations l10n) {
-  if (key == null || key.isEmpty) return '';
-  return _muscleRegionMap(l10n)[key] ?? key;
-}
+/// Returns the localized display name for a [MuscleRegion].
+String localizedMuscleRegion(MuscleRegion region, AppLocalizations l10n) =>
+    switch (region) {
+      MuscleRegion.upper => l10n.regionUpper,
+      MuscleRegion.mid => l10n.regionMid,
+      MuscleRegion.lower => l10n.regionLower,
+      MuscleRegion.longHead => l10n.regionLongHead,
+      MuscleRegion.shortHead => l10n.regionShortHead,
+      MuscleRegion.medialHead => l10n.regionMedialHead,
+      MuscleRegion.lateralHead => l10n.regionLateralHead,
+    };
 
 Map<String, String> _exerciseNameMap(AppLocalizations l10n) => {
       'flatBarbellBenchPress': l10n.exerciseFlatBarbellBenchPress,
@@ -91,46 +123,4 @@ Map<String, String> _exerciseNameMap(AppLocalizations l10n) => {
       'reverseWristCurl': l10n.exerciseReverseWristCurl,
       'deadlift': l10n.exerciseDeadlift,
       'burpee': l10n.exerciseBurpee,
-    };
-
-Map<String, String> _targetMuscleMap(AppLocalizations l10n) => {
-      'pectoralisMajor': l10n.musclePectoralisMajor,
-      'anteriorDeltoid': l10n.muscleAnteriorDeltoid,
-      'lateralDeltoid': l10n.muscleLateralDeltoid,
-      'rearDeltoid': l10n.muscleRearDeltoid,
-      'triceps': l10n.muscleTriceps,
-      'bicepsBrachii': l10n.muscleBicepsBrachii,
-      'brachialis': l10n.muscleBrachialis,
-      'brachioradialis': l10n.muscleBrachioradialis,
-      'latissimusDorsi': l10n.muscleLatissimusDorsi,
-      'rhomboids': l10n.muscleRhomboids,
-      'traps': l10n.muscleTraps,
-      'erectorSpinae': l10n.muscleErectorSpinae,
-      'tricepsBrachii': l10n.muscleTricepsBrachii,
-      'quadriceps': l10n.muscleQuadriceps,
-      'hamstrings': l10n.muscleHamstrings,
-      'glutes': l10n.muscleGlutes,
-      'gluteusMaximus': l10n.muscleGluteusMaximus,
-      'gastrocnemius': l10n.muscleGastrocnemius,
-      'rectusAbdominis': l10n.muscleRectusAbdominis,
-      'transverseAbdominis': l10n.muscleTransverseAbdominis,
-      'obliques': l10n.muscleObliques,
-      'hipFlexors': l10n.muscleHipFlexors,
-      'wristFlexors': l10n.muscleWristFlexors,
-      'wristExtensors': l10n.muscleWristExtensors,
-      'fullBody': l10n.muscleFullBody,
-      'biceps': l10n.muscleGroupBiceps,
-    };
-
-Map<String, String> _muscleRegionMap(AppLocalizations l10n) => {
-      'upper': l10n.regionUpper,
-      'mid': l10n.regionMid,
-      'lower': l10n.regionLower,
-      'lats': l10n.regionLats,
-      'front': l10n.regionFront,
-      'lateral': l10n.regionLateral,
-      'rear': l10n.regionRear,
-      'longHead': l10n.regionLongHead,
-      'shortHead': l10n.regionShortHead,
-      'lateralHead': l10n.regionLateralHead,
     };

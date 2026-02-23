@@ -21,11 +21,14 @@ import '../../features/training/data/datasources/daos/workout_execution_dao.dart
 import '../../features/training/data/datasources/tables/equipments_table.dart';
 import '../../features/training/data/datasources/tables/execution_sets_table.dart';
 import '../../features/training/data/datasources/tables/exercise_equipments_table.dart';
+import '../../features/training/data/datasources/tables/exercise_target_muscles_table.dart';
 import '../../features/training/data/datasources/tables/exercise_variations_table.dart';
 import '../../features/training/data/datasources/tables/exercises_table.dart';
 import '../../features/training/data/datasources/tables/user_equipments_table.dart';
 import '../../features/training/domain/enums/equipment_category.dart';
 import '../../features/training/domain/enums/muscle_group.dart';
+import '../../features/training/domain/enums/muscle_region.dart';
+import '../../features/training/domain/enums/target_muscle.dart';
 import '../../features/training/data/datasources/tables/workout_exercises_table.dart';
 import '../../features/training/data/datasources/tables/workout_executions_table.dart';
 import '../../features/training/data/datasources/tables/workouts_table.dart';
@@ -38,6 +41,7 @@ part 'app_database.g.dart';
     Equipments,
     Exercises,
     ExerciseEquipments,
+    ExerciseTargetMuscles,
     ExerciseVariations,
     Workouts,
     WorkoutExercises,
@@ -59,7 +63,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(

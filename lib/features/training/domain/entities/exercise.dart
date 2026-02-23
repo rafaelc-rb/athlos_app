@@ -1,27 +1,32 @@
 import '../enums/muscle_group.dart';
+import '../enums/muscle_region.dart';
+import '../enums/target_muscle.dart';
+
+/// A specific muscle targeted by an exercise, with an optional region emphasis.
+class ExerciseMuscleFocus {
+  final TargetMuscle muscle;
+  final MuscleRegion? region;
+
+  const ExerciseMuscleFocus(this.muscle, [this.region]);
+}
 
 /// Exercise with muscle targeting details.
 class Exercise {
   final int id;
   final String name;
   final MuscleGroup muscleGroup;
-
-  /// Specific muscles worked (e.g. "biceps brachii, brachialis").
-  final String? targetMuscles;
-
-  /// Portion of the muscle emphasized (e.g. "upper", "mid", "lower").
-  final String? muscleRegion;
-
   final String? description;
   final bool isVerified;
+
+  /// Muscles this exercise targets, loaded from the junction table.
+  final List<ExerciseMuscleFocus> muscles;
 
   const Exercise({
     required this.id,
     required this.name,
     required this.muscleGroup,
-    this.targetMuscles,
-    this.muscleRegion,
     this.description,
     this.isVerified = false,
+    this.muscles = const [],
   });
 }

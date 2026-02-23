@@ -176,23 +176,111 @@ class _EquipmentScreenState extends ConsumerState<EquipmentScreen> {
       itemCount: owned.length,
       itemBuilder: (context, index) {
         final equipment = owned[index];
-        return EquipmentTile(
-          key: ValueKey(equipment.id),
-          displayName: localizedEquipmentName(
-            equipment.name,
-            isVerified: equipment.isVerified,
-            l10n: l10n,
-          ),
-          category: localizedCategoryName(equipment.category, l10n),
-          trailing: IconButton(
-            icon: Icon(Icons.remove_circle_outline, color: colorScheme.error),
-            tooltip: l10n.removeEquipment,
-            onPressed: () => ref
-                .read(userEquipmentIdsProvider.notifier)
-                .toggle(equipment.id),
+        return GestureDetector(
+          onLongPress: equipment.isVerified
+              ? null
+              : () => _showEditOptions(context, equipment, l10n),
+          child: EquipmentTile(
+            key: ValueKey(equipment.id),
+            displayName: localizedEquipmentName(
+              equipment.name,
+              isVerified: equipment.isVerified,
+              l10n: l10n,
+            ),
+            category: localizedCategoryName(equipment.category, l10n),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!equipment.isVerified)
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 20),
+                    tooltip: l10n.edit,
+                    onPressed: () =>
+                        _showEditEquipmentDialog(context, equipment),
+                  ),
+                IconButton(
+                  icon: Icon(Icons.remove_circle_outline,
+                      color: colorScheme.error),
+                  tooltip: l10n.removeEquipment,
+                  onPressed: () => ref
+                      .read(userEquipmentIdsProvider.notifier)
+                      .toggle(equipment.id),
+                ),
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+
+  void _showEditOptions(
+      BuildContext context, Equipment equipment, AppLocalizations l10n) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: Text(l10n.edit),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _showEditEquipmentDialog(context, equipment);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete_outline,
+                  color: Theme.of(context).colorScheme.error),
+              title: Text(l10n.delete,
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.error)),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _confirmDeleteEquipment(context, equipment, l10n);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditEquipmentDialog(BuildContext context, Equipment equipment) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => _EditEquipmentDialog(equipment: equipment),
+    );
+  }
+
+  void _confirmDeleteEquipment(
+      BuildContext context, Equipment equipment, AppLocalizations l10n) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.deleteEquipmentTitle),
+        content: Text(l10n.deleteEquipmentMessage(equipment.name)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+              await ref
+                  .read(equipmentListProvider.notifier)
+                  .deleteEquipment(equipment.id);
+              ref.invalidate(userEquipmentIdsProvider);
+            },
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
     );
   }
 
@@ -339,6 +427,103 @@ class _AddEquipmentDialogState extends ConsumerState<_AddEquipmentDialog> {
           category: _selectedCategory,
         );
 
+    ref.invalidate(userEquipmentIdsProvider);
+
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+}
+
+/// Dialog to edit a user-created equipment.
+class _EditEquipmentDialog extends ConsumerStatefulWidget {
+  final Equipment equipment;
+
+  const _EditEquipmentDialog({required this.equipment});
+
+  @override
+  ConsumerState<_EditEquipmentDialog> createState() =>
+      _EditEquipmentDialogState();
+}
+
+class _EditEquipmentDialogState extends ConsumerState<_EditEquipmentDialog> {
+  late final TextEditingController _nameController;
+  late EquipmentCategory _selectedCategory;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.equipment.name);
+    _selectedCategory = widget.equipment.category;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return AlertDialog(
+      title: Text(l10n.editEquipment),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _nameController,
+            decoration: InputDecoration(
+              labelText: l10n.equipmentNameLabel,
+            ),
+            textCapitalization: TextCapitalization.sentences,
+            autofocus: true,
+          ),
+          const Gap(16),
+          DropdownButtonFormField<EquipmentCategory>(
+            initialValue: _selectedCategory,
+            decoration: InputDecoration(
+              labelText: l10n.equipmentCategoryLabel,
+            ),
+            items: EquipmentCategory.values.map((category) {
+              return DropdownMenuItem(
+                value: category,
+                child: Text(localizedCategoryName(category, l10n)),
+              );
+            }).toList(),
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _selectedCategory = value);
+              }
+            },
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: _onSave,
+          child: Text(l10n.save),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _onSave() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) return;
+
+    final updated = Equipment(
+      id: widget.equipment.id,
+      name: name,
+      category: _selectedCategory,
+    );
+
+    await ref.read(equipmentListProvider.notifier).updateEquipment(updated);
     ref.invalidate(userEquipmentIdsProvider);
 
     if (mounted) {

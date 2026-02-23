@@ -4,6 +4,8 @@ import '../../../../core/errors/result.dart';
 import '../../data/repositories/training_providers.dart';
 import '../../domain/entities/exercise.dart';
 import '../../domain/enums/muscle_group.dart';
+import '../../domain/enums/muscle_region.dart';
+import '../../domain/enums/target_muscle.dart';
 
 part 'exercise_notifier.g.dart';
 
@@ -21,18 +23,46 @@ class ExerciseList extends _$ExerciseList {
   Future<void> addCustomExercise({
     required String name,
     required MuscleGroup muscleGroup,
-    String? targetMuscles,
-    String? muscleRegion,
+    String? description,
+    List<int> equipmentIds = const [],
+    List<({TargetMuscle muscle, MuscleRegion? region})> muscles = const [],
   }) async {
     final repo = ref.read(exerciseRepositoryProvider);
     final exercise = Exercise(
       id: 0,
       name: name,
       muscleGroup: muscleGroup,
-      targetMuscles: targetMuscles,
-      muscleRegion: muscleRegion,
+      description: description,
     );
-    final result = await repo.create(exercise);
+    final result = await repo.create(
+      exercise,
+      equipmentIds: equipmentIds,
+      muscles: muscles,
+    );
+    result.getOrThrow();
+    ref.invalidateSelf();
+  }
+
+  /// Updates a user-defined exercise.
+  Future<void> updateExercise(
+    Exercise exercise, {
+    List<int>? equipmentIds,
+    List<({TargetMuscle muscle, MuscleRegion? region})>? muscles,
+  }) async {
+    final repo = ref.read(exerciseRepositoryProvider);
+    final result = await repo.update(
+      exercise,
+      equipmentIds: equipmentIds,
+      muscles: muscles,
+    );
+    result.getOrThrow();
+    ref.invalidateSelf();
+  }
+
+  /// Deletes a user-defined exercise.
+  Future<void> deleteExercise(int id) async {
+    final repo = ref.read(exerciseRepositoryProvider);
+    final result = await repo.delete(id);
     result.getOrThrow();
     ref.invalidateSelf();
   }
@@ -62,5 +92,14 @@ Future<List<Exercise>> exerciseVariations(Ref ref, int exerciseId) async {
 Future<List<int>> exerciseEquipmentIds(Ref ref, int exerciseId) async {
   final repo = ref.watch(exerciseRepositoryProvider);
   final result = await repo.getEquipmentIds(exerciseId);
+  return result.getOrThrow();
+}
+
+/// Loads muscle foci for a specific exercise.
+@riverpod
+Future<List<ExerciseMuscleFocus>> exerciseMuscleFoci(
+    Ref ref, int exerciseId) async {
+  final repo = ref.watch(exerciseRepositoryProvider);
+  final result = await repo.getMuscleFoci(exerciseId);
   return result.getOrThrow();
 }

@@ -2,6 +2,10 @@ import 'package:drift/drift.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../domain/enums/muscle_group.dart';
+import '../../domain/enums/muscle_region.dart';
+import '../../domain/enums/target_muscle.dart';
+
+typedef _MuscleFocus = ({TargetMuscle muscle, MuscleRegion? region});
 
 /// Seeds the database with verified exercises on first creation.
 ///
@@ -17,12 +21,21 @@ Future<void> seedExercises(AppDatabase db) async {
           ExercisesCompanion.insert(
             name: item.name,
             muscleGroup: item.muscleGroup,
-            targetMuscles: Value(item.targetMuscles),
-            muscleRegion: Value(item.muscleRegion),
             isVerified: const Value(true),
+            description: const Value.absent(),
           ),
         );
     exerciseIds[item.name] = id;
+
+    for (final focus in item.muscles) {
+      await db.into(db.exerciseTargetMuscles).insert(
+            ExerciseTargetMusclesCompanion(
+              exerciseId: Value(id),
+              targetMuscle: Value(focus.muscle),
+              muscleRegion: Value(focus.region),
+            ),
+          );
+    }
 
     for (final eqName in item.equipmentKeys) {
       final eqId = equipmentIds[eqName];
@@ -65,15 +78,13 @@ Future<Map<String, int>> _resolveEquipmentIds(AppDatabase db) async {
 class _SeedExercise {
   final String name;
   final MuscleGroup muscleGroup;
-  final String? targetMuscles;
-  final String? muscleRegion;
+  final List<_MuscleFocus> muscles;
   final List<String> equipmentKeys;
 
   const _SeedExercise(
     this.name,
     this.muscleGroup, {
-    this.targetMuscles,
-    this.muscleRegion,
+    this.muscles = const [],
     this.equipmentKeys = const [],
   });
 }
@@ -87,164 +98,262 @@ class _Variation {
 const _seedItems = [
   // --- Chest ---
   _SeedExercise('flatBarbellBenchPress', MuscleGroup.chest,
-      targetMuscles: 'pectoralisMajor, anteriorDeltoid, triceps',
-      muscleRegion: 'mid',
+      muscles: [
+        (muscle: TargetMuscle.pectoralisMajor, region: MuscleRegion.mid),
+        (muscle: TargetMuscle.anteriorDeltoid, region: null),
+        (muscle: TargetMuscle.tricepsBrachii, region: null),
+      ],
       equipmentKeys: ['barbell', 'flatBench']),
   _SeedExercise('inclineBarbellBenchPress', MuscleGroup.chest,
-      targetMuscles: 'pectoralisMajor, anteriorDeltoid',
-      muscleRegion: 'upper',
+      muscles: [
+        (muscle: TargetMuscle.pectoralisMajor, region: MuscleRegion.upper),
+        (muscle: TargetMuscle.anteriorDeltoid, region: null),
+      ],
       equipmentKeys: ['barbell', 'adjustableBench']),
   _SeedExercise('dumbbellFly', MuscleGroup.chest,
-      targetMuscles: 'pectoralisMajor',
-      muscleRegion: 'mid',
+      muscles: [
+        (muscle: TargetMuscle.pectoralisMajor, region: MuscleRegion.mid),
+      ],
       equipmentKeys: ['dumbbell', 'flatBench']),
-  _SeedExercise('pushUp', MuscleGroup.chest,
-      targetMuscles: 'pectoralisMajor, anteriorDeltoid, triceps',
-      muscleRegion: 'mid'),
+  _SeedExercise('pushUp', MuscleGroup.chest, muscles: [
+    (muscle: TargetMuscle.pectoralisMajor, region: MuscleRegion.mid),
+    (muscle: TargetMuscle.anteriorDeltoid, region: null),
+    (muscle: TargetMuscle.tricepsBrachii, region: null),
+  ]),
   _SeedExercise('cableCrossover', MuscleGroup.chest,
-      targetMuscles: 'pectoralisMajor',
-      muscleRegion: 'mid',
+      muscles: [
+        (muscle: TargetMuscle.pectoralisMajor, region: MuscleRegion.mid),
+      ],
       equipmentKeys: ['cableMachine']),
   _SeedExercise('machineChestPress', MuscleGroup.chest,
-      targetMuscles: 'pectoralisMajor, triceps',
-      muscleRegion: 'mid',
+      muscles: [
+        (muscle: TargetMuscle.pectoralisMajor, region: MuscleRegion.mid),
+        (muscle: TargetMuscle.tricepsBrachii, region: null),
+      ],
       equipmentKeys: ['chestPressMachine']),
 
   // --- Back ---
   _SeedExercise('pullUp', MuscleGroup.back,
-      targetMuscles: 'latissimusDorsi, biceps, rhomboids',
-      muscleRegion: 'lats',
+      muscles: [
+        (muscle: TargetMuscle.latissimusDorsi, region: null),
+        (muscle: TargetMuscle.bicepsBrachii, region: null),
+        (muscle: TargetMuscle.rhomboids, region: null),
+      ],
       equipmentKeys: ['pullUpBar']),
   _SeedExercise('barbellRow', MuscleGroup.back,
-      targetMuscles: 'latissimusDorsi, rhomboids, rearDeltoid',
-      muscleRegion: 'mid',
+      muscles: [
+        (muscle: TargetMuscle.latissimusDorsi, region: null),
+        (muscle: TargetMuscle.rhomboids, region: null),
+        (muscle: TargetMuscle.rearDeltoid, region: null),
+      ],
       equipmentKeys: ['barbell']),
   _SeedExercise('latPulldown', MuscleGroup.back,
-      targetMuscles: 'latissimusDorsi, biceps',
-      muscleRegion: 'lats',
+      muscles: [
+        (muscle: TargetMuscle.latissimusDorsi, region: null),
+        (muscle: TargetMuscle.bicepsBrachii, region: null),
+      ],
       equipmentKeys: ['latPulldownMachine']),
   _SeedExercise('seatedCableRow', MuscleGroup.back,
-      targetMuscles: 'rhomboids, latissimusDorsi, rearDeltoid',
-      muscleRegion: 'mid',
+      muscles: [
+        (muscle: TargetMuscle.rhomboids, region: null),
+        (muscle: TargetMuscle.latissimusDorsi, region: null),
+        (muscle: TargetMuscle.rearDeltoid, region: null),
+      ],
       equipmentKeys: ['cableMachine']),
   _SeedExercise('dumbbellRow', MuscleGroup.back,
-      targetMuscles: 'latissimusDorsi, rhomboids',
-      muscleRegion: 'mid',
+      muscles: [
+        (muscle: TargetMuscle.latissimusDorsi, region: null),
+        (muscle: TargetMuscle.rhomboids, region: null),
+      ],
       equipmentKeys: ['dumbbell', 'flatBench']),
 
   // --- Shoulders ---
   _SeedExercise('overheadPress', MuscleGroup.shoulders,
-      targetMuscles: 'anteriorDeltoid, lateralDeltoid, triceps',
-      muscleRegion: 'front',
+      muscles: [
+        (muscle: TargetMuscle.anteriorDeltoid, region: null),
+        (muscle: TargetMuscle.lateralDeltoid, region: null),
+        (muscle: TargetMuscle.tricepsBrachii, region: null),
+      ],
       equipmentKeys: ['barbell']),
   _SeedExercise('lateralRaise', MuscleGroup.shoulders,
-      targetMuscles: 'lateralDeltoid',
-      muscleRegion: 'lateral',
+      muscles: [
+        (muscle: TargetMuscle.lateralDeltoid, region: null),
+      ],
       equipmentKeys: ['dumbbell']),
   _SeedExercise('facePull', MuscleGroup.shoulders,
-      targetMuscles: 'rearDeltoid, rhomboids',
-      muscleRegion: 'rear',
+      muscles: [
+        (muscle: TargetMuscle.rearDeltoid, region: null),
+        (muscle: TargetMuscle.rhomboids, region: null),
+      ],
       equipmentKeys: ['cableMachine']),
   _SeedExercise('arnoldPress', MuscleGroup.shoulders,
-      targetMuscles: 'anteriorDeltoid, lateralDeltoid',
-      muscleRegion: 'front',
+      muscles: [
+        (muscle: TargetMuscle.anteriorDeltoid, region: null),
+        (muscle: TargetMuscle.lateralDeltoid, region: null),
+      ],
       equipmentKeys: ['dumbbell']),
 
   // --- Biceps ---
   _SeedExercise('barbellCurl', MuscleGroup.biceps,
-      targetMuscles: 'bicepsBrachii',
-      muscleRegion: 'longHead',
+      muscles: [
+        (muscle: TargetMuscle.bicepsBrachii, region: MuscleRegion.longHead),
+      ],
       equipmentKeys: ['barbell']),
   _SeedExercise('dumbbellCurl', MuscleGroup.biceps,
-      targetMuscles: 'bicepsBrachii',
+      muscles: [
+        (muscle: TargetMuscle.bicepsBrachii, region: null),
+      ],
       equipmentKeys: ['dumbbell']),
   _SeedExercise('hammerCurl', MuscleGroup.biceps,
-      targetMuscles: 'brachialis, brachioradialis',
+      muscles: [
+        (muscle: TargetMuscle.brachialis, region: null),
+        (muscle: TargetMuscle.brachioradialis, region: null),
+      ],
       equipmentKeys: ['dumbbell']),
   _SeedExercise('preacherCurl', MuscleGroup.biceps,
-      targetMuscles: 'bicepsBrachii',
-      muscleRegion: 'shortHead',
+      muscles: [
+        (muscle: TargetMuscle.bicepsBrachii, region: MuscleRegion.shortHead),
+      ],
       equipmentKeys: ['ezBar']),
 
   // --- Triceps ---
   _SeedExercise('tricepsPushdown', MuscleGroup.triceps,
-      targetMuscles: 'tricepsBrachii',
-      muscleRegion: 'lateralHead',
+      muscles: [
+        (muscle: TargetMuscle.tricepsBrachii, region: MuscleRegion.lateralHead),
+      ],
       equipmentKeys: ['cableMachine']),
   _SeedExercise('skullCrusher', MuscleGroup.triceps,
-      targetMuscles: 'tricepsBrachii',
-      muscleRegion: 'longHead',
+      muscles: [
+        (muscle: TargetMuscle.tricepsBrachii, region: MuscleRegion.longHead),
+      ],
       equipmentKeys: ['ezBar', 'flatBench']),
   _SeedExercise('overheadTricepsExtension', MuscleGroup.triceps,
-      targetMuscles: 'tricepsBrachii',
-      muscleRegion: 'longHead',
+      muscles: [
+        (muscle: TargetMuscle.tricepsBrachii, region: MuscleRegion.longHead),
+      ],
       equipmentKeys: ['dumbbell']),
-  _SeedExercise('diamondPushUp', MuscleGroup.triceps,
-      targetMuscles: 'tricepsBrachii, pectoralisMajor'),
+  _SeedExercise('diamondPushUp', MuscleGroup.triceps, muscles: [
+    (muscle: TargetMuscle.tricepsBrachii, region: null),
+    (muscle: TargetMuscle.pectoralisMajor, region: null),
+  ]),
 
   // --- Quadriceps ---
   _SeedExercise('barbellSquat', MuscleGroup.quadriceps,
-      targetMuscles: 'quadriceps, glutes, hamstrings',
+      muscles: [
+        (muscle: TargetMuscle.rectusFemoris, region: null),
+        (muscle: TargetMuscle.vastusLateralis, region: null),
+        (muscle: TargetMuscle.vastusMedialis, region: null),
+        (muscle: TargetMuscle.gluteusMaximus, region: null),
+        (muscle: TargetMuscle.bicepsFemoris, region: null),
+      ],
       equipmentKeys: ['barbell', 'squatRack']),
   _SeedExercise('legPress', MuscleGroup.quadriceps,
-      targetMuscles: 'quadriceps, glutes',
+      muscles: [
+        (muscle: TargetMuscle.rectusFemoris, region: null),
+        (muscle: TargetMuscle.vastusLateralis, region: null),
+        (muscle: TargetMuscle.gluteusMaximus, region: null),
+      ],
       equipmentKeys: ['legPressMachine']),
   _SeedExercise('lunge', MuscleGroup.quadriceps,
-      targetMuscles: 'quadriceps, glutes',
+      muscles: [
+        (muscle: TargetMuscle.rectusFemoris, region: null),
+        (muscle: TargetMuscle.vastusLateralis, region: null),
+        (muscle: TargetMuscle.gluteusMaximus, region: null),
+      ],
       equipmentKeys: ['dumbbell']),
   _SeedExercise('bulgarianSplitSquat', MuscleGroup.quadriceps,
-      targetMuscles: 'quadriceps, glutes',
+      muscles: [
+        (muscle: TargetMuscle.rectusFemoris, region: null),
+        (muscle: TargetMuscle.vastusLateralis, region: null),
+        (muscle: TargetMuscle.gluteusMaximus, region: null),
+      ],
       equipmentKeys: ['dumbbell', 'flatBench']),
 
   // --- Hamstrings ---
   _SeedExercise('romanianDeadlift', MuscleGroup.hamstrings,
-      targetMuscles: 'hamstrings, glutes, erectorSpinae',
+      muscles: [
+        (muscle: TargetMuscle.bicepsFemoris, region: null),
+        (muscle: TargetMuscle.semitendinosus, region: null),
+        (muscle: TargetMuscle.gluteusMaximus, region: null),
+        (muscle: TargetMuscle.erectorSpinae, region: null),
+      ],
       equipmentKeys: ['barbell']),
-  _SeedExercise('nordicCurl', MuscleGroup.hamstrings,
-      targetMuscles: 'hamstrings'),
+  _SeedExercise('nordicCurl', MuscleGroup.hamstrings, muscles: [
+    (muscle: TargetMuscle.bicepsFemoris, region: null),
+    (muscle: TargetMuscle.semitendinosus, region: null),
+  ]),
 
   // --- Glutes ---
   _SeedExercise('hipThrust', MuscleGroup.glutes,
-      targetMuscles: 'gluteusMaximus, hamstrings',
+      muscles: [
+        (muscle: TargetMuscle.gluteusMaximus, region: null),
+        (muscle: TargetMuscle.bicepsFemoris, region: null),
+      ],
       equipmentKeys: ['barbell', 'flatBench']),
-  _SeedExercise('gluteBridge', MuscleGroup.glutes,
-      targetMuscles: 'gluteusMaximus'),
+  _SeedExercise('gluteBridge', MuscleGroup.glutes, muscles: [
+    (muscle: TargetMuscle.gluteusMaximus, region: null),
+  ]),
   _SeedExercise('cableKickback', MuscleGroup.glutes,
-      targetMuscles: 'gluteusMaximus',
+      muscles: [
+        (muscle: TargetMuscle.gluteusMaximus, region: null),
+      ],
       equipmentKeys: ['cableMachine']),
 
   // --- Calves ---
   _SeedExercise('standingCalfRaise', MuscleGroup.calves,
-      targetMuscles: 'gastrocnemius',
+      muscles: [
+        (muscle: TargetMuscle.gastrocnemius, region: null),
+      ],
       equipmentKeys: ['smithMachine']),
 
   // --- Abs ---
-  _SeedExercise('crunch', MuscleGroup.abs,
-      targetMuscles: 'rectusAbdominis', muscleRegion: 'upper'),
-  _SeedExercise('plank', MuscleGroup.abs,
-      targetMuscles: 'rectusAbdominis, transverseAbdominis, obliques'),
+  _SeedExercise('crunch', MuscleGroup.abs, muscles: [
+    (muscle: TargetMuscle.rectusAbdominis, region: MuscleRegion.upper),
+  ]),
+  _SeedExercise('plank', MuscleGroup.abs, muscles: [
+    (muscle: TargetMuscle.rectusAbdominis, region: null),
+    (muscle: TargetMuscle.transverseAbdominis, region: null),
+    (muscle: TargetMuscle.obliques, region: null),
+  ]),
   _SeedExercise('hangingLegRaise', MuscleGroup.abs,
-      targetMuscles: 'rectusAbdominis, hipFlexors',
-      muscleRegion: 'lower',
+      muscles: [
+        (muscle: TargetMuscle.rectusAbdominis, region: MuscleRegion.lower),
+        (muscle: TargetMuscle.hipFlexors, region: null),
+      ],
       equipmentKeys: ['pullUpBar']),
   _SeedExercise('abWheelRollout', MuscleGroup.abs,
-      targetMuscles: 'rectusAbdominis, obliques',
+      muscles: [
+        (muscle: TargetMuscle.rectusAbdominis, region: null),
+        (muscle: TargetMuscle.obliques, region: null),
+      ],
       equipmentKeys: ['abWheel']),
 
   // --- Forearms ---
   _SeedExercise('wristCurl', MuscleGroup.forearms,
-      targetMuscles: 'wristFlexors',
+      muscles: [
+        (muscle: TargetMuscle.wristFlexors, region: null),
+      ],
       equipmentKeys: ['barbell']),
   _SeedExercise('reverseWristCurl', MuscleGroup.forearms,
-      targetMuscles: 'wristExtensors',
+      muscles: [
+        (muscle: TargetMuscle.wristExtensors, region: null),
+      ],
       equipmentKeys: ['barbell']),
 
   // --- Full Body ---
   _SeedExercise('deadlift', MuscleGroup.fullBody,
-      targetMuscles: 'hamstrings, glutes, erectorSpinae, traps',
+      muscles: [
+        (muscle: TargetMuscle.bicepsFemoris, region: null),
+        (muscle: TargetMuscle.gluteusMaximus, region: null),
+        (muscle: TargetMuscle.erectorSpinae, region: null),
+        (muscle: TargetMuscle.trapezius, region: null),
+      ],
       equipmentKeys: ['barbell']),
-  _SeedExercise('burpee', MuscleGroup.fullBody,
-      targetMuscles: 'fullBody'),
+  _SeedExercise('burpee', MuscleGroup.fullBody, muscles: [
+    (muscle: TargetMuscle.rectusFemoris, region: null),
+    (muscle: TargetMuscle.pectoralisMajor, region: null),
+    (muscle: TargetMuscle.anteriorDeltoid, region: null),
+  ]),
 ];
 
 const _variations = [

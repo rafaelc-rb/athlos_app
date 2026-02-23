@@ -12,6 +12,7 @@ import '../../features/profile/domain/enums/body_aesthetic.dart';
 import '../../features/profile/domain/enums/selected_module.dart';
 import '../../features/profile/domain/enums/training_goal.dart';
 import '../../features/profile/domain/enums/training_style.dart';
+import '../../features/training/data/datasources/equipment_seeder.dart';
 import '../../features/training/data/datasources/daos/equipment_dao.dart';
 import '../../features/training/data/datasources/daos/exercise_dao.dart';
 import '../../features/training/data/datasources/daos/workout_dao.dart';
@@ -22,6 +23,7 @@ import '../../features/training/data/datasources/tables/exercise_equipments_tabl
 import '../../features/training/data/datasources/tables/exercise_variations_table.dart';
 import '../../features/training/data/datasources/tables/exercises_table.dart';
 import '../../features/training/data/datasources/tables/user_equipments_table.dart';
+import '../../features/training/domain/enums/equipment_category.dart';
 import '../../features/training/domain/enums/muscle_group.dart';
 import '../../features/training/data/datasources/tables/workout_exercises_table.dart';
 import '../../features/training/data/datasources/tables/workout_executions_table.dart';
@@ -56,17 +58,21 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) => m.createAll(),
+        onCreate: (m) async {
+          await m.createAll();
+          await seedEquipments(this);
+        },
         onUpgrade: (m, from, to) async {
           // During early development, recreate all tables on schema change.
           for (final table in allTables) {
             await m.deleteTable(table.actualTableName);
           }
           await m.createAll();
+          await seedEquipments(this);
         },
       );
 }

@@ -350,5 +350,131 @@
   "yearsUnit": "anos",
   "@yearsUnit": {
     "description": "Unidade de idade"
-  }
+  },
+
+  "equipmentScreenTitle": "Equipamentos",
+  "@equipmentScreenTitle": {
+    "description": "Título da tela de equipamentos"
+  },
+  "myEquipment": "Meus Equipamentos",
+  "@myEquipment": {
+    "description": "Card na training home para acessar equipamentos"
+  },
+  "myEquipmentDesc": "Defina os equipamentos que você tem acesso",
+  "@myEquipmentDesc": {
+    "description": "Descrição do card meus equipamentos"
+  },
+  "equipmentSelected": "{count} selecionados",
+  "@equipmentSelected": {
+    "description": "Contador de equipamentos selecionados",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "addEquipment": "Registrar equipamento",
+  "@addEquipment": {
+    "description": "Botão para registrar equipamento personalizado"
+  },
+  "equipmentNameLabel": "Nome do equipamento",
+  "@equipmentNameLabel": {
+    "description": "Label do campo nome no dialog"
+  },
+  "equipmentCategoryLabel": "Categoria",
+  "@equipmentCategoryLabel": {
+    "description": "Label do campo categoria no dialog"
+  },
+  "searchEquipment": "Buscar no catálogo...",
+  "@searchEquipment": {
+    "description": "Placeholder do campo de busca no catálogo"
+  },
+  "emptyEquipment": "Nenhum equipamento adicionado ainda",
+  "@emptyEquipment": {
+    "description": "Estado vazio da lista de equipamentos do usuário"
+  },
+  "emptyEquipmentHint": "Use a busca acima para encontrar e adicionar",
+  "@emptyEquipmentHint": {
+    "description": "Dica no estado vazio"
+  },
+  "removeEquipment": "Remover",
+  "@removeEquipment": {
+    "description": "Ação para remover equipamento da lista do usuário"
+  },
+
+  "categoryFreeWeights": "Pesos Livres",
+  "@categoryFreeWeights": {
+    "description": "Categoria: pesos livres"
+  },
+  "categoryMachines": "Máquinas",
+  "@categoryMachines": {
+    "description": "Categoria: máquinas"
+  },
+  "categoryStructures": "Estruturas",
+  "@categoryStructures": {
+    "description": "Categoria: barras e estruturas"
+  },
+  "categoryAccessories": "Acessórios",
+  "@categoryAccessories": {
+    "description": "Categoria: acessórios"
+  },
+  "categoryCardio": "Cardio",
+  "@categoryCardio": {
+    "description": "Categoria: cardio"
+  },
+
+  "equipmentBarbell": "Barra Reta",
+  "@equipmentBarbell": { "description": "Equipamento: barbell" },
+  "equipmentDumbbell": "Halteres",
+  "@equipmentDumbbell": { "description": "Equipamento: dumbbell" },
+  "equipmentKettlebell": "Kettlebell",
+  "@equipmentKettlebell": { "description": "Equipamento: kettlebell" },
+  "equipmentEzBar": "Barra W",
+  "@equipmentEzBar": { "description": "Equipamento: EZ bar" },
+  "equipmentWeightPlates": "Anilhas",
+  "@equipmentWeightPlates": { "description": "Equipamento: weight plates" },
+
+  "equipmentCableMachine": "Polia / Cabo",
+  "@equipmentCableMachine": { "description": "Equipamento: cable machine" },
+  "equipmentSmithMachine": "Smith Machine",
+  "@equipmentSmithMachine": { "description": "Equipamento: smith machine" },
+  "equipmentLegPressMachine": "Leg Press",
+  "@equipmentLegPressMachine": { "description": "Equipamento: leg press" },
+  "equipmentLatPulldownMachine": "Pulley",
+  "@equipmentLatPulldownMachine": { "description": "Equipamento: lat pulldown" },
+  "equipmentChestPressMachine": "Supino Máquina",
+  "@equipmentChestPressMachine": { "description": "Equipamento: chest press machine" },
+  "equipmentPecDeckMachine": "Pec Deck / Voador",
+  "@equipmentPecDeckMachine": { "description": "Equipamento: pec deck" },
+
+  "equipmentPullUpBar": "Barra Fixa",
+  "@equipmentPullUpBar": { "description": "Equipamento: pull-up bar" },
+  "equipmentDipStation": "Barras Paralelas",
+  "@equipmentDipStation": { "description": "Equipamento: dip station" },
+  "equipmentGymnasticRings": "Argolas",
+  "@equipmentGymnasticRings": { "description": "Equipamento: gymnastic rings" },
+  "equipmentSuspensionTrainer": "Fita de Suspensão (TRX)",
+  "@equipmentSuspensionTrainer": { "description": "Equipamento: suspension trainer" },
+
+  "equipmentFlatBench": "Banco Reto",
+  "@equipmentFlatBench": { "description": "Equipamento: flat bench" },
+  "equipmentAdjustableBench": "Banco Ajustável",
+  "@equipmentAdjustableBench": { "description": "Equipamento: adjustable bench" },
+  "equipmentSquatRack": "Rack / Gaiola",
+  "@equipmentSquatRack": { "description": "Equipamento: squat rack" },
+  "equipmentResistanceBands": "Elásticos",
+  "@equipmentResistanceBands": { "description": "Equipamento: resistance bands" },
+  "equipmentAbWheel": "Roda Abdominal",
+  "@equipmentAbWheel": { "description": "Equipamento: ab wheel" },
+  "equipmentMedicineBall": "Medicine Ball",
+  "@equipmentMedicineBall": { "description": "Equipamento: medicine ball" },
+  "equipmentBattleRope": "Corda Naval",
+  "@equipmentBattleRope": { "description": "Equipamento: battle rope" },
+  "equipmentFoamRoller": "Rolo de Espuma",
+  "@equipmentFoamRoller": { "description": "Equipamento: foam roller" },
+
+  "equipmentTreadmill": "Esteira",
+  "@equipmentTreadmill": { "description": "Equipamento: treadmill" },
+  "equipmentStationaryBike": "Bicicleta Ergométrica",
+  "@equipmentStationaryBike": { "description": "Equipamento: stationary bike" },
+  "equipmentRowingMachine": "Remo",
+  "@equipmentRowingMachine": { "description": "Equipamento: rowing machine" }
 }

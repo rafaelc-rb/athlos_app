@@ -16,6 +16,7 @@ abstract final class RoutePaths {
   static const trainingWorkouts = '/training/workouts';
   static const trainingExercises = '/training/exercises';
   static const trainingHistory = '/training/history';
+  static const trainingEquipment = '/training/equipment';
 
   // Diet module (future)
   static const diet = '/diet';

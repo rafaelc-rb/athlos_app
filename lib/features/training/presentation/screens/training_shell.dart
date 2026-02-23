@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_paths.dart';
 import '../../../../l10n/app_localizations.dart';
+import 'equipment_screen.dart';
 import 'training_home_screen.dart';
 import 'training_workouts_screen.dart';
 import 'training_exercises_screen.dart';
@@ -50,6 +51,10 @@ ShellRoute trainingShellRoute() {
       GoRoute(
         path: RoutePaths.trainingHistory,
         builder: (context, state) => const TrainingHistoryScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.trainingEquipment,
+        builder: (context, state) => const EquipmentScreen(),
       ),
     ],
   );

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../domain/entities/equipment.dart' as domain;
+import '../../domain/enums/equipment_category.dart';
 import '../../domain/repositories/equipment_repository.dart';
 import '../datasources/daos/equipment_dao.dart';
 
@@ -27,7 +28,8 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
         EquipmentsCompanion.insert(
           name: equipment.name,
           description: Value(equipment.description),
-          isCustom: Value(equipment.isCustom),
+          category: equipment.category,
+          isVerified: Value(equipment.isVerified),
         ),
       );
 
@@ -37,7 +39,8 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
         EquipmentsCompanion(
           name: Value(equipment.name),
           description: Value(equipment.description),
-          isCustom: Value(equipment.isCustom),
+          category: Value(equipment.category),
+          isVerified: Value(equipment.isVerified),
         ),
       );
 
@@ -66,6 +69,7 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
         id: row.id as int,
         name: row.name as String,
         description: row.description as String?,
-        isCustom: row.isCustom as bool,
+        category: row.category as EquipmentCategory,
+        isVerified: row.isVerified as bool,
       );
 }

@@ -29,6 +29,7 @@ dependencies:
   # UI
   gap: ^3.0.1
   google_fonts: ^8.0.1
+  shared_preferences: ^2.5.4
 
 dev_dependencies:
   flutter_test:

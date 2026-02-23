@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/providers/last_module_provider.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/theme_mode_provider.dart';
 import '../../../../l10n/app_localizations.dart';
@@ -92,7 +93,12 @@ class HubScreen extends ConsumerWidget {
                 title: l10n.trainingModule,
                 description: l10n.trainingModuleDescription,
                 icon: Icons.fitness_center,
-                onTap: () => context.go(RoutePaths.training),
+                onTap: () {
+                  ref
+                      .read(lastModuleProvider.notifier)
+                      .save(RoutePaths.training);
+                  context.go(RoutePaths.training);
+                },
               ),
               const Gap(12),
 

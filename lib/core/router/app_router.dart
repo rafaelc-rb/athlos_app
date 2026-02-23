@@ -9,30 +9,35 @@ import '../../features/training/presentation/screens/exercise_detail_screen.dart
 import '../../features/training/presentation/screens/training_shell.dart';
 import '../../features/training/presentation/screens/workout_detail_screen.dart';
 import '../../features/training/presentation/screens/workout_form_screen.dart';
+import '../providers/last_module_provider.dart';
 import 'route_paths.dart';
 
 part 'app_router.g.dart';
 
 @riverpod
 GoRouter appRouter(Ref ref) {
-  // Watch the hasProfile provider to trigger router refresh on change
   final hasProfileAsync = ref.watch(hasProfileProvider);
+  final lastModule = ref.read(lastModuleProvider);
+  bool didRestoreModule = false;
 
   return GoRouter(
     initialLocation: RoutePaths.hub,
     redirect: (context, state) {
       final isOnSetup = state.matchedLocation == RoutePaths.profileSetup;
 
-      // While loading, don't redirect
       if (hasProfileAsync.isLoading) return null;
 
       final hasProfile = hasProfileAsync.value ?? false;
 
-      // No profile and not on setup -> go to setup
       if (!hasProfile && !isOnSetup) return RoutePaths.profileSetup;
-
-      // Has profile but on setup -> go to hub
       if (hasProfile && isOnSetup) return RoutePaths.hub;
+
+      if (!didRestoreModule &&
+          hasProfile &&
+          state.matchedLocation == RoutePaths.hub) {
+        didRestoreModule = true;
+        if (lastModule != null) return lastModule;
+      }
 
       return null;
     },

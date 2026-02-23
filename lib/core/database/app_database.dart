@@ -13,6 +13,7 @@ import '../../features/profile/domain/enums/selected_module.dart';
 import '../../features/profile/domain/enums/training_goal.dart';
 import '../../features/profile/domain/enums/training_style.dart';
 import '../../features/training/data/datasources/equipment_seeder.dart';
+import '../../features/training/data/datasources/exercise_seeder.dart';
 import '../../features/training/data/datasources/daos/equipment_dao.dart';
 import '../../features/training/data/datasources/daos/exercise_dao.dart';
 import '../../features/training/data/datasources/daos/workout_dao.dart';
@@ -58,13 +59,14 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
           await seedEquipments(this);
+          await seedExercises(this);
         },
         onUpgrade: (m, from, to) async {
           // During early development, recreate all tables on schema change.
@@ -73,6 +75,7 @@ class AppDatabase extends _$AppDatabase {
           }
           await m.createAll();
           await seedEquipments(this);
+          await seedExercises(this);
         },
       );
 }

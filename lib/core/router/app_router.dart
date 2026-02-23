@@ -5,6 +5,7 @@ import '../../features/hub/presentation/screens/hub_screen.dart';
 import '../../features/profile/presentation/providers/profile_notifier.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/profile/presentation/screens/profile_setup_screen.dart';
+import '../../features/training/presentation/screens/exercise_detail_screen.dart';
 import '../../features/training/presentation/screens/training_shell.dart';
 import 'route_paths.dart';
 
@@ -54,6 +55,15 @@ GoRouter appRouter(Ref ref) {
 
       // Training module — shell with bottom navigation
       trainingShellRoute(),
+
+      // Exercise detail (pushed on top of training shell)
+      GoRoute(
+        path: '${RoutePaths.trainingExercises}/:exerciseId',
+        builder: (context, state) {
+          final id = int.parse(state.pathParameters['exerciseId']!);
+          return ExerciseDetailScreen(exerciseId: id);
+        },
+      ),
     ],
   );
 }

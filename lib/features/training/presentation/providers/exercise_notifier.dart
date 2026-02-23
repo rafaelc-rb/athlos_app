@@ -16,6 +16,26 @@ class ExerciseList extends _$ExerciseList {
     final result = await repo.getAll();
     return result.getOrThrow();
   }
+
+  /// Creates a user-defined exercise (isVerified = false).
+  Future<void> addCustomExercise({
+    required String name,
+    required MuscleGroup muscleGroup,
+    String? targetMuscles,
+    String? muscleRegion,
+  }) async {
+    final repo = ref.read(exerciseRepositoryProvider);
+    final exercise = Exercise(
+      id: 0,
+      name: name,
+      muscleGroup: muscleGroup,
+      targetMuscles: targetMuscles,
+      muscleRegion: muscleRegion,
+    );
+    final result = await repo.create(exercise);
+    result.getOrThrow();
+    ref.invalidateSelf();
+  }
 }
 
 /// Loads exercises filtered by a specific muscle group.

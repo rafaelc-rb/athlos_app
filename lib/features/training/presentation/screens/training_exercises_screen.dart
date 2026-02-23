@@ -43,9 +43,15 @@ class _TrainingExercisesScreenState
     final textTheme = Theme.of(context).textTheme;
     final exercisesAsync = ref.watch(exerciseListProvider);
 
-    return Column(
-      children: [
-        Padding(
+    return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddDialog(context),
+        tooltip: l10n.addExercise,
+        child: const Icon(Icons.add),
+      ),
+      body: Column(
+        children: [
+          Padding(
           padding: const EdgeInsets.fromLTRB(
             AthlosSpacing.md,
             AthlosSpacing.sm,
@@ -137,8 +143,16 @@ class _TrainingExercisesScreenState
               );
             },
           ),
-        ),
-      ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => const _AddExerciseDialog(),
     );
   }
 
@@ -172,5 +186,88 @@ class _TrainingExercisesScreenState
     });
 
     return filtered;
+  }
+}
+
+/// Dialog to create a user-defined exercise.
+class _AddExerciseDialog extends ConsumerStatefulWidget {
+  const _AddExerciseDialog();
+
+  @override
+  ConsumerState<_AddExerciseDialog> createState() => _AddExerciseDialogState();
+}
+
+class _AddExerciseDialogState extends ConsumerState<_AddExerciseDialog> {
+  final _nameController = TextEditingController();
+  MuscleGroup _selectedGroup = MuscleGroup.chest;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return AlertDialog(
+      title: Text(l10n.addExercise),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _nameController,
+            decoration: InputDecoration(
+              labelText: l10n.exerciseNameLabel,
+            ),
+            textCapitalization: TextCapitalization.sentences,
+            autofocus: true,
+          ),
+          const Gap(AthlosSpacing.md),
+          DropdownButtonFormField<MuscleGroup>(
+            initialValue: _selectedGroup,
+            decoration: InputDecoration(
+              labelText: l10n.exerciseMuscleGroupLabel,
+            ),
+            items: MuscleGroup.values.map((group) {
+              return DropdownMenuItem(
+                value: group,
+                child: Text(localizedMuscleGroupName(group, l10n)),
+              );
+            }).toList(),
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _selectedGroup = value);
+              }
+            },
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: _onSave,
+          child: Text(l10n.save),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _onSave() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) return;
+
+    await ref.read(exerciseListProvider.notifier).addCustomExercise(
+          name: name,
+          muscleGroup: _selectedGroup,
+        );
+
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 }

@@ -478,8 +478,28 @@
   "equipmentRowingMachine": "Remo",
   "@equipmentRowingMachine": { "description": "Equipamento: rowing machine" },
 
+  "catalogsSection": "Catálogos",
+  "@catalogsSection": { "description": "Section title for catalogs on training home" },
+  "exercisesCatalog": "Exercícios",
+  "@exercisesCatalog": { "description": "Card title for exercises catalog" },
+  "exercisesCatalogDesc": "Explore o catálogo de exercícios",
+  "@exercisesCatalogDesc": { "description": "Card description for exercises catalog" },
+  "exercisesCount": "{count} exercícios",
+  "@exercisesCount": {
+    "description": "Exercise count label",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
   "filterAll": "Todos",
   "@filterAll": { "description": "Filter chip: all items" },
+  "addExercise": "Criar exercício",
+  "@addExercise": { "description": "Button/title to add custom exercise" },
+  "exerciseNameLabel": "Nome do exercício",
+  "@exerciseNameLabel": { "description": "Label for exercise name input" },
+  "exerciseMuscleGroupLabel": "Grupo muscular",
+  "@exerciseMuscleGroupLabel": { "description": "Label for muscle group dropdown" },
   "searchExercises": "Buscar exercício...",
   "@searchExercises": { "description": "Placeholder do campo de busca de exercícios" },
   "emptyExercises": "Nenhum exercício encontrado",

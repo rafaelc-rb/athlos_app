@@ -299,7 +299,7 @@ class _AddEquipmentDialogState extends ConsumerState<_AddEquipmentDialog> {
           ),
           const Gap(16),
           DropdownButtonFormField<EquipmentCategory>(
-            value: _selectedCategory,
+            initialValue: _selectedCategory,
             decoration: InputDecoration(
               labelText: l10n.equipmentCategoryLabel,
             ),

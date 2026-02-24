@@ -75,6 +75,14 @@
     "description": "Título do step 3 — estética corporal"
   },
 
+  "nameLabel": "Nome",
+  "@nameLabel": {
+    "description": "Label do campo de nome"
+  },
+  "nameHint": "Como quer ser chamado?",
+  "@nameHint": {
+    "description": "Hint do campo de nome"
+  },
   "weightLabel": "Peso (kg)",
   "@weightLabel": {
     "description": "Label do campo de peso"
@@ -317,6 +325,10 @@
     "description": "Mensagem de validação para seleção obrigatória"
   },
 
+  "profileName": "Nome",
+  "@profileName": {
+    "description": "Label de nome no perfil"
+  },
   "profileWeight": "Peso",
   "@profileWeight": {
     "description": "Label de peso no perfil"

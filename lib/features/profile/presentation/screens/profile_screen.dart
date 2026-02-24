@@ -29,6 +29,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isEditing = false;
 
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _weightController = TextEditingController();
   final _heightController = TextEditingController();
   final _ageController = TextEditingController();
@@ -38,6 +39,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _weightController.dispose();
     _heightController.dispose();
     _ageController.dispose();
@@ -45,6 +47,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   void _startEditing(UserProfile profile) {
+    _nameController.text = profile.name ?? '';
     _weightController.text = profile.weight?.toString() ?? '';
     _heightController.text = profile.height?.toString() ?? '';
     _ageController.text = profile.age?.toString() ?? '';
@@ -96,6 +99,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           const Gap(AthlosSpacing.lg),
 
           // Data cards
+          _ProfileTile(
+            icon: Icons.person_outline,
+            label: l10n.profileName,
+            value: profile.name ?? l10n.profileNotSet,
+          ),
           _ProfileTile(
             icon: Icons.monitor_weight_outlined,
             label: l10n.profileWeight,
@@ -159,6 +167,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            TextFormField(
+              controller: _nameController,
+              decoration: InputDecoration(
+                labelText: l10n.nameLabel,
+              ),
+              textCapitalization: TextCapitalization.words,
+            ),
+            const Gap(AthlosSpacing.md),
             TextFormField(
               controller: _weightController,
               decoration: InputDecoration(
@@ -253,8 +269,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _saveChanges(UserProfile profile) async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
+    final name = _nameController.text.trim();
     final updated = UserProfile(
       id: profile.id,
+      name: name.isEmpty ? null : name,
       weight: double.parse(_weightController.text),
       height: double.parse(_heightController.text),
       age: int.parse(_ageController.text),

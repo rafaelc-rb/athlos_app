@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -16,15 +17,20 @@ import 'route_paths.dart';
 
 part 'app_router.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 GoRouter appRouter(Ref ref) {
-  final hasProfileAsync = ref.watch(hasProfileProvider);
   final lastModule = ref.read(lastModuleProvider);
   bool didRestoreModule = false;
 
+  final refreshNotifier = ValueNotifier<int>(0);
+  ref.listen(hasProfileProvider, (_, __) => refreshNotifier.value++);
+  ref.onDispose(refreshNotifier.dispose);
+
   return GoRouter(
-    initialLocation: RoutePaths.hub,
+    initialLocation: RoutePaths.profileSetup,
+    refreshListenable: refreshNotifier,
     redirect: (context, state) {
+      final hasProfileAsync = ref.read(hasProfileProvider);
       final isOnSetup = state.matchedLocation == RoutePaths.profileSetup;
 
       if (hasProfileAsync.isLoading) return null;

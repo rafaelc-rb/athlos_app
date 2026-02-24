@@ -32,6 +32,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   int _currentStep = 0;
 
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _weightController = TextEditingController();
   final _heightController = TextEditingController();
   final _ageController = TextEditingController();
@@ -44,6 +45,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _weightController.dispose();
     _heightController.dispose();
     _ageController.dispose();
@@ -171,6 +173,15 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         key: const ValueKey(0),
         children: [
           TextFormField(
+            controller: _nameController,
+            decoration: InputDecoration(
+              labelText: l10n.nameLabel,
+              hintText: l10n.nameHint,
+            ),
+            textCapitalization: TextCapitalization.words,
+          ),
+          const Gap(AthlosSpacing.md),
+          TextFormField(
             controller: _weightController,
             decoration: InputDecoration(
               labelText: l10n.weightLabel,
@@ -183,8 +194,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
             ],
             validator: (value) {
-              if (value == null || value.isEmpty) return l10n.fieldRequired;
-              if (double.tryParse(value) == null) return l10n.invalidNumber;
+              if (value != null && value.isNotEmpty && double.tryParse(value) == null) {
+                return l10n.invalidNumber;
+              }
               return null;
             },
           ),
@@ -202,8 +214,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
             ],
             validator: (value) {
-              if (value == null || value.isEmpty) return l10n.fieldRequired;
-              if (double.tryParse(value) == null) return l10n.invalidNumber;
+              if (value != null && value.isNotEmpty && double.tryParse(value) == null) {
+                return l10n.invalidNumber;
+              }
               return null;
             },
           ),
@@ -218,8 +231,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             validator: (value) {
-              if (value == null || value.isEmpty) return l10n.fieldRequired;
-              if (int.tryParse(value) == null) return l10n.invalidNumber;
+              if (value != null && value.isNotEmpty && int.tryParse(value) == null) {
+                return l10n.invalidNumber;
+              }
               return null;
             },
           ),
@@ -265,28 +279,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           setState(() => _currentStep = 1);
         }
       case 1:
-        if (_selectedGoal == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.selectOption)),
-          );
-          return;
-        }
         setState(() => _currentStep = 2);
       case 2:
-        if (_selectedAesthetic == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.selectOption)),
-          );
-          return;
-        }
         setState(() => _currentStep = 3);
       case 3:
-        if (_selectedStyle == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.selectOption)),
-          );
-          return;
-        }
         _saveProfile();
     }
   }
@@ -298,19 +294,41 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   }
 
   Future<void> _onSkip() async {
+    setState(() => _isSaving = true);
+
     try {
-      await ref.read(hasProfileProvider.notifier).createEmpty();
-      ref.invalidate(profileProvider);
+      final name = _nameController.text.trim();
+      final weight = double.tryParse(_weightController.text);
+      final height = double.tryParse(_heightController.text);
+      final age = int.tryParse(_ageController.text);
+
+      await ref.read(profileProvider.notifier).create(
+            name: name.isEmpty ? null : name,
+            weight: weight,
+            height: height,
+            age: age,
+            goal: _selectedGoal,
+            bodyAesthetic: _selectedAesthetic,
+            trainingStyle: _selectedStyle,
+          );
+
+      ref.read(hasProfileProvider.notifier).markAsCreated();
+
       if (mounted) {
         context.go(RoutePaths.hub);
       }
-    } on Exception catch (_) {
+    } on Exception catch (e, st) {
+      debugPrint('_onSkip error: $e\n$st');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!.genericError),
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
       }
     }
   }
@@ -319,13 +337,18 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     setState(() => _isSaving = true);
 
     try {
+      final name = _nameController.text.trim();
+      final weight = double.tryParse(_weightController.text);
+      final height = double.tryParse(_heightController.text);
+      final age = int.tryParse(_ageController.text);
       await ref.read(profileProvider.notifier).create(
-            weight: double.parse(_weightController.text),
-            height: double.parse(_heightController.text),
-            age: int.parse(_ageController.text),
-            goal: _selectedGoal!,
-            bodyAesthetic: _selectedAesthetic!,
-            trainingStyle: _selectedStyle!,
+            name: name.isEmpty ? null : name,
+            weight: weight,
+            height: height,
+            age: age,
+            goal: _selectedGoal,
+            bodyAesthetic: _selectedAesthetic,
+            trainingStyle: _selectedStyle,
           );
 
       ref.read(hasProfileProvider.notifier).markAsCreated();
@@ -333,7 +356,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       if (mounted) {
         context.go(RoutePaths.hub);
       }
-    } on Exception catch (_) {
+    } on Exception catch (e, st) {
+      debugPrint('_saveProfile error: $e\n$st');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

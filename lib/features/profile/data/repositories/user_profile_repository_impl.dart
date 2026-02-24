@@ -28,6 +28,7 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
     try {
       final id = await _dao.create(
         UserProfilesCompanion.insert(
+          name: Value(profile.name),
           weight: Value(profile.weight),
           height: Value(profile.height),
           age: Value(profile.age),
@@ -49,6 +50,7 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
       await _dao.updateById(
         profile.id,
         UserProfilesCompanion(
+          name: Value(profile.name),
           weight: Value(profile.weight),
           height: Value(profile.height),
           age: Value(profile.age),
@@ -95,6 +97,7 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
 
   domain.UserProfile _toDomain(UserProfile row) => domain.UserProfile(
         id: row.id,
+        name: row.name,
         weight: row.weight,
         height: row.height,
         age: row.age,

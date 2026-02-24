@@ -26,28 +26,40 @@ class ExecutionDetailScreen extends ConsumerWidget {
     final setsAsync = ref.watch(executionSetsWithSegmentsProvider(executionId));
     final exercisesAsync = ref.watch(exerciseListProvider);
 
-    final execution = executionsAsync.value?.where((e) => e.id == executionId).firstOrNull;
-
-    if (execution == null) {
-      return Scaffold(
+    return executionsAsync.when(
+      loading: () => Scaffold(
         appBar: AppBar(),
         body: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    final workoutAsync = ref.watch(workoutByIdProvider(execution.workoutId));
-    final workoutName = workoutAsync.value?.name ?? l10n.unknownWorkout;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(workoutName),
       ),
-      body: setsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
-        data: (sets) {
-          final allExercises = exercisesAsync.value ?? [];
-          final exerciseMap = {for (final e in allExercises) e.id: e};
+      error: (e, _) => Scaffold(
+        appBar: AppBar(),
+        body: Center(child: Text(l10n.genericError)),
+      ),
+      data: (executions) {
+        final execution =
+            executions.where((e) => e.id == executionId).firstOrNull;
+
+        if (execution == null) {
+          return Scaffold(
+            appBar: AppBar(),
+            body: Center(child: Text(l10n.genericError)),
+          );
+        }
+
+        final workoutAsync =
+            ref.watch(workoutByIdProvider(execution.workoutId));
+        final workoutName = workoutAsync.value?.name ?? l10n.unknownWorkout;
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(workoutName),
+          ),
+          body: setsAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(child: Text(l10n.genericError)),
+            data: (sets) {
+              final allExercises = exercisesAsync.value ?? [];
+              final exerciseMap = {for (final e in allExercises) e.id: e};
 
           final exerciseIds = sets.map((s) => s.exerciseId).toSet().toList();
 
@@ -176,8 +188,10 @@ class ExecutionDetailScreen extends ConsumerWidget {
                   padding: EdgeInsets.only(bottom: AthlosSpacing.xl)),
             ],
           );
-        },
-      ),
+            },
+          ),
+        );
+      },
     );
   }
 }

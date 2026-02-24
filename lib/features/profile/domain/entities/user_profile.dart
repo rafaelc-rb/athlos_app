@@ -7,6 +7,9 @@ import '../enums/training_style.dart';
 class UserProfile {
   final int id;
 
+  /// Display name chosen by the user.
+  final String? name;
+
   /// Weight in kg.
   final double? weight;
 
@@ -23,6 +26,7 @@ class UserProfile {
 
   const UserProfile({
     required this.id,
+    this.name,
     this.weight,
     this.height,
     this.age,

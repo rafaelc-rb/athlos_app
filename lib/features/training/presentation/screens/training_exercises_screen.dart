@@ -478,6 +478,14 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
       if (mounted) {
         Navigator.of(context).pop();
       }
+    } on Exception catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.genericError),
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);

@@ -214,14 +214,24 @@ class _WorkoutListBodyState extends ConsumerState<_WorkoutListBody> {
     );
   }
 
-  void _onReorder(int oldIndex, int newIndex) {
+  Future<void> _onReorder(int oldIndex, int newIndex) async {
     setState(() {
       if (oldIndex < newIndex) newIndex -= 1;
       final item = _orderedWorkouts.removeAt(oldIndex);
       _orderedWorkouts.insert(newIndex, item);
     });
     final orderedIds = _orderedWorkouts.map((w) => w.id).toList();
-    ref.read(workoutListProvider.notifier).reorderWorkouts(orderedIds);
+    try {
+      await ref.read(workoutListProvider.notifier).reorderWorkouts(orderedIds);
+    } on Exception catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.genericError),
+          ),
+        );
+      }
+    }
   }
 
   void _startWorkout(BuildContext context, int workoutId) {

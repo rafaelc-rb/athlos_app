@@ -188,10 +188,12 @@ class _WorkoutFormScreenState extends ConsumerState<WorkoutFormScreen> {
       }
 
       if (mounted) context.pop();
-    } catch (e) {
+    } on Exception catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e')),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.genericError),
+          ),
         );
       }
     } finally {

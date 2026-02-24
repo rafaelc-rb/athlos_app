@@ -204,9 +204,7 @@ class _EquipmentScreenState extends ConsumerState<EquipmentScreen> {
                   icon: Icon(Icons.remove_circle_outline,
                       color: colorScheme.error),
                   tooltip: l10n.removeEquipment,
-                  onPressed: () => ref
-                      .read(userEquipmentIdsProvider.notifier)
-                      .toggle(equipment.id),
+                  onPressed: () => _toggleEquipment(equipment.id),
                 ),
               ],
             ),
@@ -214,6 +212,20 @@ class _EquipmentScreenState extends ConsumerState<EquipmentScreen> {
         );
       },
     );
+  }
+
+  Future<void> _toggleEquipment(int equipmentId) async {
+    try {
+      await ref.read(userEquipmentIdsProvider.notifier).toggle(equipmentId);
+    } on Exception catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.genericError),
+          ),
+        );
+      }
+    }
   }
 
   void _showEditOptions(
@@ -344,9 +356,7 @@ class _EquipmentScreenState extends ConsumerState<EquipmentScreen> {
           category: localizedCategoryName(equipment.category, l10n),
           trailing: IconButton(
             icon: Icon(Icons.add_circle_outline, color: colorScheme.primary),
-            onPressed: () => ref
-                .read(userEquipmentIdsProvider.notifier)
-                .toggle(equipment.id),
+            onPressed: () => _toggleEquipment(equipment.id),
           ),
         );
       },

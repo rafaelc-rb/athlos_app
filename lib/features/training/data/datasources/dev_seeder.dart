@@ -14,7 +14,6 @@ Future<void> seedDevData(AppDatabase db) async {
   final exerciseIds = await _resolveExerciseIds(db);
   final equipmentIds = await _resolveEquipmentIds(db);
 
-  await _seedUserProfile(db);
   await _seedUserEquipments(db, equipmentIds);
   await _seedWorkoutsWithExercises(db, exerciseIds);
   await _seedExecutionHistory(db, exerciseIds);

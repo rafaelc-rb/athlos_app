@@ -8,6 +8,9 @@ import '../../../domain/enums/training_style.dart';
 class UserProfiles extends Table {
   IntColumn get id => integer().autoIncrement()();
 
+  /// Display name chosen by the user.
+  TextColumn get name => text().nullable()();
+
   /// Weight in kg.
   RealColumn get weight => real().nullable()();
 

@@ -24,16 +24,18 @@ class ProfileNotifier extends _$ProfileNotifier {
 
   /// Creates a new user profile and updates the state.
   Future<void> create({
-    required double weight,
-    required double height,
-    required int age,
-    required TrainingGoal goal,
-    required BodyAesthetic bodyAesthetic,
-    required TrainingStyle trainingStyle,
+    String? name,
+    double? weight,
+    double? height,
+    int? age,
+    TrainingGoal? goal,
+    BodyAesthetic? bodyAesthetic,
+    TrainingStyle? trainingStyle,
   }) async {
     final repo = ref.read(userProfileRepositoryProvider);
     final profile = UserProfile(
       id: 0,
+      name: name,
       weight: weight,
       height: height,
       age: age,
@@ -45,6 +47,7 @@ class ProfileNotifier extends _$ProfileNotifier {
     final id = result.getOrThrow();
     state = AsyncData(UserProfile(
       id: id,
+      name: name,
       weight: weight,
       height: height,
       age: age,

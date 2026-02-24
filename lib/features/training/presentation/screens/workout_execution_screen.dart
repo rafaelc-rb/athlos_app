@@ -48,10 +48,20 @@ class _WorkoutExecutionScreenState
         exercisesAsync is AsyncData<List<WorkoutExercise>> &&
         execState == null) {
       _isInitialized = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref
-            .read(activeExecutionProvider.notifier)
-            .startExecution(widget.workoutId, exercisesAsync.value);
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final messenger = ScaffoldMessenger.of(context);
+        final l10n = AppLocalizations.of(context)!;
+        final router = GoRouter.of(context);
+        try {
+          await ref
+              .read(activeExecutionProvider.notifier)
+              .startExecution(widget.workoutId, exercisesAsync.value);
+        } on Exception catch (_) {
+          messenger.showSnackBar(
+            SnackBar(content: Text(l10n.genericError)),
+          );
+          router.pop();
+        }
       });
     }
 

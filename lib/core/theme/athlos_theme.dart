@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'athlos_color_scheme.dart';
+import 'athlos_elevation.dart';
+import 'athlos_radius.dart';
 import 'athlos_text_theme.dart';
 
 /// Main ThemeData factory for Athlos.
@@ -18,16 +20,16 @@ class AthlosTheme {
           centerTitle: true,
           backgroundColor: colorScheme.surface,
           foregroundColor: colorScheme.onSurface,
-          elevation: 0,
+          elevation: AthlosElevation.none,
         ),
         scaffoldBackgroundColor: colorScheme.surface,
         navigationBarTheme: NavigationBarThemeData(
           height: 64,
-          elevation: 0,
+          elevation: AthlosElevation.none,
           backgroundColor: colorScheme.surfaceContainer,
           indicatorColor: colorScheme.primary.withValues(alpha: 0.12),
           indicatorShape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: AthlosRadius.lgAll,
           ),
           iconTheme: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {

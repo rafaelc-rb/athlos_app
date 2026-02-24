@@ -5,6 +5,7 @@ import '../../domain/repositories/equipment_repository.dart';
 import '../../domain/repositories/exercise_repository.dart';
 import '../../domain/repositories/workout_execution_repository.dart';
 import '../../domain/repositories/workout_repository.dart';
+import '../../domain/usecases/complete_set_use_case.dart';
 import '../datasources/daos/equipment_dao.dart';
 import '../datasources/daos/exercise_dao.dart';
 import '../datasources/daos/workout_dao.dart';
@@ -51,3 +52,9 @@ WorkoutRepository workoutRepository(Ref ref) =>
 @riverpod
 WorkoutExecutionRepository workoutExecutionRepository(Ref ref) =>
     WorkoutExecutionRepositoryImpl(ref.watch(workoutExecutionDaoProvider));
+
+// --- Use Cases ---
+
+@riverpod
+CompleteSetUseCase completeSetUseCase(Ref ref) =>
+    CompleteSetUseCase(ref.watch(workoutExecutionRepositoryProvider));

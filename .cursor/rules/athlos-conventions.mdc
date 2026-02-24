@@ -90,7 +90,7 @@ See `docs/architecture.md` for full structure. Key rules:
 ## go_router
 
 - Route paths as constants in a dedicated file (e.g. `core/router/route_paths.dart`)
-- Use `StatefulShellRoute` for bottom navigation
+- Use `ShellRoute` for bottom navigation (upgrade to `StatefulShellRoute` when tabs need to preserve local widget state)
 - Use redirect guards for future auth flows
 - Use `GoRouterState` extension for typed route parameters
 

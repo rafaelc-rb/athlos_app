@@ -424,7 +424,7 @@ For large lists (e.g. exercise catalog), use a paginated provider:
 Hub-based architecture using go_router:
 
 - **Hub** — central screen with module cards. Uses a simple `GoRoute`.
-- **Module shells** — each module uses `StatefulShellRoute` with its own `NavigationBar` (bottom bar). Tabs are specific to each module.
+- **Module shells** — each module uses `ShellRoute` with its own `NavigationBar` (bottom bar). Tabs are specific to each module. Data is preserved across tab switches via Riverpod providers; `StatefulShellRoute` can be adopted later if tabs need to preserve local widget state (scroll position, text fields, etc.).
 - **Profile** — accessible from the Hub's app bar, not tied to any module.
 
 ```

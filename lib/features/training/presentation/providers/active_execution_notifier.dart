@@ -5,6 +5,7 @@ import '../../data/repositories/training_providers.dart';
 import '../../domain/entities/execution_set.dart';
 import '../../domain/entities/execution_set_segment.dart';
 import '../../domain/entities/workout_exercise.dart';
+import '../../domain/usecases/complete_set_use_case.dart';
 import 'active_execution_state.dart';
 export 'active_execution_state.dart';
 import 'workout_execution_notifier.dart';
@@ -136,58 +137,39 @@ class ActiveExecution extends _$ActiveExecution {
     final current = state;
     if (current == null) return 0;
 
-    final repo = ref.read(workoutExecutionRepositoryProvider);
     final sets = current.exerciseSets[exerciseId];
     if (sets == null) return 0;
 
     final entry = sets.firstWhere((s) => s.setNumber == setNumber);
     final effectiveSegments = segments ?? entry.segments;
 
-    int? setId = entry.id;
-    if (setId == null) {
-      final logResult = await repo.logSet(ExecutionSet(
-        id: 0,
-        executionId: current.executionId,
-        exerciseId: exerciseId,
-        setNumber: setNumber,
-        plannedReps: entry.plannedReps,
-        plannedWeight: entry.plannedWeight,
-        reps: reps,
-        weight: weight,
-        isCompleted: true,
-      ));
-      setId = logResult.getOrThrow();
-    } else {
-      await repo.updateSet(ExecutionSet(
-        id: setId,
-        executionId: current.executionId,
-        exerciseId: exerciseId,
-        setNumber: setNumber,
-        plannedReps: entry.plannedReps,
-        plannedWeight: entry.plannedWeight,
-        reps: reps,
-        weight: weight,
-        isCompleted: true,
-      ));
-    }
+    final executionSet = ExecutionSet(
+      id: entry.id ?? 0,
+      executionId: current.executionId,
+      exerciseId: exerciseId,
+      setNumber: setNumber,
+      plannedReps: entry.plannedReps,
+      plannedWeight: entry.plannedWeight,
+      reps: reps,
+      weight: weight,
+      isCompleted: true,
+    );
 
-    final persistedSetId = setId;
-    if (effectiveSegments.length > 1) {
-      await repo.saveSegments(
-        persistedSetId,
-        effectiveSegments
-            .asMap()
-            .entries
-            .map((e) => ExecutionSetSegment(
-                  id: 0,
-                  executionSetId: persistedSetId,
-                  segmentOrder: e.key + 1,
-                  reps: e.value.reps,
-                  weight: e.value.weight,
-                ))
-            .toList(),
-      );
-    }
+    final domainSegments = effectiveSegments
+        .map((s) => ExecutionSetSegment(
+              id: 0,
+              executionSetId: 0,
+              segmentOrder: 0,
+              reps: s.reps,
+              weight: s.weight,
+            ))
+        .toList();
+
+    final useCase = ref.read(completeSetUseCaseProvider);
+    final result = await useCase(
+      CompleteSetParams(set: executionSet, segments: domainSegments),
+    );
+    final setId = result.getOrThrow();
 
     final updated = [
       for (final s in sets)

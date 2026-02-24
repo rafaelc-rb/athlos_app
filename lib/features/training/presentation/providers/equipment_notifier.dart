@@ -31,7 +31,8 @@ class EquipmentList extends _$EquipmentList {
     final createResult = await repo.create(equipment);
     final id = createResult.getOrThrow();
 
-    await repo.toggleUserEquipment(id, owns: true);
+    final toggleResult = await repo.toggleUserEquipment(id, owns: true);
+    toggleResult.getOrThrow();
 
     ref.invalidateSelf();
   }
@@ -70,7 +71,8 @@ class UserEquipmentIds extends _$UserEquipmentIds {
     final owns = !current.contains(equipmentId);
 
     final repo = ref.read(equipmentRepositoryProvider);
-    await repo.toggleUserEquipment(equipmentId, owns: owns);
+    final result = await repo.toggleUserEquipment(equipmentId, owns: owns);
+    result.getOrThrow();
 
     if (!ref.mounted) return;
 
@@ -89,7 +91,8 @@ class UserEquipmentIds extends _$UserEquipmentIds {
 
     final repo = ref.read(equipmentRepositoryProvider);
     for (final id in toAdd) {
-      await repo.toggleUserEquipment(id, owns: true);
+      final result = await repo.toggleUserEquipment(id, owns: true);
+      result.getOrThrow();
     }
 
     if (!ref.mounted) return;

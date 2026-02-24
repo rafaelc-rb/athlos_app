@@ -80,11 +80,11 @@ class TrainingWorkoutsScreen extends ConsumerWidget {
     AppLocalizations l10n,
   ) {
     if (next != null) {
-      return FloatingActionButton.extended(
+      return FloatingActionButton(
         heroTag: 'start_next',
         onPressed: () => _startWorkout(context, ref, next.id),
-        icon: const Icon(Icons.play_arrow),
-        label: Text(l10n.startNextWorkout(next.name)),
+        tooltip: l10n.startNextWorkout(next.name),
+        child: const Icon(Icons.play_arrow),
       );
     }
 

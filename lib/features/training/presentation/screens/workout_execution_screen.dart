@@ -1206,7 +1206,6 @@ class _NumberInput extends StatelessWidget {
       ),
     );
 
-    controller.dispose();
     if (result != null) onChanged(result.clamp(0, 9999));
   }
 }
@@ -1260,7 +1259,7 @@ class _DropSegmentInput {
       );
 }
 
-class _DropSegmentRow extends StatelessWidget {
+class _DropSegmentRow extends StatefulWidget {
   final int index;
   final _DropSegmentInput segment;
   final ColorScheme colorScheme;
@@ -1282,70 +1281,96 @@ class _DropSegmentRow extends StatelessWidget {
   });
 
   @override
+  State<_DropSegmentRow> createState() => _DropSegmentRowState();
+}
+
+class _DropSegmentRowState extends State<_DropSegmentRow> {
+  late final TextEditingController _weightController;
+  late final TextEditingController _repsController;
+
+  @override
+  void initState() {
+    super.initState();
+    _weightController = TextEditingController(
+      text: widget.segment.weight > 0
+          ? widget.segment.weight
+              .toStringAsFixed(widget.segment.weight % 1 == 0 ? 0 : 1)
+          : '',
+    );
+    _repsController = TextEditingController(
+      text: widget.segment.reps.toString(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _weightController.dispose();
+    _repsController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AthlosSpacing.xs),
       child: Row(
         children: [
-          Icon(Icons.arrow_downward, size: 18, color: colorScheme.tertiary),
+          Icon(Icons.arrow_downward,
+              size: 18, color: widget.colorScheme.tertiary),
           const SizedBox(width: AthlosSpacing.xs),
           Text(
-            l10n.dropSetSegment(index + 2),
-            style: textTheme.labelMedium?.copyWith(
-              color: colorScheme.tertiary,
+            widget.l10n.dropSetSegment(widget.index + 2),
+            style: widget.textTheme.labelMedium?.copyWith(
+              color: widget.colorScheme.tertiary,
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(width: AthlosSpacing.sm),
           Expanded(
             child: TextField(
+              controller: _weightController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               textAlign: TextAlign.center,
               decoration: InputDecoration(
                 isDense: true,
-                labelText: l10n.weightKgSuffix,
-                labelStyle: textTheme.labelSmall,
+                labelText: widget.l10n.weightKgSuffix,
+                labelStyle: widget.textTheme.labelSmall,
                 border: const OutlineInputBorder(),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: AthlosSpacing.sm,
                   vertical: AthlosSpacing.sm,
                 ),
               ),
-              controller: TextEditingController(
-                text: segment.weight > 0
-                    ? segment.weight
-                        .toStringAsFixed(segment.weight % 1 == 0 ? 0 : 1)
-                    : '',
-              ),
-              onChanged: (v) => onWeightChanged(double.tryParse(v) ?? 0),
+              onChanged: (v) =>
+                  widget.onWeightChanged(double.tryParse(v) ?? 0),
             ),
           ),
           const SizedBox(width: AthlosSpacing.sm),
           Expanded(
             child: TextField(
+              controller: _repsController,
               keyboardType: TextInputType.number,
               textAlign: TextAlign.center,
               decoration: InputDecoration(
                 isDense: true,
-                labelText: l10n.repsShort,
-                labelStyle: textTheme.labelSmall,
+                labelText: widget.l10n.repsShort,
+                labelStyle: widget.textTheme.labelSmall,
                 border: const OutlineInputBorder(),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: AthlosSpacing.sm,
                   vertical: AthlosSpacing.sm,
                 ),
               ),
-              controller:
-                  TextEditingController(text: segment.reps.toString()),
               onChanged: (v) =>
-                  onRepsChanged(int.tryParse(v) ?? segment.reps),
+                  widget.onRepsChanged(int.tryParse(v) ?? widget.segment.reps),
             ),
           ),
           const SizedBox(width: AthlosSpacing.xs),
           IconButton(
-            icon: Icon(Icons.close, size: 20, color: colorScheme.error),
-            onPressed: onRemove,
+            icon: Icon(Icons.close,
+                size: 20, color: widget.colorScheme.error),
+            onPressed: widget.onRemove,
             visualDensity: VisualDensity.compact,
           ),
         ],

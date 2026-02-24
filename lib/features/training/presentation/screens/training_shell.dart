@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
+import '../../../../core/theme/theme_mode_provider.dart';
 import '../../../../l10n/app_localizations.dart';
 import 'equipment_screen.dart';
 import 'training_exercises_screen.dart';
@@ -54,30 +56,42 @@ ShellRoute trainingShellRoute() {
   );
 }
 
-class _TrainingShell extends StatelessWidget {
+class _TrainingShell extends ConsumerWidget {
   final Widget child;
 
   const _TrainingShell({required this.child});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final currentPath =
         GoRouterState.of(context).fullPath ?? RoutePaths.trainingHome;
 
+    final isSubPage = _isSubPage(currentPath);
+
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (_isSubPage(currentPath)) {
-              context.go(RoutePaths.trainingHome);
-            } else {
-              context.go(RoutePaths.hub);
-            }
-          },
-        ),
+        leading: isSubPage
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => context.go(RoutePaths.trainingHome),
+              )
+            : null,
+        automaticallyImplyLeading: false,
         title: Text(l10n.trainingModule),
+        actions: [
+          IconButton(
+            icon: Icon(ref.watch(themeModeProvider.notifier).icon),
+            onPressed: () =>
+                ref.read(themeModeProvider.notifier).toggle(),
+          ),
+          if (!isSubPage)
+            IconButton(
+              icon: const Icon(Icons.home_outlined),
+              tooltip: l10n.backToHub,
+              onPressed: () => context.go(RoutePaths.hub),
+            ),
+        ],
       ),
       body: child,
       bottomNavigationBar: SafeArea(

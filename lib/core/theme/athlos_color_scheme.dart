@@ -9,8 +9,8 @@ class AthlosColorScheme {
   static const _primaryPurple = Color(0xFF6B2FA0);
 
   // Accent — Gold for secondary details (badges, highlights, icons)
-  static const _accentGold = Color(0xFFD4A843);
-  static const _tertiaryGold = Color(0xFFE8C86A);
+  static const _accentGold = Color(0xFFB8860B);
+  static const _tertiaryGold = Color(0xFFD4A017);
 
   // Surfaces
   static const _lightBase = Color(0xFFF5F5F5);
@@ -42,11 +42,11 @@ class AthlosColorScheme {
     tertiary: _tertiaryGold,
     surface: _darkBase,
     surfaceDim: _darkBase,
-    surfaceBright: const Color(0xFF1A1A1A),
-    surfaceContainerLowest: _darkBase,
-    surfaceContainerLow: const Color(0xFF0A0A0A),
-    surfaceContainer: const Color(0xFF121212),
-    surfaceContainerHigh: const Color(0xFF1A1A1A),
-    surfaceContainerHighest: const Color(0xFF222222),
+    surfaceBright: const Color(0xFF2A2A2A),
+    surfaceContainerLowest: const Color(0xFF0A0A0A),
+    surfaceContainerLow: const Color(0xFF111111),
+    surfaceContainer: const Color(0xFF1E1E1E),
+    surfaceContainerHigh: const Color(0xFF252525),
+    surfaceContainerHighest: const Color(0xFF2E2E2E),
   );
 }

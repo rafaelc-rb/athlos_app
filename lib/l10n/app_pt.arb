@@ -993,6 +993,8 @@
   "@nextSetLabel": { "description": "Button to go to the next set after rest" },
   "backToOverview": "Voltar ao resumo",
   "@backToOverview": { "description": "Button to return to the overview screen" },
+  "backToHub": "Voltar ao Olympus",
+  "@backToHub": { "description": "Tooltip for the button that returns to the hub screen" },
 
   "supersetLabel": "Superset",
   "@supersetLabel": { "description": "Label for superset group indicator" },

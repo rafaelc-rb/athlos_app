@@ -44,6 +44,9 @@ const _seedItems = [
   _SeedItem('latPulldownMachine', EquipmentCategory.machines),
   _SeedItem('chestPressMachine', EquipmentCategory.machines),
   _SeedItem('pecDeckMachine', EquipmentCategory.machines),
+  _SeedItem('legExtensionMachine', EquipmentCategory.machines),
+  _SeedItem('legCurlMachine', EquipmentCategory.machines),
+  _SeedItem('hackSquatMachine', EquipmentCategory.machines),
 
   // Structures
   _SeedItem('pullUpBar', EquipmentCategory.structures),

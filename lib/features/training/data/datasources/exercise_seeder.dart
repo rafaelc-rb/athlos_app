@@ -131,6 +131,25 @@ const _seedItems = [
         (muscle: TargetMuscle.tricepsBrachii, region: null),
       ],
       equipmentKeys: ['chestPressMachine']),
+  _SeedExercise('inclineDumbbellPress', MuscleGroup.chest,
+      muscles: [
+        (muscle: TargetMuscle.pectoralisMajor, region: MuscleRegion.upper),
+        (muscle: TargetMuscle.anteriorDeltoid, region: null),
+      ],
+      equipmentKeys: ['dumbbell', 'adjustableBench']),
+  _SeedExercise('declinePushUp', MuscleGroup.chest, muscles: [
+    (muscle: TargetMuscle.pectoralisMajor, region: MuscleRegion.upper),
+    (muscle: TargetMuscle.anteriorDeltoid, region: null),
+    (muscle: TargetMuscle.tricepsBrachii, region: null),
+  ]),
+  _SeedExercise('inclinePushUp', MuscleGroup.chest, muscles: [
+    (muscle: TargetMuscle.pectoralisMajor, region: MuscleRegion.lower),
+  ]),
+  _SeedExercise('kneePushUp', MuscleGroup.chest, muscles: [
+    (muscle: TargetMuscle.pectoralisMajor, region: MuscleRegion.mid),
+    (muscle: TargetMuscle.anteriorDeltoid, region: null),
+    (muscle: TargetMuscle.tricepsBrachii, region: null),
+  ]),
 
   // --- Back ---
   _SeedExercise('pullUp', MuscleGroup.back,
@@ -166,6 +185,24 @@ const _seedItems = [
         (muscle: TargetMuscle.rhomboids, region: null),
       ],
       equipmentKeys: ['dumbbell', 'flatBench']),
+  _SeedExercise('chinUp', MuscleGroup.back,
+      muscles: [
+        (muscle: TargetMuscle.latissimusDorsi, region: null),
+        (muscle: TargetMuscle.bicepsBrachii, region: null),
+        (muscle: TargetMuscle.rhomboids, region: null),
+      ],
+      equipmentKeys: ['pullUpBar']),
+  _SeedExercise('invertedRow', MuscleGroup.back, muscles: [
+    (muscle: TargetMuscle.rhomboids, region: null),
+    (muscle: TargetMuscle.latissimusDorsi, region: null),
+    (muscle: TargetMuscle.rearDeltoid, region: null),
+    (muscle: TargetMuscle.bicepsBrachii, region: null),
+  ]),
+  _SeedExercise('dumbbellShrug', MuscleGroup.back,
+      muscles: [
+        (muscle: TargetMuscle.trapezius, region: null),
+      ],
+      equipmentKeys: ['dumbbell']),
 
   // --- Shoulders ---
   _SeedExercise('overheadPress', MuscleGroup.shoulders,
@@ -192,6 +229,16 @@ const _seedItems = [
         (muscle: TargetMuscle.lateralDeltoid, region: null),
       ],
       equipmentKeys: ['dumbbell']),
+  _SeedExercise('rearDeltFly', MuscleGroup.shoulders,
+      muscles: [
+        (muscle: TargetMuscle.rearDeltoid, region: null),
+      ],
+      equipmentKeys: ['dumbbell']),
+  _SeedExercise('pikePushUp', MuscleGroup.shoulders, muscles: [
+    (muscle: TargetMuscle.anteriorDeltoid, region: null),
+    (muscle: TargetMuscle.lateralDeltoid, region: null),
+    (muscle: TargetMuscle.tricepsBrachii, region: null),
+  ]),
 
   // --- Biceps ---
   _SeedExercise('barbellCurl', MuscleGroup.biceps,
@@ -236,6 +283,13 @@ const _seedItems = [
     (muscle: TargetMuscle.tricepsBrachii, region: null),
     (muscle: TargetMuscle.pectoralisMajor, region: null),
   ]),
+  _SeedExercise('dip', MuscleGroup.triceps,
+      muscles: [
+        (muscle: TargetMuscle.tricepsBrachii, region: null),
+        (muscle: TargetMuscle.pectoralisMajor, region: null),
+        (muscle: TargetMuscle.anteriorDeltoid, region: null),
+      ],
+      equipmentKeys: ['dipStation']),
 
   // --- Quadriceps ---
   _SeedExercise('barbellSquat', MuscleGroup.quadriceps,
@@ -268,6 +322,20 @@ const _seedItems = [
         (muscle: TargetMuscle.gluteusMaximus, region: null),
       ],
       equipmentKeys: ['dumbbell', 'flatBench']),
+  _SeedExercise('legExtension', MuscleGroup.quadriceps,
+      muscles: [
+        (muscle: TargetMuscle.rectusFemoris, region: null),
+        (muscle: TargetMuscle.vastusLateralis, region: null),
+        (muscle: TargetMuscle.vastusMedialis, region: null),
+      ],
+      equipmentKeys: ['legExtensionMachine']),
+  _SeedExercise('hackSquat', MuscleGroup.quadriceps,
+      muscles: [
+        (muscle: TargetMuscle.rectusFemoris, region: null),
+        (muscle: TargetMuscle.vastusLateralis, region: null),
+        (muscle: TargetMuscle.gluteusMaximus, region: null),
+      ],
+      equipmentKeys: ['hackSquatMachine']),
 
   // --- Hamstrings ---
   _SeedExercise('romanianDeadlift', MuscleGroup.hamstrings,
@@ -282,6 +350,12 @@ const _seedItems = [
     (muscle: TargetMuscle.bicepsFemoris, region: null),
     (muscle: TargetMuscle.semitendinosus, region: null),
   ]),
+  _SeedExercise('legCurl', MuscleGroup.hamstrings,
+      muscles: [
+        (muscle: TargetMuscle.bicepsFemoris, region: null),
+        (muscle: TargetMuscle.semitendinosus, region: null),
+      ],
+      equipmentKeys: ['legCurlMachine']),
 
   // --- Glutes ---
   _SeedExercise('hipThrust', MuscleGroup.glutes,
@@ -305,6 +379,9 @@ const _seedItems = [
         (muscle: TargetMuscle.gastrocnemius, region: null),
       ],
       equipmentKeys: ['smithMachine']),
+  _SeedExercise('seatedCalfRaise', MuscleGroup.calves, muscles: [
+    (muscle: TargetMuscle.soleus, region: null),
+  ]),
 
   // --- Abs ---
   _SeedExercise('crunch', MuscleGroup.abs, muscles: [
@@ -357,21 +434,57 @@ const _seedItems = [
 ];
 
 const _variations = [
-  _Variation('flatBarbellBenchPress', 'inclineBarbellBenchPress'),
+  // Chest — mid pressing
   _Variation('flatBarbellBenchPress', 'machineChestPress'),
   _Variation('flatBarbellBenchPress', 'pushUp'),
+  _Variation('flatBarbellBenchPress', 'kneePushUp'),
+  _Variation('machineChestPress', 'pushUp'),
+  _Variation('machineChestPress', 'kneePushUp'),
+  _Variation('pushUp', 'kneePushUp'),
+  // Chest — upper pressing
+  _Variation('inclineBarbellBenchPress', 'inclineDumbbellPress'),
+  _Variation('inclineBarbellBenchPress', 'declinePushUp'),
+  _Variation('inclineDumbbellPress', 'declinePushUp'),
+  // Chest — fly / abertura
+  _Variation('dumbbellFly', 'cableCrossover'),
+  // Back — vertical pull
   _Variation('pullUp', 'latPulldown'),
+  _Variation('pullUp', 'chinUp'),
+  _Variation('chinUp', 'latPulldown'),
+  // Back — horizontal pull / rows
   _Variation('barbellRow', 'dumbbellRow'),
   _Variation('barbellRow', 'seatedCableRow'),
+  _Variation('barbellRow', 'invertedRow'),
+  _Variation('dumbbellRow', 'seatedCableRow'),
+  _Variation('dumbbellRow', 'invertedRow'),
+  _Variation('seatedCableRow', 'invertedRow'),
+  // Shoulders — vertical push
   _Variation('overheadPress', 'arnoldPress'),
+  _Variation('overheadPress', 'pikePushUp'),
+  _Variation('arnoldPress', 'pikePushUp'),
+  // Shoulders — rear delt
+  _Variation('facePull', 'rearDeltFly'),
+  // Biceps
   _Variation('barbellCurl', 'dumbbellCurl'),
   _Variation('barbellCurl', 'preacherCurl'),
   _Variation('dumbbellCurl', 'hammerCurl'),
-  _Variation('barbellSquat', 'legPress'),
-  _Variation('lunge', 'bulgarianSplitSquat'),
-  _Variation('hipThrust', 'gluteBridge'),
-  _Variation('romanianDeadlift', 'nordicCurl'),
-  _Variation('wristCurl', 'reverseWristCurl'),
+  _Variation('dumbbellCurl', 'preacherCurl'),
+  // Triceps
   _Variation('diamondPushUp', 'tricepsPushdown'),
+  _Variation('diamondPushUp', 'dip'),
+  _Variation('dip', 'tricepsPushdown'),
+  _Variation('skullCrusher', 'overheadTricepsExtension'),
+  // Quadriceps
+  _Variation('barbellSquat', 'legPress'),
+  _Variation('barbellSquat', 'hackSquat'),
+  _Variation('legPress', 'hackSquat'),
+  _Variation('lunge', 'bulgarianSplitSquat'),
+  // Hamstrings
+  _Variation('romanianDeadlift', 'nordicCurl'),
+  _Variation('romanianDeadlift', 'legCurl'),
+  _Variation('nordicCurl', 'legCurl'),
+  // Glutes
+  _Variation('hipThrust', 'gluteBridge'),
+  // Abs
   _Variation('crunch', 'hangingLegRaise'),
 ];

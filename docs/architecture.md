@@ -506,7 +506,7 @@ Supabase continues handling CRUD, auth, sync, and realtime. Go API handles premi
 
 SQLite will be structured with the same entities and relations the remote database will have. This eases future migration.
 
-> **Migration note:** During early development, `onUpgrade` recreates all tables (destructive). Before the first public release, this must be replaced with incremental versioned migrations to preserve user data.
+> **Migration note:** Schema version 1 is the baseline for the first public release. Incremental versioned migrations are in place via `runMigrationSteps`. See [Release — Database Migrations](./release.md#database-migrations-drift) for details.
 
 ### Main Entities
 

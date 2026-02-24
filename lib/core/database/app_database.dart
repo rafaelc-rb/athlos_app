@@ -63,7 +63,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(driftDatabase(name: 'athlos'));
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 1;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -74,15 +74,32 @@ class AppDatabase extends _$AppDatabase {
           if (kDebugMode) await seedDevData(this);
         },
         onUpgrade: (m, from, to) async {
-          // TODO(pre-release): Replace with incremental versioned migrations
-          // before the first public release to preserve user data.
-          for (final table in allTables) {
-            await m.deleteTable(table.actualTableName);
+          // Dev databases used schema versions 1–10 before the first public
+          // release. Wipe and recreate so developers get a clean baseline.
+          if (from >= 2 && from <= 10) {
+            for (final table in allTables) {
+              await m.deleteTable(table.actualTableName);
+            }
+            await m.createAll();
+            await seedEquipments(this);
+            await seedExercises(this);
+            if (kDebugMode) await seedDevData(this);
+            return;
           }
-          await m.createAll();
-          await seedEquipments(this);
-          await seedExercises(this);
-          if (kDebugMode) await seedDevData(this);
+
+          // Incremental migrations for public releases.
+          // Each step migrates from the previous version to the next.
+          // Example:
+          //   2: (m) async => await m.addColumn(table, table.newColumn),
+          //   3: (m) async => await m.createTable(newTable),
+          await m.runMigrationSteps(
+            from: from,
+            to: to,
+            steps: {
+              // Add versioned migrations here as the schema evolves.
+              // Version 2 will be the first migration after 1.0.0 release.
+            },
+          );
         },
       );
 }

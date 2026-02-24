@@ -14,6 +14,7 @@ class WorkoutExecutionDao extends DatabaseAccessor<AppDatabase>
 
   Future<List<WorkoutExecution>> getAll() =>
       (select(workoutExecutions)
+            ..where((e) => e.finishedAt.isNotNull())
             ..orderBy([(e) => OrderingTerm.desc(e.startedAt)]))
           .get();
 

@@ -94,15 +94,8 @@ class TrainingWorkoutsScreen extends ConsumerWidget {
     );
   }
 
-  void _startWorkout(BuildContext context, WidgetRef ref, int workoutId) async {
-    await ref.read(markWorkoutDoneProvider(workoutId).future);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.workoutMarkedAsDone),
-        ),
-      );
-    }
+  void _startWorkout(BuildContext context, WidgetRef ref, int workoutId) {
+    context.push('${RoutePaths.trainingWorkouts}/$workoutId/execute');
   }
 }
 
@@ -230,15 +223,8 @@ class _WorkoutListBodyState extends ConsumerState<_WorkoutListBody> {
     ref.read(workoutListProvider.notifier).reorderWorkouts(orderedIds);
   }
 
-  void _startWorkout(BuildContext context, int workoutId) async {
-    await ref.read(markWorkoutDoneProvider(workoutId).future);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.workoutMarkedAsDone),
-        ),
-      );
-    }
+  void _startWorkout(BuildContext context, int workoutId) {
+    context.push('${RoutePaths.trainingWorkouts}/$workoutId/execute');
   }
 
   void _archiveWorkout(BuildContext context, int id) async {

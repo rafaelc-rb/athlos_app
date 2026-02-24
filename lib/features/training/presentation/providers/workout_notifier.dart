@@ -1,13 +1,9 @@
-import 'package:drift/drift.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../../core/database/app_database.dart'
-    show WorkoutExecutionsCompanion;
 import '../../../../core/errors/result.dart';
 import '../../data/repositories/training_providers.dart';
 import '../../domain/entities/workout.dart';
 import '../../domain/entities/workout_exercise.dart';
-import 'workout_execution_notifier.dart';
 
 part 'workout_notifier.g.dart';
 
@@ -178,20 +174,4 @@ Workout? nextWorkout(Ref ref) {
   if (lastIdx == -1) return ordered.first;
 
   return ordered[(lastIdx + 1) % ordered.length];
-}
-
-/// Marks a workout as done by creating a minimal WorkoutExecution.
-@riverpod
-Future<void> markWorkoutDone(Ref ref, int workoutId) async {
-  final dao = ref.read(workoutExecutionDaoProvider);
-  final now = DateTime.now();
-  await dao.create(
-    WorkoutExecutionsCompanion.insert(
-      workoutId: workoutId,
-      startedAt: Value(now),
-      finishedAt: Value(now),
-    ),
-  );
-  ref.invalidate(lastFinishedWorkoutIdProvider);
-  ref.invalidate(workoutExecutionListProvider);
 }

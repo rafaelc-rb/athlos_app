@@ -239,14 +239,8 @@ class WorkoutDetailScreen extends ConsumerWidget {
     );
   }
 
-  void _startWorkout(BuildContext context, WidgetRef ref) async {
-    await ref.read(markWorkoutDoneProvider(workoutId).future);
-    if (context.mounted) {
-      final l10n = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.workoutMarkedAsDone)),
-      );
-    }
+  void _startWorkout(BuildContext context, WidgetRef ref) {
+    context.push('${RoutePaths.trainingWorkouts}/$workoutId/execute');
   }
 
   void _confirmDelete(BuildContext context, WidgetRef ref) {

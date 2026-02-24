@@ -873,5 +873,106 @@
     "placeholders": {
       "minutes": { "type": "int" }
     }
-  }
+  },
+
+  "executionTitle": "Executando {name}",
+  "@executionTitle": {
+    "description": "AppBar title during workout execution",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "setNumberLabel": "Série",
+  "@setNumberLabel": { "description": "Column header for set number" },
+  "markSetComplete": "Concluir série",
+  "@markSetComplete": { "description": "Tooltip for complete set checkbox" },
+  "restTimerLabel": "Descanso: {seconds}s",
+  "@restTimerLabel": {
+    "description": "Rest timer countdown label",
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
+  "restTimerDone": "Descanso concluído!",
+  "@restTimerDone": { "description": "Message when rest timer finishes" },
+  "finishWorkout": "Finalizar treino",
+  "@finishWorkout": { "description": "Button to finish workout execution" },
+  "cancelExecution": "Cancelar treino",
+  "@cancelExecution": { "description": "Button to cancel workout execution" },
+  "cancelExecutionMessage": "Tem certeza? O progresso será perdido.",
+  "@cancelExecutionMessage": { "description": "Confirmation message for cancelling execution" },
+  "noSetsCompleted": "Complete pelo menos uma série",
+  "@noSetsCompleted": { "description": "Hint when no sets are completed yet" },
+  "workoutFinished": "Treino finalizado!",
+  "@workoutFinished": { "description": "Snackbar after finishing workout execution" },
+  "weightKgSuffix": "kg",
+  "@weightKgSuffix": { "description": "Weight unit suffix" },
+  "repsShort": "reps",
+  "@repsShort": { "description": "Short label for repetitions" },
+
+  "exerciseProgress": "{completed}/{total} séries",
+  "@exerciseProgress": {
+    "description": "Progress chip on exercise card",
+    "placeholders": {
+      "completed": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "overallProgress": "{completed} de {total} séries",
+  "@overallProgress": {
+    "description": "Overall progress label in overview bar",
+    "placeholders": {
+      "completed": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "nextSetButton": "Próxima: {exercise} S.{set}",
+  "@nextSetButton": {
+    "description": "Button to jump to next pending set",
+    "placeholders": {
+      "exercise": { "type": "String" },
+      "set": { "type": "int" }
+    }
+  },
+  "setOf": "Série {current} de {total}",
+  "@setOf": {
+    "description": "Set progress in focused view AppBar",
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "previousSetRef": "Anterior: {weight}kg x {reps}",
+  "@previousSetRef": {
+    "description": "Reference to previous completed set",
+    "placeholders": {
+      "weight": { "type": "String" },
+      "reps": { "type": "int" }
+    }
+  },
+  "skipTimer": "Pular",
+  "@skipTimer": { "description": "Button to skip rest timer" },
+  "addTimeButton": "+15s",
+  "@addTimeButton": { "description": "Button to add 15s to rest timer" },
+  "nextUpLabel": "Próxima: {exercise} - Série {set}",
+  "@nextUpLabel": {
+    "description": "Label showing what comes after rest timer",
+    "placeholders": {
+      "exercise": { "type": "String" },
+      "set": { "type": "int" }
+    }
+  },
+  "completeSetButton": "Concluir série",
+  "@completeSetButton": { "description": "Big button to complete current set in focused view" },
+  "allSetsComplete": "Todas as séries concluídas!",
+  "@allSetsComplete": { "description": "Message when all sets of all exercises are done" },
+
+  "restComplete": "Fim do Descanso",
+  "@restComplete": { "description": "Title shown when rest timer finishes" },
+  "exerciseCompleteMessage": "Exercício concluído!",
+  "@exerciseCompleteMessage": { "description": "Message when all sets of the current exercise are done" },
+  "nextSetLabel": "Próxima série",
+  "@nextSetLabel": { "description": "Button to go to the next set after rest" },
+  "backToOverview": "Voltar ao resumo",
+  "@backToOverview": { "description": "Button to return to the overview screen" }
 }

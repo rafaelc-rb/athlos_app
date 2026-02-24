@@ -8,6 +8,7 @@ import '../../features/profile/presentation/screens/profile_setup_screen.dart';
 import '../../features/training/presentation/screens/exercise_detail_screen.dart';
 import '../../features/training/presentation/screens/training_shell.dart';
 import '../../features/training/presentation/screens/workout_detail_screen.dart';
+import '../../features/training/presentation/screens/workout_execution_screen.dart';
 import '../../features/training/presentation/screens/workout_form_screen.dart';
 import '../providers/last_module_provider.dart';
 import 'route_paths.dart';
@@ -89,6 +90,13 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) {
           final id = int.parse(state.pathParameters['workoutId']!);
           return WorkoutFormScreen(workoutId: id);
+        },
+      ),
+      GoRoute(
+        path: '${RoutePaths.trainingWorkouts}/:workoutId/execute',
+        builder: (context, state) {
+          final id = int.parse(state.pathParameters['workoutId']!);
+          return WorkoutExecutionScreen(workoutId: id);
         },
       ),
     ],

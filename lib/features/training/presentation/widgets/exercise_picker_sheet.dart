@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/exercise.dart';
@@ -42,7 +43,7 @@ class _ExercisePickerBodyState extends ConsumerState<_ExercisePickerBody> {
   final _searchController = TextEditingController();
   String _query = '';
   MuscleGroup? _selectedGroup;
-  bool _onlyMyEquipment = true;
+  bool _isOnlyMyEquipment = true;
 
   @override
   void dispose() {
@@ -68,7 +69,7 @@ class _ExercisePickerBodyState extends ConsumerState<_ExercisePickerBody> {
           height: 4,
           decoration: BoxDecoration(
             color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(2),
+            borderRadius: AthlosRadius.xsAll,
           ),
         ),
         Padding(
@@ -100,15 +101,15 @@ class _ExercisePickerBodyState extends ConsumerState<_ExercisePickerBody> {
             children: [
               FilterChip(
                 avatar: Icon(
-                  _onlyMyEquipment
+                  _isOnlyMyEquipment
                       ? Icons.fitness_center
                       : Icons.fitness_center_outlined,
                   size: 18,
                 ),
                 label: Text(l10n.filterMyEquipment),
-                selected: _onlyMyEquipment,
+                selected: _isOnlyMyEquipment,
                 onSelected: (v) =>
-                    setState(() => _onlyMyEquipment = v),
+                    setState(() => _isOnlyMyEquipment = v),
               ),
               const SizedBox(width: AthlosSpacing.sm),
               FilterChip(
@@ -163,7 +164,7 @@ class _ExercisePickerBodyState extends ConsumerState<_ExercisePickerBody> {
                   ).toLowerCase();
                   if (!name.contains(_query)) return false;
                 }
-                if (_onlyMyEquipment) {
+                if (_isOnlyMyEquipment) {
                   final required = equipmentMap[ex.id] ?? [];
                   if (required.any((id) => !userEquipment.contains(id))) {
                     return false;

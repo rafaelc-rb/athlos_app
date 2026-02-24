@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/exercise.dart';
@@ -147,13 +148,13 @@ class ExerciseDetailScreen extends ConsumerWidget {
                 if (focus.region != null) {
                   final regionName = localizedMuscleRegion(focus.region!, l10n);
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 2),
+                    padding: const EdgeInsets.only(bottom: AthlosSpacing.xs),
                     child: Text('$muscleName ($regionName)',
                         style: textTheme.bodyLarge),
                   );
                 }
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
+                  padding: const EdgeInsets.only(bottom: AthlosSpacing.xs),
                   child: Text(muscleName, style: textTheme.bodyLarge),
                 );
               }),
@@ -267,7 +268,7 @@ class _EditExerciseSheetState extends ConsumerState<_EditExerciseSheet> {
   final Set<int> _selectedEquipmentIds = {};
   final List<({TargetMuscle muscle, MuscleRegion? region})> _muscleFoci = [];
   bool _isSaving = false;
-  bool _equipmentLoaded = false;
+  bool _isEquipmentLoaded = false;
 
   @override
   void initState() {
@@ -297,9 +298,9 @@ class _EditExerciseSheetState extends ConsumerState<_EditExerciseSheet> {
     final currentEqIdsAsync =
         ref.watch(exerciseEquipmentIdsProvider(widget.exercise.id));
 
-    if (!_equipmentLoaded && currentEqIdsAsync.hasValue) {
+    if (!_isEquipmentLoaded && currentEqIdsAsync.hasValue) {
       _selectedEquipmentIds.addAll(currentEqIdsAsync.value!);
-      _equipmentLoaded = true;
+      _isEquipmentLoaded = true;
     }
 
     final availableMuscles = TargetMuscle.values
@@ -327,7 +328,7 @@ class _EditExerciseSheetState extends ConsumerState<_EditExerciseSheet> {
                     height: 4,
                     decoration: BoxDecoration(
                       color: colorScheme.onSurfaceVariant.withAlpha(80),
-                      borderRadius: BorderRadius.circular(2),
+                      borderRadius: AthlosRadius.xsAll,
                     ),
                   ),
                 ),
@@ -611,7 +612,7 @@ class _EquipmentSection extends ConsumerWidget {
           data: (eqIds) {
             if (eqIds.isEmpty) {
               return Padding(
-                padding: const EdgeInsets.only(left: 28),
+                padding: const EdgeInsets.only(left: AthlosSpacing.lg),
                 child: Text(
                   l10n.exerciseNoEquipment,
                   style: textTheme.bodyMedium?.copyWith(
@@ -634,7 +635,7 @@ class _EquipmentSection extends ConsumerWidget {
                     .toList();
 
                 return Padding(
-                  padding: const EdgeInsets.only(left: 28),
+                  padding: const EdgeInsets.only(left: AthlosSpacing.lg),
                   child: Wrap(
                     spacing: AthlosSpacing.sm,
                     runSpacing: AthlosSpacing.xs,
@@ -704,7 +705,7 @@ class _VariationsSection extends ConsumerWidget {
           data: (variations) {
             if (variations.isEmpty) {
               return Padding(
-                padding: const EdgeInsets.only(left: 28),
+                padding: const EdgeInsets.only(left: AthlosSpacing.lg),
                 child: Text(
                   l10n.exerciseNoVariations,
                   style: textTheme.bodyMedium?.copyWith(
@@ -715,7 +716,7 @@ class _VariationsSection extends ConsumerWidget {
             }
 
             return Padding(
-              padding: const EdgeInsets.only(left: 28),
+              padding: const EdgeInsets.only(left: AthlosSpacing.lg),
               child: Column(
                 children: variations.map((v) {
                   final name = localizedExerciseName(

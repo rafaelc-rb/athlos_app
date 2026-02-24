@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 
+import '../../../../core/theme/athlos_durations.dart';
 import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
@@ -9,18 +10,18 @@ import '../../domain/enums/training_style.dart';
 /// Selector for [TrainingStyle].
 ///
 /// Each style is a selectable card with icon, title, and short description.
-/// When [showHelp] is true, an animated panel expands below each card
+/// When [shouldShowHelp] is true, an animated panel expands below each card
 /// explaining the impact of that option on the system.
 class StyleSelector extends StatelessWidget {
   final TrainingStyle? selected;
   final ValueChanged<TrainingStyle> onSelected;
-  final bool showHelp;
+  final bool shouldShowHelp;
 
   const StyleSelector({
     super.key,
     required this.selected,
     required this.onSelected,
-    this.showHelp = false,
+    this.shouldShowHelp = false,
   });
 
   @override
@@ -101,16 +102,16 @@ class StyleSelector extends StatelessWidget {
 
                       // Help panel
                       AnimatedSize(
-                        duration: const Duration(milliseconds: 250),
+                        duration: AthlosDurations.normal,
                         curve: Curves.easeInOut,
-                        child: showHelp
+                        child: shouldShowHelp
                             ? Padding(
                                 padding: const EdgeInsets.only(top: AthlosSpacing.smd),
                                 child: Container(
                                   width: double.infinity,
                                   padding: const EdgeInsets.all(AthlosSpacing.smd),
                                   decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: AthlosRadius.smAll,
                                     color: colorScheme.surfaceContainerHighest
                                         .withAlpha(120),
                                   ),

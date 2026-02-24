@@ -96,7 +96,7 @@ class _CatalogCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title, style: textTheme.titleMedium),
-                    const Gap(2),
+                    const Gap(AthlosSpacing.xs),
                     Text(
                       subtitle,
                       style: textTheme.bodySmall?.copyWith(

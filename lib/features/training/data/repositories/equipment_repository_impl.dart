@@ -91,10 +91,10 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
   @override
   Future<Result<void>> toggleUserEquipment(
     int equipmentId, {
-    required bool owns,
+    required bool isOwned,
   }) async {
     try {
-      if (owns) {
+      if (isOwned) {
         await _dao.addUserEquipment(equipmentId);
       } else {
         await _dao.removeUserEquipment(equipmentId);

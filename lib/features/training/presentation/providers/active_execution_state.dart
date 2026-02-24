@@ -9,6 +9,17 @@ class SegmentEntry {
   final double? weight;
 
   const SegmentEntry({required this.reps, this.weight});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SegmentEntry &&
+          runtimeType == other.runtimeType &&
+          reps == other.reps &&
+          weight == other.weight;
+
+  @override
+  int get hashCode => Object.hash(reps, weight);
 }
 
 /// In-memory representation of a set during active execution.
@@ -60,6 +71,23 @@ class SetEntry {
         isCompleted: isCompleted ?? this.isCompleted,
         segments: segments ?? this.segments,
       );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SetEntry &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          setNumber == other.setNumber &&
+          plannedReps == other.plannedReps &&
+          plannedWeight == other.plannedWeight &&
+          reps == other.reps &&
+          weight == other.weight &&
+          isCompleted == other.isCompleted;
+
+  @override
+  int get hashCode =>
+      Object.hash(id, setNumber, plannedReps, plannedWeight, reps, weight, isCompleted);
 }
 
 /// Holds the full state of an active workout execution in progress.
@@ -100,4 +128,16 @@ class ActiveExecutionState {
         exercises: exercises,
         isFinishing: isFinishing ?? this.isFinishing,
       );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ActiveExecutionState &&
+          runtimeType == other.runtimeType &&
+          executionId == other.executionId &&
+          workoutId == other.workoutId &&
+          isFinishing == other.isFinishing;
+
+  @override
+  int get hashCode => Object.hash(executionId, workoutId, isFinishing);
 }

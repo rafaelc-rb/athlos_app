@@ -174,7 +174,7 @@ class _EquipmentScreenState extends ConsumerState<EquipmentScreen> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 80),
+      padding: const EdgeInsets.only(bottom: AthlosSpacing.fabClearance),
       itemCount: owned.length,
       itemBuilder: (context, index) {
         final equipment = owned[index];
@@ -342,7 +342,7 @@ class _EquipmentScreenState extends ConsumerState<EquipmentScreen> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 80),
+      padding: const EdgeInsets.only(bottom: AthlosSpacing.fabClearance),
       itemCount: results.length,
       itemBuilder: (context, index) {
         final equipment = results[index];

@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/theme/athlos_durations.dart';
+import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../l10n/app_localizations.dart';
@@ -41,7 +43,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   BodyAesthetic? _selectedAesthetic;
   TrainingStyle? _selectedStyle;
   bool _isSaving = false;
-  bool _showHelp = false;
+  bool _shouldShowHelp = false;
 
   @override
   void dispose() {
@@ -102,7 +104,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: AthlosSpacing.md),
                 child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
+                  duration: AthlosDurations.normal,
                   child: switch (_currentStep) {
                     0 => _buildPersonalDataStep(l10n),
                     1 => _buildGoalStep(),
@@ -130,13 +132,13 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                   if (_currentStep > 0)
                     IconButton(
                       onPressed: () =>
-                          setState(() => _showHelp = !_showHelp),
+                          setState(() => _shouldShowHelp = !_shouldShowHelp),
                       tooltip: l10n.helpModeTooltip,
                       icon: Icon(
-                        _showHelp
+                        _shouldShowHelp
                             ? Icons.help
                             : Icons.help_outline,
-                        color: _showHelp
+                        color: _shouldShowHelp
                             ? colorScheme.primary
                             : colorScheme.onSurfaceVariant,
                       ),
@@ -247,7 +249,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       key: const ValueKey(1),
       selected: _selectedGoal,
       onSelected: (goal) => setState(() => _selectedGoal = goal),
-      showHelp: _showHelp,
+      shouldShowHelp: _shouldShowHelp,
     );
   }
 
@@ -257,7 +259,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       selected: _selectedAesthetic,
       onSelected: (aesthetic) =>
           setState(() => _selectedAesthetic = aesthetic),
-      showHelp: _showHelp,
+      shouldShowHelp: _shouldShowHelp,
     );
   }
 
@@ -266,13 +268,11 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       key: const ValueKey(3),
       selected: _selectedStyle,
       onSelected: (style) => setState(() => _selectedStyle = style),
-      showHelp: _showHelp,
+      shouldShowHelp: _shouldShowHelp,
     );
   }
 
   void _onNext() {
-    final l10n = AppLocalizations.of(context)!;
-
     switch (_currentStep) {
       case 0:
         if (_formKey.currentState?.validate() ?? false) {
@@ -399,14 +399,14 @@ class _StepIndicator extends StatelessWidget {
 
               return Expanded(
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
+                  duration: AthlosDurations.normal,
                   curve: Curves.easeInOut,
                   height: 4,
                   margin: EdgeInsets.only(
-                    right: index < totalSteps - 1 ? 6 : 0,
+                    right: index < totalSteps - 1 ? AthlosSpacing.sm : 0,
                   ),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: AthlosRadius.xsAll,
                     color: isReached
                         ? colorScheme.primary
                         : colorScheme.surfaceContainerHighest,
@@ -419,7 +419,7 @@ class _StepIndicator extends StatelessWidget {
 
           // Current step label
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
+            duration: AthlosDurations.fast,
             child: Text(
               labels[currentStep],
               key: ValueKey(currentStep),

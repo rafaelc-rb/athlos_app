@@ -31,7 +31,7 @@ class EquipmentList extends _$EquipmentList {
     final createResult = await repo.create(equipment);
     final id = createResult.getOrThrow();
 
-    final toggleResult = await repo.toggleUserEquipment(id, owns: true);
+    final toggleResult = await repo.toggleUserEquipment(id, isOwned: true);
     toggleResult.getOrThrow();
 
     ref.invalidateSelf();
@@ -68,15 +68,15 @@ class UserEquipmentIds extends _$UserEquipmentIds {
   /// Toggles ownership of an equipment item.
   Future<void> toggle(int equipmentId) async {
     final current = state.value ?? {};
-    final owns = !current.contains(equipmentId);
+    final isOwned = !current.contains(equipmentId);
 
     final repo = ref.read(equipmentRepositoryProvider);
-    final result = await repo.toggleUserEquipment(equipmentId, owns: owns);
+    final result = await repo.toggleUserEquipment(equipmentId, isOwned: isOwned);
     result.getOrThrow();
 
     if (!ref.mounted) return;
 
-    if (owns) {
+    if (isOwned) {
       state = AsyncData({...current, equipmentId});
     } else {
       state = AsyncData({...current}..remove(equipmentId));
@@ -91,7 +91,7 @@ class UserEquipmentIds extends _$UserEquipmentIds {
 
     final repo = ref.read(equipmentRepositoryProvider);
     for (final id in toAdd) {
-      final result = await repo.toggleUserEquipment(id, owns: true);
+      final result = await repo.toggleUserEquipment(id, isOwned: true);
       result.getOrThrow();
     }
 

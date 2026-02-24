@@ -182,6 +182,18 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
   }
 
   @override
+  Future<Result<List<domain.ExecutionSetSegment>>> getSegmentsForExecution(
+      int executionId) async {
+    try {
+      final rows = await _dao.getSegmentsForExecution(executionId);
+      return Success(rows.map(_segmentToDomain).toList());
+    } on Exception catch (e) {
+      return Failure(
+          DatabaseException('Failed to load segments for execution: $e'));
+    }
+  }
+
+  @override
   Future<Result<void>> saveSegments(
     int executionSetId,
     List<domain.ExecutionSetSegment> segments,

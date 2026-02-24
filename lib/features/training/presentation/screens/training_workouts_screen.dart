@@ -117,7 +117,7 @@ class _WorkoutListBody extends ConsumerStatefulWidget {
 
 class _WorkoutListBodyState extends ConsumerState<_WorkoutListBody> {
   late List<Workout> _orderedWorkouts;
-  bool _archivedExpanded = false;
+  bool _isArchivedExpanded = false;
 
   @override
   void initState() {
@@ -193,8 +193,8 @@ class _WorkoutListBodyState extends ConsumerState<_WorkoutListBody> {
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
-              initiallyExpanded: _archivedExpanded,
-              onExpansionChanged: (v) => setState(() => _archivedExpanded = v),
+              initiallyExpanded: _isArchivedExpanded,
+              onExpansionChanged: (v) => setState(() => _isArchivedExpanded = v),
               children: widget.archivedAsync.value!
                   .map((w) => _ArchivedWorkoutTile(
                         workout: w,
@@ -209,7 +209,7 @@ class _WorkoutListBodyState extends ConsumerState<_WorkoutListBody> {
           ),
 
         // Bottom padding for FAB
-        const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
+        const SliverPadding(padding: EdgeInsets.only(bottom: AthlosSpacing.fabClearance)),
       ],
     );
   }

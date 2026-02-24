@@ -20,10 +20,10 @@ part 'app_router.g.dart';
 @Riverpod(keepAlive: true)
 GoRouter appRouter(Ref ref) {
   final lastModule = ref.read(lastModuleProvider);
-  bool didRestoreModule = false;
+  bool hasRestoredModule = false;
 
   final refreshNotifier = ValueNotifier<int>(0);
-  ref.listen(hasProfileProvider, (_, __) => refreshNotifier.value++);
+  ref.listen(hasProfileProvider, (_, _) => refreshNotifier.value++);
   ref.onDispose(refreshNotifier.dispose);
 
   return GoRouter(
@@ -40,10 +40,10 @@ GoRouter appRouter(Ref ref) {
       if (!hasProfile && !isOnSetup) return RoutePaths.profileSetup;
       if (hasProfile && isOnSetup) return RoutePaths.hub;
 
-      if (!didRestoreModule &&
+      if (!hasRestoredModule &&
           hasProfile &&
           state.matchedLocation == RoutePaths.hub) {
-        didRestoreModule = true;
+        hasRestoredModule = true;
         if (lastModule != null) return lastModule;
       }
 

@@ -84,7 +84,8 @@ lib/
 │   │   └── presentation/
 │   │       ├── screens/               # Full pages
 │   │       ├── widgets/               # Module-specific components
-│   │       └── providers/             # UI state providers (AsyncNotifiers)
+│   │       ├── providers/             # UI state providers (AsyncNotifiers)
+│   │       └── helpers/               # Presentation helpers (l10n, formatters)
 │   ├── diet/                          # Diet module (same structure)
 │   └── profile/                       # User profile (shared across modules)
 ├── l10n/                              # ARB internationalization files
@@ -117,6 +118,7 @@ Flutter screens and widgets. Consumes **Use Cases** (or repository providers for
 - **Screens** — full pages, equivalent to "Pages" in Atomic Design
 - **Widgets** — module-specific components that depend on domain types from that feature
 - **Providers** — `AsyncNotifier` / `Notifier` providers managing UI state, calling Use Cases
+- **Helpers** — presentation-specific helper functions (l10n helpers, formatters, etc.)
 
 ## Error Handling
 

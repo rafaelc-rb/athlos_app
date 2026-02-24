@@ -282,15 +282,15 @@ class _ExerciseBreakdown extends StatelessWidget {
                           style: textTheme.labelSmall?.copyWith(
                               color: colorScheme.onSurfaceVariant))),
                   Expanded(
-                      child: Text('Reps',
+                      child: Text(l10n.repsLabel,
                           style: textTheme.labelSmall?.copyWith(
                               color: colorScheme.onSurfaceVariant))),
                   SizedBox(
                       width: 60,
-                      child: Text('Peso',
+                      child: Text(l10n.weightColumnLabel,
                           style: textTheme.labelSmall?.copyWith(
                               color: colorScheme.onSurfaceVariant))),
-                  const SizedBox(width: 24),
+                  const SizedBox(width: AthlosSpacing.lg),
                 ],
               ),
             ),
@@ -329,13 +329,13 @@ class _SetRow extends StatelessWidget {
         : colorScheme.onSurfaceVariant;
 
     final weightStr = setEntry.weight != null
-        ? '${setEntry.weight!.toStringAsFixed(setEntry.weight! % 1 == 0 ? 0 : 1)}kg'
+        ? '${setEntry.weight!.toStringAsFixed(setEntry.weight! % 1 == 0 ? 0 : 1)}${l10n.weightUnit}'
         : '-';
 
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(vertical: AthlosSpacing.xs),
           child: Row(
             children: [
               SizedBox(
@@ -388,15 +388,15 @@ class _SetRow extends StatelessWidget {
         if (setEntry.segments.length > 1)
           ...setEntry.segments.skip(1).map((seg) {
             final segWeightStr = seg.weight != null
-                ? '${seg.weight!.toStringAsFixed(seg.weight! % 1 == 0 ? 0 : 1)}kg'
+                ? '${seg.weight!.toStringAsFixed(seg.weight! % 1 == 0 ? 0 : 1)}${l10n.weightUnit}'
                 : '-';
             return Padding(
-              padding: const EdgeInsets.only(left: 24, top: 2, bottom: 2),
+              padding: const EdgeInsets.only(left: AthlosSpacing.lg, top: AthlosSpacing.xs, bottom: AthlosSpacing.xs),
               child: Row(
                 children: [
                   Icon(Icons.arrow_downward,
                       size: 12, color: colorScheme.tertiary),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AthlosSpacing.xs),
                   SizedBox(
                     width: 16,
                     child: Text('', style: textTheme.bodySmall),
@@ -416,7 +416,7 @@ class _SetRow extends StatelessWidget {
                           color: colorScheme.tertiary),
                     ),
                   ),
-                  const SizedBox(width: 24),
+                  const SizedBox(width: AthlosSpacing.lg),
                 ],
               ),
             );

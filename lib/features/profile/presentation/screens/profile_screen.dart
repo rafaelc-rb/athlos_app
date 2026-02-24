@@ -340,7 +340,7 @@ class _ProfileTile extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: AthlosSpacing.sm),
       child: Row(
         children: [
           Icon(icon, color: colorScheme.primary, size: 24),

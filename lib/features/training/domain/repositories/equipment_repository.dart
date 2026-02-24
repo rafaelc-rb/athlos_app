@@ -10,5 +10,5 @@ abstract interface class EquipmentRepository {
   Future<Result<void>> delete(int id);
   Future<Result<List<Equipment>>> getByUser();
   Future<Result<void>> toggleUserEquipment(int equipmentId,
-      {required bool owns});
+      {required bool isOwned});
 }

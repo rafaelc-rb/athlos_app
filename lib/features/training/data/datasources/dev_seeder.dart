@@ -1,13 +1,10 @@
 import 'package:drift/drift.dart';
 
 import '../../../../core/database/app_database.dart';
-import '../../../profile/domain/enums/body_aesthetic.dart';
-import '../../../profile/domain/enums/training_goal.dart';
-import '../../../profile/domain/enums/training_style.dart';
 
 /// Seeds the database with realistic test data for development.
 ///
-/// Creates a user profile, selects user equipment, builds workouts with
+/// Selects user equipment, builds workouts with
 /// exercises (including supersets), and generates execution history
 /// (including drop sets). Only called in debug mode.
 Future<void> seedDevData(AppDatabase db) async {
@@ -27,23 +24,6 @@ Future<Map<String, int>> _resolveExerciseIds(AppDatabase db) async {
 Future<Map<String, int>> _resolveEquipmentIds(AppDatabase db) async {
   final rows = await db.select(db.equipments).get();
   return {for (final r in rows) r.name: r.id};
-}
-
-// ---------------------------------------------------------------------------
-// User Profile
-// ---------------------------------------------------------------------------
-
-Future<void> _seedUserProfile(AppDatabase db) async {
-  await db.into(db.userProfiles).insert(
-        UserProfilesCompanion.insert(
-          weight: const Value(78.0),
-          height: const Value(178.0),
-          age: const Value(25),
-          goal: const Value(TrainingGoal.hypertrophy),
-          bodyAesthetic: const Value(BodyAesthetic.athletic),
-          trainingStyle: const Value(TrainingStyle.traditional),
-        ),
-      );
 }
 
 // ---------------------------------------------------------------------------

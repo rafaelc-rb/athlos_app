@@ -9,4 +9,7 @@ abstract class AthlosSpacing {
   static const double lg = 24;
   static const double xl = 32;
   static const double xxl = 48;
+
+  /// Bottom padding to clear floating action buttons.
+  static const double fabClearance = 80;
 }

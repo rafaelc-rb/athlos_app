@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 
+import '../../../../core/theme/athlos_durations.dart';
 import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
@@ -9,18 +10,18 @@ import '../../domain/enums/training_goal.dart';
 /// Selector for [TrainingGoal].
 ///
 /// Each goal is a selectable card with icon, title, and short description.
-/// When [showHelp] is true, an animated panel expands below each card
+/// When [shouldShowHelp] is true, an animated panel expands below each card
 /// explaining the impact of that option on the system.
 class GoalSelector extends StatelessWidget {
   final TrainingGoal? selected;
   final ValueChanged<TrainingGoal> onSelected;
-  final bool showHelp;
+  final bool shouldShowHelp;
 
   const GoalSelector({
     super.key,
     required this.selected,
     required this.onSelected,
-    this.showHelp = false,
+    this.shouldShowHelp = false,
   });
 
   @override
@@ -101,9 +102,9 @@ class GoalSelector extends StatelessWidget {
 
                       // Help panel
                       AnimatedSize(
-                        duration: const Duration(milliseconds: 250),
+                        duration: AthlosDurations.normal,
                         curve: Curves.easeInOut,
-                        child: showHelp
+                        child: shouldShowHelp
                             ? Padding(
                                 padding: const EdgeInsets.only(top: AthlosSpacing.smd),
                                 child: Container(

@@ -133,7 +133,7 @@ class WorkoutExerciseTile extends StatelessWidget {
                                 children: [
                                   Icon(Icons.link,
                                       size: 10, color: groupColor),
-                                  const SizedBox(width: 2),
+                                  const SizedBox(width: AthlosSpacing.xs),
                                   Text(
                                     l10n.supersetLabel,
                                     style: textTheme.labelSmall?.copyWith(
@@ -244,7 +244,7 @@ class _SupersetLinkButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: AthlosRadius.lgAll,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
+          padding: const EdgeInsets.symmetric(vertical: AthlosSpacing.xs),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
@@ -254,7 +254,7 @@ class _SupersetLinkButton extends StatelessWidget {
                 size: 14,
                 color: isLinked ? activeColor : colorScheme.outline,
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: AthlosSpacing.xs),
               Text(
                 isLinked ? l10n.unlinkSuperset : l10n.linkSuperset,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(

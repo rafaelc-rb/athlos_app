@@ -124,7 +124,7 @@ class _TrainingExercisesScreenState
                 }
 
                 return ListView.separated(
-                  padding: const EdgeInsets.only(bottom: 80),
+                  padding: const EdgeInsets.only(bottom: AthlosSpacing.fabClearance),
                   itemCount: filtered.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
@@ -255,7 +255,7 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
                     height: 4,
                     decoration: BoxDecoration(
                       color: colorScheme.onSurfaceVariant.withAlpha(80),
-                      borderRadius: BorderRadius.circular(2),
+                      borderRadius: AthlosRadius.xsAll,
                     ),
                   ),
                 ),

@@ -1045,5 +1045,13 @@
       "completed": { "type": "int" },
       "total": { "type": "int" }
     }
+  },
+  "weightColumnLabel": "Peso",
+  "@weightColumnLabel": {
+    "description": "Column header for weight in execution detail"
+  },
+  "okButton": "OK",
+  "@okButton": {
+    "description": "Generic OK button label"
   }
 }

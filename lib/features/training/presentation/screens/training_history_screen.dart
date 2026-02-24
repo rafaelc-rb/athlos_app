@@ -140,7 +140,7 @@ class _ExecutionCard extends ConsumerWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AthlosSpacing.xs),
                   Text(
                     durationStr != null ? '$dateStr  •  $durationStr' : dateStr,
                     style: textTheme.bodySmall?.copyWith(

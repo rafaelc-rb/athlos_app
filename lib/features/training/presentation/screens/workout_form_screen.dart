@@ -32,7 +32,7 @@ class _WorkoutFormScreenState extends ConsumerState<WorkoutFormScreen> {
   final _descController = TextEditingController();
   final List<WorkoutExerciseEntry> _entries = [];
   bool _isLoading = false;
-  bool _didLoadExisting = false;
+  bool _hasLoadedExisting = false;
   int _nextGroupId = 1;
 
   @override
@@ -44,8 +44,8 @@ class _WorkoutFormScreenState extends ConsumerState<WorkoutFormScreen> {
 
   void _loadExistingWorkout(Workout workout, List<WorkoutExercise> exercises,
       List<Exercise> allExercises) {
-    if (_didLoadExisting) return;
-    _didLoadExisting = true;
+    if (_hasLoadedExisting) return;
+    _hasLoadedExisting = true;
 
     _nameController.text = workout.name;
     _descController.text = workout.description ?? '';
@@ -216,7 +216,7 @@ class _WorkoutFormScreenState extends ConsumerState<WorkoutFormScreen> {
     final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
 
-    if (widget.isEditing && !_didLoadExisting) {
+    if (widget.isEditing && !_hasLoadedExisting) {
       final workoutAsync =
           ref.watch(workoutByIdProvider(widget.workoutId!));
       final exercisesAsync =

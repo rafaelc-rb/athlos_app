@@ -18,6 +18,8 @@ abstract interface class WorkoutExecutionRepository {
 
   // --- Segments (drop sets) ---
   Future<Result<List<ExecutionSetSegment>>> getSegments(int executionSetId);
+  Future<Result<List<ExecutionSetSegment>>> getSegmentsForExecution(
+      int executionId);
   Future<Result<void>> saveSegments(
       int executionSetId, List<ExecutionSetSegment> segments);
 }

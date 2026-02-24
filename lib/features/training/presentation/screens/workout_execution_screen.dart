@@ -27,7 +27,7 @@ class WorkoutExecutionScreen extends ConsumerStatefulWidget {
 
 class _WorkoutExecutionScreenState
     extends ConsumerState<WorkoutExecutionScreen> {
-  bool _initialized = false;
+  bool _isInitialized = false;
   _ViewMode _viewMode = _ViewMode.overview;
 
   int _focusedExerciseIndex = 0;
@@ -44,10 +44,10 @@ class _WorkoutExecutionScreenState
     final timerState = ref.watch(restTimerProvider);
     ref.watch(exerciseListProvider);
 
-    if (!_initialized &&
+    if (!_isInitialized &&
         exercisesAsync is AsyncData<List<WorkoutExercise>> &&
         execState == null) {
-      _initialized = true;
+      _isInitialized = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ref
             .read(activeExecutionProvider.notifier)
@@ -1009,7 +1009,7 @@ class _OverviewExerciseCard extends StatelessWidget {
                             children: [
                               Icon(Icons.link,
                                   size: 10, color: groupColor),
-                              const SizedBox(width: 2),
+                              const SizedBox(width: AthlosSpacing.xs),
                               Text(
                                 l10n.supersetLabel,
                                 style: textTheme.labelSmall?.copyWith(
@@ -1212,7 +1212,7 @@ class _NumberInput extends StatelessWidget {
               final parsed = double.tryParse(controller.text);
               Navigator.pop(ctx, parsed);
             },
-            child: const Text('OK'),
+            child: Text(AppLocalizations.of(ctx)!.okButton),
           ),
         ],
       ),

@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/workout_exercise.dart';
 import '../helpers/exercise_l10n.dart';
 import '../providers/exercise_notifier.dart';
 import '../providers/workout_notifier.dart';
+import '../widgets/workout_exercise_tile.dart' show supersetColorFor;
 
 /// Detail view of a single workout.
 class WorkoutDetailScreen extends ConsumerWidget {
@@ -234,16 +236,41 @@ class WorkoutDetailScreen extends ConsumerWidget {
                       );
                     }
 
+                    final groupColorMap = <int, int>{};
+                    var nextColorIdx = 0;
+                    for (final ex in exercises) {
+                      if (ex.groupId != null &&
+                          !groupColorMap.containsKey(ex.groupId)) {
+                        groupColorMap[ex.groupId!] = nextColorIdx++;
+                      }
+                    }
+
                     return ListView.builder(
                       padding: const EdgeInsets.symmetric(
                         horizontal: AthlosSpacing.sm,
                       ),
                       itemCount: exercises.length,
-                      itemBuilder: (context, index) =>
-                          _ExerciseDetailTile(
-                        exercise: exercises[index],
-                        index: index + 1,
-                      ),
+                      itemBuilder: (context, index) {
+                        final ex = exercises[index];
+                        final gid = ex.groupId;
+                        final isGroupedWithPrev = index > 0 &&
+                            gid != null &&
+                            exercises[index - 1].groupId == gid;
+                        final isGroupedWithNext =
+                            index < exercises.length - 1 &&
+                                gid != null &&
+                                exercises[index + 1].groupId == gid;
+                        final groupColorIndex =
+                            gid != null ? groupColorMap[gid] : null;
+
+                        return _ExerciseDetailTile(
+                          exercise: ex,
+                          index: index + 1,
+                          isGroupedWithPrev: isGroupedWithPrev,
+                          isGroupedWithNext: isGroupedWithNext,
+                          groupColorIndex: groupColorIndex,
+                        );
+                      },
                     );
                   },
                 ),
@@ -311,8 +338,17 @@ class WorkoutDetailScreen extends ConsumerWidget {
 class _ExerciseDetailTile extends ConsumerWidget {
   final WorkoutExercise exercise;
   final int index;
+  final bool isGroupedWithPrev;
+  final bool isGroupedWithNext;
+  final int? groupColorIndex;
 
-  const _ExerciseDetailTile({required this.exercise, required this.index});
+  const _ExerciseDetailTile({
+    required this.exercise,
+    required this.index,
+    this.isGroupedWithPrev = false,
+    this.isGroupedWithNext = false,
+    this.groupColorIndex,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -322,10 +358,10 @@ class _ExerciseDetailTile extends ConsumerWidget {
 
     final exercisesAsync = ref.watch(exerciseListProvider);
 
-    final exerciseEntity = exercisesAsync.value?.firstWhere(
-      (e) => e.id == exercise.exerciseId,
-      orElse: () => throw StateError('Exercise not found'),
-    );
+    final exerciseEntity = exercisesAsync.value?.cast<dynamic>().firstWhere(
+          (e) => e.id == exercise.exerciseId,
+          orElse: () => null,
+        );
 
     final displayName = exerciseEntity != null
         ? localizedExerciseName(
@@ -339,28 +375,75 @@ class _ExerciseDetailTile extends ConsumerWidget {
         ? localizedMuscleGroupName(exerciseEntity.muscleGroup, l10n)
         : '';
 
-    return Card(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AthlosSpacing.sm,
-        vertical: AthlosSpacing.xs,
+    final isInGroup = isGroupedWithPrev || isGroupedWithNext;
+    final groupColor = isInGroup && groupColorIndex != null
+        ? supersetColorFor(groupColorIndex!, colorScheme)
+        : null;
+
+    final card = Card(
+      margin: EdgeInsets.only(
+        left: AthlosSpacing.sm,
+        right: AthlosSpacing.sm,
+        top: isGroupedWithPrev ? 1 : AthlosSpacing.xs,
+        bottom: isGroupedWithNext ? 1 : AthlosSpacing.xs,
       ),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: colorScheme.primaryContainer,
-          child: Text(
-            '$index',
-            style: textTheme.titleSmall?.copyWith(
-              color: colorScheme.onPrimaryContainer,
+      shape: RoundedRectangleBorder(
+        borderRadius: AthlosRadius.mdAll,
+        side: groupColor != null
+            ? BorderSide(color: groupColor.withValues(alpha: 0.4))
+            : BorderSide.none,
+      ),
+      child: Container(
+        decoration: groupColor != null
+            ? BoxDecoration(
+                border: Border(
+                  left: BorderSide(color: groupColor, width: 3),
+                ),
+              )
+            : null,
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: groupColor?.withValues(alpha: 0.15) ??
+                colorScheme.primaryContainer,
+            child: Text(
+              '$index',
+              style: textTheme.titleSmall?.copyWith(
+                color: groupColor ?? colorScheme.onPrimaryContainer,
+              ),
             ),
           ),
-        ),
-        title: Text(displayName),
-        subtitle: Text(
-          groupName.isNotEmpty
-              ? '$groupName  •  ${exercise.sets}×${exercise.reps}  •  ${exercise.restSeconds}s'
-              : '${exercise.sets}×${exercise.reps}  •  ${exercise.restSeconds}s',
+          title: Row(
+            children: [
+              Expanded(child: Text(displayName)),
+              if (isInGroup && !isGroupedWithPrev)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AthlosSpacing.sm,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: groupColor?.withValues(alpha: 0.12),
+                    borderRadius: AthlosRadius.smAll,
+                  ),
+                  child: Text(
+                    l10n.supersetLabel,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: groupColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          subtitle: Text(
+            groupName.isNotEmpty
+                ? '$groupName  •  ${exercise.sets}×${exercise.reps}  •  ${exercise.restSeconds}s'
+                : '${exercise.sets}×${exercise.reps}  •  ${exercise.restSeconds}s',
+          ),
         ),
       ),
     );
+
+    return card;
   }
 }

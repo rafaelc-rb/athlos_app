@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -12,6 +13,7 @@ import '../../features/profile/domain/enums/body_aesthetic.dart';
 import '../../features/profile/domain/enums/selected_module.dart';
 import '../../features/profile/domain/enums/training_goal.dart';
 import '../../features/profile/domain/enums/training_style.dart';
+import '../../features/training/data/datasources/dev_seeder.dart';
 import '../../features/training/data/datasources/equipment_seeder.dart';
 import '../../features/training/data/datasources/exercise_seeder.dart';
 import '../../features/training/data/datasources/daos/equipment_dao.dart';
@@ -65,7 +67,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -73,6 +75,7 @@ class AppDatabase extends _$AppDatabase {
           await m.createAll();
           await seedEquipments(this);
           await seedExercises(this);
+          if (kDebugMode) await seedDevData(this);
         },
         onUpgrade: (m, from, to) async {
           // TODO(pre-release): Replace with incremental versioned migrations
@@ -83,6 +86,7 @@ class AppDatabase extends _$AppDatabase {
           await m.createAll();
           await seedEquipments(this);
           await seedExercises(this);
+          if (kDebugMode) await seedDevData(this);
         },
       );
 }

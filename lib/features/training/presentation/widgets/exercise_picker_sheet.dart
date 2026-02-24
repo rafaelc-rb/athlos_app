@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
@@ -10,6 +11,16 @@ import '../helpers/equipment_l10n.dart';
 import '../helpers/exercise_l10n.dart';
 import '../providers/equipment_notifier.dart';
 import '../providers/exercise_notifier.dart';
+
+final _placeholderExercises = List.generate(
+  8,
+  (i) => Exercise(
+    id: i,
+    name: 'Placeholder exercise',
+    muscleGroup: MuscleGroup.chest,
+    isVerified: true,
+  ),
+);
 
 /// Bottom sheet that lets the user search and pick an exercise.
 ///
@@ -136,106 +147,107 @@ class _ExercisePickerBodyState extends ConsumerState<_ExercisePickerBody> {
         ),
         const SizedBox(height: AthlosSpacing.sm),
         Expanded(
-          child: exercisesAsync.when(
-            loading: () =>
-                const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('$e')),
-            data: (exercises) {
-              final equipmentMap =
-                  equipmentMapAsync.value ?? <int, List<int>>{};
-              final userEquipment =
-                  userEquipmentAsync.value ?? <int>{};
-              final allEquipment =
-                  allEquipmentAsync.value ?? [];
-              final equipmentById = {
-                for (final e in allEquipment) e.id: e,
-              };
+          child: () {
+            if (exercisesAsync.hasError) {
+              return Center(child: Text('${exercisesAsync.error}'));
+            }
+            final exercises =
+                exercisesAsync.value ?? _placeholderExercises;
+            final equipmentMap =
+                equipmentMapAsync.value ?? <int, List<int>>{};
+            final userEquipment =
+                userEquipmentAsync.value ?? <int>{};
+            final allEquipment =
+                allEquipmentAsync.value ?? [];
+            final equipmentById = {
+              for (final e in allEquipment) e.id: e,
+            };
 
-              final filtered = exercises.where((ex) {
-                if (_selectedGroup != null &&
-                    ex.muscleGroup != _selectedGroup) {
+            final filtered = exercises.where((ex) {
+              if (_selectedGroup != null &&
+                  ex.muscleGroup != _selectedGroup) {
+                return false;
+              }
+              if (_query.isNotEmpty) {
+                final name = localizedExerciseName(
+                  ex.name,
+                  isVerified: ex.isVerified,
+                  l10n: l10n,
+                ).toLowerCase();
+                if (!name.contains(_query)) return false;
+              }
+              if (_isOnlyMyEquipment) {
+                final required = equipmentMap[ex.id] ?? [];
+                if (required.any((id) => !userEquipment.contains(id))) {
                   return false;
                 }
-                if (_query.isNotEmpty) {
-                  final name = localizedExerciseName(
-                    ex.name,
-                    isVerified: ex.isVerified,
-                    l10n: l10n,
-                  ).toLowerCase();
-                  if (!name.contains(_query)) return false;
-                }
-                if (_isOnlyMyEquipment) {
-                  final required = equipmentMap[ex.id] ?? [];
-                  if (required.any((id) => !userEquipment.contains(id))) {
-                    return false;
-                  }
-                }
-                return true;
-              }).toList();
-
-              if (filtered.isEmpty) {
-                return Center(
-                  child: Text(
-                    l10n.emptyExercises,
-                    style: textTheme.bodyLarge?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                );
               }
+              return true;
+            }).toList();
 
-              return ListView.builder(
-                controller: widget.scrollController,
-                itemCount: filtered.length,
-                itemBuilder: (context, index) {
-                  final ex = filtered[index];
-                  final displayName = localizedExerciseName(
-                    ex.name,
-                    isVerified: ex.isVerified,
-                    l10n: l10n,
-                  );
-                  final groupName =
-                      localizedMuscleGroupName(ex.muscleGroup, l10n);
-
-                  final reqIds = equipmentMap[ex.id] ?? [];
-                  final equipNames = reqIds
-                      .map((id) {
-                        final eq = equipmentById[id];
-                        if (eq == null) return null;
-                        return localizedEquipmentName(
-                          eq.name,
-                          isVerified: eq.isVerified,
+            return Skeletonizer(
+              enabled: exercisesAsync.isLoading,
+              child: filtered.isEmpty
+                  ? Center(
+                      child: Text(
+                        l10n.emptyExercises,
+                        style: textTheme.bodyLarge?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: widget.scrollController,
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) {
+                        final ex = filtered[index];
+                        final displayName = localizedExerciseName(
+                          ex.name,
+                          isVerified: ex.isVerified,
                           l10n: l10n,
                         );
-                      })
-                      .whereType<String>()
-                      .toList();
+                        final groupName =
+                            localizedMuscleGroupName(ex.muscleGroup, l10n);
 
-                  final subtitle = equipNames.isEmpty
-                      ? groupName
-                      : '$groupName  •  ${equipNames.join(', ')}';
+                        final reqIds = equipmentMap[ex.id] ?? [];
+                        final equipNames = reqIds
+                            .map((id) {
+                              final eq = equipmentById[id];
+                              if (eq == null) return null;
+                              return localizedEquipmentName(
+                                eq.name,
+                                isVerified: eq.isVerified,
+                                l10n: l10n,
+                              );
+                            })
+                            .whereType<String>()
+                            .toList();
 
-                  final hasMissing = reqIds
-                      .any((id) => !userEquipment.contains(id));
+                        final subtitle = equipNames.isEmpty
+                            ? groupName
+                            : '$groupName  •  ${equipNames.join(', ')}';
 
-                  return ListTile(
-                    leading: hasMissing
-                        ? Icon(Icons.warning_amber_rounded,
-                            color: colorScheme.error, size: 20)
-                        : null,
-                    title: Text(displayName),
-                    subtitle: Text(
-                      subtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                        final hasMissing = reqIds
+                            .any((id) => !userEquipment.contains(id));
+
+                        return ListTile(
+                          leading: hasMissing
+                              ? Icon(Icons.warning_amber_rounded,
+                                  color: colorScheme.error, size: 20)
+                              : null,
+                          title: Text(displayName),
+                          subtitle: Text(
+                            subtitle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: const Icon(Icons.add_circle_outline),
+                          onTap: () => Navigator.of(context).pop(ex),
+                        );
+                      },
                     ),
-                    trailing: const Icon(Icons.add_circle_outline),
-                    onTap: () => Navigator.of(context).pop(ex),
-                  );
-                },
-              );
-            },
-          ),
+            );
+          }(),
         ),
       ],
     );

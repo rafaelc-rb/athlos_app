@@ -3,6 +3,9 @@
 /// All route paths live here so that navigation is consistent and
 /// refactoring a path requires changing only one place.
 abstract final class RoutePaths {
+  // Splash
+  static const splash = '/splash';
+
   // Hub
   static const hub = '/';
 

@@ -68,6 +68,8 @@ lib/
 │   │   ├── feedback/                  # Dialogs, empty states, loading indicators
 │   │   ├── layout/                    # Section headers, spacing helpers
 │   │   └── overlays/                  # Bottom sheets, modals
+│   ├── presentation/
+│   │   └── screens/                   # Core screens (SplashScreen)
 │   ├── router/                        # go_router configuration
 │   └── utils/                         # Helpers and constants
 ├── features/
@@ -425,11 +427,13 @@ For large lists (e.g. exercise catalog), use a paginated provider:
 
 Hub-based architecture using go_router:
 
+- **Splash** — shown at `/splash` while the app resolves initial async state (e.g. `hasProfileProvider`). GoRouter redirect navigates away once resolved. `FlutterNativeSplash` covers the gap before the Flutter engine is ready.
 - **Hub** — central screen with module cards. Uses a simple `GoRoute`.
 - **Module shells** — each module uses `ShellRoute` with its own `NavigationBar` (bottom bar). Tabs are specific to each module. Data is preserved across tab switches via Riverpod providers; `StatefulShellRoute` can be adopted later if tabs need to preserve local widget state (scroll position, text fields, etc.).
 - **Profile** — accessible from the Hub's app bar, not tied to any module.
 
 ```
+/splash                 → Splash (startup loading)
 /                       → Hub (Olympus)
 /profile                → User profile
 /training               → Training shell

@@ -12,6 +12,7 @@ import '../../features/training/presentation/screens/training_shell.dart';
 import '../../features/training/presentation/screens/workout_detail_screen.dart';
 import '../../features/training/presentation/screens/workout_execution_screen.dart';
 import '../../features/training/presentation/screens/workout_form_screen.dart';
+import '../presentation/screens/splash_screen.dart';
 import '../providers/last_module_provider.dart';
 import 'route_paths.dart';
 
@@ -27,13 +28,22 @@ GoRouter appRouter(Ref ref) {
   ref.onDispose(refreshNotifier.dispose);
 
   return GoRouter(
-    initialLocation: RoutePaths.profileSetup,
+    initialLocation: RoutePaths.splash,
     refreshListenable: refreshNotifier,
     redirect: (context, state) {
       final hasProfileAsync = ref.read(hasProfileProvider);
-      final isOnSetup = state.matchedLocation == RoutePaths.profileSetup;
+      final location = state.matchedLocation;
+      final isOnSplash = location == RoutePaths.splash;
+      final isOnSetup = location == RoutePaths.profileSetup;
 
-      if (hasProfileAsync.isLoading) return null;
+      if (hasProfileAsync.isLoading) {
+        return isOnSplash ? null : RoutePaths.splash;
+      }
+
+      if (isOnSplash) {
+        final hasProfile = hasProfileAsync.value ?? false;
+        return hasProfile ? RoutePaths.hub : RoutePaths.profileSetup;
+      }
 
       final hasProfile = hasProfileAsync.value ?? false;
 
@@ -42,7 +52,7 @@ GoRouter appRouter(Ref ref) {
 
       if (!hasRestoredModule &&
           hasProfile &&
-          state.matchedLocation == RoutePaths.hub) {
+          location == RoutePaths.hub) {
         hasRestoredModule = true;
         if (lastModule != null) return lastModule;
       }
@@ -50,6 +60,12 @@ GoRouter appRouter(Ref ref) {
       return null;
     },
     routes: [
+      // Splash — shown while async state resolves
+      GoRoute(
+        path: RoutePaths.splash,
+        builder: (context, state) => const SplashScreen(),
+      ),
+
       // Hub (Olympus) — main entry point
       GoRoute(
         path: RoutePaths.hub,

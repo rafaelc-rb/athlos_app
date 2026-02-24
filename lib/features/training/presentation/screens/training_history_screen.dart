@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/athlos_radius.dart';
@@ -11,6 +12,16 @@ import '../../domain/entities/workout.dart';
 import '../../domain/entities/workout_execution.dart';
 import '../providers/workout_execution_notifier.dart';
 import '../providers/workout_notifier.dart';
+
+final _placeholderExecutions = List.generate(
+  6,
+  (i) => WorkoutExecution(
+    id: i,
+    workoutId: 0,
+    startedAt: DateTime(2024),
+    finishedAt: DateTime(2024).add(const Duration(minutes: 45)),
+  ),
+);
 
 /// Training module — History tab.
 ///
@@ -34,52 +45,58 @@ class TrainingHistoryScreen extends ConsumerWidget {
     ];
     final workoutById = {for (final w in allWorkouts) w.id: w};
 
-    return executionsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('$e')),
-      data: (executions) {
-        if (executions.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.history_outlined,
-                  size: 64,
-                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                ),
-                const SizedBox(height: AthlosSpacing.md),
-                Text(
-                  l10n.emptyHistory,
-                  style: textTheme.titleMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: AthlosSpacing.sm),
-                Text(
-                  l10n.emptyHistoryHint,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
+    if (executionsAsync.hasError) {
+      return Center(child: Text(l10n.genericError));
+    }
 
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AthlosSpacing.sm,
-            vertical: AthlosSpacing.sm,
-          ),
-          itemCount: executions.length,
-          itemBuilder: (context, index) => _ExecutionCard(
-            key: ValueKey(executions[index].id),
-            execution: executions[index],
-            workout: workoutById[executions[index].workoutId],
-          ),
-        );
-      },
+    final isLoading = executionsAsync.isLoading;
+    final executions = executionsAsync.value;
+
+    if (!isLoading && (executions?.isEmpty ?? true)) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.history_outlined,
+              size: 64,
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+            ),
+            const SizedBox(height: AthlosSpacing.md),
+            Text(
+              l10n.emptyHistory,
+              style: textTheme.titleMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AthlosSpacing.sm),
+            Text(
+              l10n.emptyHistoryHint,
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final resolvedExecutions = executions ?? _placeholderExecutions;
+
+    return Skeletonizer(
+      enabled: isLoading,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AthlosSpacing.sm,
+          vertical: AthlosSpacing.sm,
+        ),
+        itemCount: resolvedExecutions.length,
+        itemBuilder: (context, index) => _ExecutionCard(
+          key: ValueKey(resolvedExecutions[index].id),
+          execution: resolvedExecutions[index],
+          workout: workoutById[resolvedExecutions[index].workoutId],
+        ),
+      ),
     );
   }
 }

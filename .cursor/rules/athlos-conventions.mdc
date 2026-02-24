@@ -111,6 +111,16 @@ See `docs/architecture.md` for full structure. Key rules:
 - Use `SizedBox` instead of `Container` when only size is needed
 - Prefer `gap` package or `SizedBox` over `Padding` for spacing between widgets
 
+## Loading States
+
+- **Primary content**: use `Skeletonizer(enabled: asyncValue.isLoading)` wrapping the real widget with placeholder data
+  - Placeholder data lives in the **presentation layer** (local constant in the screen file)
+  - Domain entities must NOT have `.fake()` factories or test-only constructors
+  - Pattern: `if (hasError) → error widget; else → Skeletonizer(enabled: isLoading, child: content(data ?? placeholders))`
+- **Inline sections** (chips, badges, small indicators): keep `CircularProgressIndicator(strokeWidth: 2)`
+- **Action-in-progress** (save buttons, FAB): keep `CircularProgressIndicator` inside the button
+- **App startup**: `SplashScreen` at `/splash` route handles the loading → redirect flow via GoRouter
+
 ## Widget Organization
 
 - Global reusable widgets go in `core/widgets/<type>/` organized by type:

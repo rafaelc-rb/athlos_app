@@ -1,15 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../domain/entities/exercise.dart';
 import '../../domain/entities/execution_set.dart';
+import '../../domain/entities/workout_execution.dart';
 import '../helpers/exercise_l10n.dart';
 import '../providers/exercise_notifier.dart';
 import '../providers/workout_execution_notifier.dart';
 import '../providers/workout_notifier.dart';
+
+final _placeholderExecution = WorkoutExecution(
+  id: 0,
+  workoutId: 0,
+  startedAt: DateTime(0),
+);
+
+final _placeholderSets = List.generate(
+  4,
+  (i) => ExecutionSet(
+    id: i,
+    executionId: 0,
+    exerciseId: 0,
+    setNumber: i + 1,
+    plannedReps: 10,
+    reps: 10,
+    weight: 20,
+    isCompleted: true,
+  ),
+);
 
 class ExecutionDetailScreen extends ConsumerWidget {
   final int executionId;
@@ -26,172 +49,205 @@ class ExecutionDetailScreen extends ConsumerWidget {
     final setsAsync = ref.watch(executionSetsWithSegmentsProvider(executionId));
     final exercisesAsync = ref.watch(exerciseListProvider);
 
-    return executionsAsync.when(
-      loading: () => Scaffold(
-        appBar: AppBar(),
-        body: const Center(child: CircularProgressIndicator()),
-      ),
-      error: (e, _) => Scaffold(
+    final executions = executionsAsync.value;
+    final execution =
+        executions?.where((e) => e.id == executionId).firstOrNull;
+
+    if (executionsAsync.hasError) {
+      return Scaffold(
         appBar: AppBar(),
         body: Center(child: Text(l10n.genericError)),
+      );
+    }
+
+    if (!executionsAsync.isLoading && execution == null) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(child: Text(l10n.genericError)),
+      );
+    }
+
+    final workoutAsync = execution != null
+        ? ref.watch(workoutByIdProvider(execution.workoutId))
+        : null;
+    final workoutName =
+        workoutAsync?.value?.name ?? l10n.unknownWorkout;
+
+    if (setsAsync.hasError) {
+      return Scaffold(
+        appBar: AppBar(title: Text(workoutName)),
+        body: Center(child: Text(l10n.genericError)),
+      );
+    }
+
+    final sets = setsAsync.value ?? _placeholderSets;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(workoutName),
       ),
-      data: (executions) {
-        final execution =
-            executions.where((e) => e.id == executionId).firstOrNull;
+      body: Skeletonizer(
+        enabled: setsAsync.isLoading,
+        child: _ExecutionDetailBody(
+          execution: execution ?? _placeholderExecution,
+          sets: sets,
+          exercisesAsync: exercisesAsync,
+          colorScheme: colorScheme,
+          textTheme: textTheme,
+          l10n: l10n,
+        ),
+      ),
+    );
+  }
+}
 
-        if (execution == null) {
-          return Scaffold(
-            appBar: AppBar(),
-            body: Center(child: Text(l10n.genericError)),
-          );
+class _ExecutionDetailBody extends StatelessWidget {
+  final WorkoutExecution execution;
+  final List<ExecutionSet> sets;
+  final AsyncValue<List<Exercise>> exercisesAsync;
+  final ColorScheme colorScheme;
+  final TextTheme textTheme;
+  final AppLocalizations l10n;
+
+  const _ExecutionDetailBody({
+    required this.execution,
+    required this.sets,
+    required this.exercisesAsync,
+    required this.colorScheme,
+    required this.textTheme,
+    required this.l10n,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final allExercises = exercisesAsync.value ?? <Exercise>[];
+    final exerciseMap = {for (final e in allExercises) e.id: e};
+    final exerciseIds = sets.map((s) => s.exerciseId).toSet().toList();
+
+    double totalVolume = 0;
+    int totalCompletedSets = 0;
+    int totalPlannedSets = sets.length;
+
+    for (final s in sets) {
+      if (s.isCompleted) {
+        totalCompletedSets++;
+        if (s.segments.isNotEmpty) {
+          for (final seg in s.segments) {
+            totalVolume += seg.reps * (seg.weight ?? 0);
+          }
+        } else {
+          totalVolume += s.reps * (s.weight ?? 0);
         }
+      }
+    }
 
-        final workoutAsync =
-            ref.watch(workoutByIdProvider(execution.workoutId));
-        final workoutName = workoutAsync.value?.name ?? l10n.unknownWorkout;
+    final locale = Localizations.localeOf(context).toString();
+    final dateStr =
+        DateFormat.yMMMd(locale).add_Hm().format(execution.startedAt);
+    final duration = execution.duration;
+    String? durationStr;
+    if (duration != null && duration.inMinutes >= 1) {
+      final h = duration.inMinutes ~/ 60;
+      final m = duration.inMinutes % 60;
+      durationStr =
+          h > 0 ? l10n.durationFormat(h, m) : l10n.durationMinutes(m);
+    }
 
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(workoutName),
-          ),
-          body: setsAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text(l10n.genericError)),
-            data: (sets) {
-              final allExercises = exercisesAsync.value ?? [];
-              final exerciseMap = {for (final e in allExercises) e.id: e};
-
-          final exerciseIds = sets.map((s) => s.exerciseId).toSet().toList();
-
-          double totalVolume = 0;
-          int totalCompletedSets = 0;
-          int totalPlannedSets = sets.length;
-
-          for (final s in sets) {
-            if (s.isCompleted) {
-              totalCompletedSets++;
-              if (s.segments.isNotEmpty) {
-                for (final seg in s.segments) {
-                  totalVolume += seg.reps * (seg.weight ?? 0);
-                }
-              } else {
-                totalVolume += s.reps * (s.weight ?? 0);
-              }
-            }
-          }
-
-          final locale = Localizations.localeOf(context).toString();
-          final dateStr = DateFormat.yMMMd(locale).add_Hm().format(execution.startedAt);
-          final duration = execution.duration;
-          String? durationStr;
-          if (duration != null && duration.inMinutes >= 1) {
-            final h = duration.inMinutes ~/ 60;
-            final m = duration.inMinutes % 60;
-            durationStr = h > 0
-                ? l10n.durationFormat(h, m)
-                : l10n.durationMinutes(m);
-          }
-
-          return CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(AthlosSpacing.md),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.calendar_today,
-                              size: 16, color: colorScheme.onSurfaceVariant),
-                          const SizedBox(width: AthlosSpacing.xs),
-                          Text(dateStr,
-                              style: textTheme.bodyMedium?.copyWith(
-                                  color: colorScheme.onSurfaceVariant)),
-                          if (durationStr != null) ...[
-                            const SizedBox(width: AthlosSpacing.md),
-                            Icon(Icons.timer_outlined,
-                                size: 16,
-                                color: colorScheme.onSurfaceVariant),
-                            const SizedBox(width: AthlosSpacing.xs),
-                            Text(durationStr,
-                                style: textTheme.bodyMedium?.copyWith(
-                                    color: colorScheme.onSurfaceVariant)),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: AthlosSpacing.md),
-
-                      // Summary cards
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _SummaryCard(
-                              icon: Icons.check_circle_outline,
-                              label: l10n.setsCompletedOf(
-                                  totalCompletedSets, totalPlannedSets),
-                              color: colorScheme.primary,
-                              colorScheme: colorScheme,
-                              textTheme: textTheme,
-                            ),
-                          ),
-                          const SizedBox(width: AthlosSpacing.sm),
-                          Expanded(
-                            child: _SummaryCard(
-                              icon: Icons.fitness_center,
-                              label: l10n.volumeLabel(
-                                  totalVolume.toStringAsFixed(0)),
-                              color: colorScheme.tertiary,
-                              colorScheme: colorScheme,
-                              textTheme: textTheme,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: AthlosSpacing.lg),
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(AthlosSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today,
+                        size: 16, color: colorScheme.onSurfaceVariant),
+                    const SizedBox(width: AthlosSpacing.xs),
+                    Text(dateStr,
+                        style: textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant)),
+                    if (durationStr != null) ...[
+                      const SizedBox(width: AthlosSpacing.md),
+                      Icon(Icons.timer_outlined,
+                          size: 16,
+                          color: colorScheme.onSurfaceVariant),
+                      const SizedBox(width: AthlosSpacing.xs),
+                      Text(durationStr,
+                          style: textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant)),
                     ],
-                  ),
+                  ],
                 ),
-              ),
+                const SizedBox(height: AthlosSpacing.md),
 
-              // Per-exercise breakdown
-              ...exerciseIds.map((exId) {
-                final exerciseSets =
-                    sets.where((s) => s.exerciseId == exId).toList();
-                final ex = exerciseMap[exId];
-                final name = ex != null
-                    ? localizedExerciseName(ex.name,
-                        isVerified: ex.isVerified, l10n: l10n)
-                    : l10n.unknownExerciseId(exId);
-                final group = ex != null
-                    ? localizedMuscleGroupName(ex.muscleGroup, l10n)
-                    : '';
-
-                return SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: AthlosSpacing.md),
-                    child: _ExerciseBreakdown(
-                      exerciseName: name,
-                      muscleGroup: group,
-                      sets: exerciseSets,
-                      colorScheme: colorScheme,
-                      textTheme: textTheme,
-                      l10n: l10n,
+                // Summary cards
+                Row(
+                  children: [
+                    Expanded(
+                      child: _SummaryCard(
+                        icon: Icons.check_circle_outline,
+                        label: l10n.setsCompletedOf(
+                            totalCompletedSets, totalPlannedSets),
+                        color: colorScheme.primary,
+                        colorScheme: colorScheme,
+                        textTheme: textTheme,
+                      ),
                     ),
-                  ),
-                );
-              }),
+                    const SizedBox(width: AthlosSpacing.sm),
+                    Expanded(
+                      child: _SummaryCard(
+                        icon: Icons.fitness_center,
+                        label: l10n.volumeLabel(
+                            totalVolume.toStringAsFixed(0)),
+                        color: colorScheme.tertiary,
+                        colorScheme: colorScheme,
+                        textTheme: textTheme,
+                      ),
+                    ),
+                  ],
+                ),
 
-              const SliverPadding(
-                  padding: EdgeInsets.only(bottom: AthlosSpacing.xl)),
-            ],
-          );
-            },
+                const SizedBox(height: AthlosSpacing.lg),
+              ],
+            ),
           ),
-        );
-      },
+        ),
+
+        // Per-exercise breakdown
+        ...exerciseIds.map((exId) {
+          final exerciseSets =
+              sets.where((s) => s.exerciseId == exId).toList();
+          final ex = exerciseMap[exId];
+          final name = ex != null
+              ? localizedExerciseName(ex.name,
+                  isVerified: ex.isVerified, l10n: l10n)
+              : l10n.unknownExerciseId(exId);
+          final group = ex != null
+              ? localizedMuscleGroupName(ex.muscleGroup, l10n)
+              : '';
+
+          return SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AthlosSpacing.md),
+              child: _ExerciseBreakdown(
+                exerciseName: name,
+                muscleGroup: group,
+                sets: exerciseSets,
+                colorScheme: colorScheme,
+                textTheme: textTheme,
+                l10n: l10n,
+              ),
+            ),
+          );
+        }),
+
+        const SliverPadding(
+            padding: EdgeInsets.only(bottom: AthlosSpacing.xl)),
+      ],
     );
   }
 }

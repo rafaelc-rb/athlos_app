@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/athlos_radius.dart';
@@ -16,6 +17,16 @@ import '../providers/exercise_notifier.dart';
 import '../widgets/equipment_search_picker.dart';
 import '../widgets/exercise_tile.dart';
 import '../widgets/muscle_group_filter.dart';
+
+final _placeholderExercises = List.generate(
+  8,
+  (i) => Exercise(
+    id: -(i + 1),
+    name: BoneMock.name,
+    muscleGroup: MuscleGroup.chest,
+    muscles: [],
+  ),
+);
 
 /// Training module — Exercises tab (EX-01 to EX-05).
 ///
@@ -91,48 +102,53 @@ class _TrainingExercisesScreenState
           ),
           const Gap(AthlosSpacing.xs),
           Expanded(
-            child: exercisesAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Center(child: Text('$error')),
-              data: (exercises) {
-                final filtered = _filterExercises(exercises, l10n);
+            child: () {
+              if (exercisesAsync.hasError) {
+                return Center(child: Text(l10n.genericError));
+              }
+              final isLoading = exercisesAsync.isLoading;
+              final exercises = exercisesAsync.value ?? [];
+              final filtered =
+                  isLoading ? exercises : _filterExercises(exercises, l10n);
+              final displayList = isLoading ? _placeholderExercises : filtered;
 
-                if (filtered.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(AthlosSpacing.xl),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.sports_gymnastics,
-                            size: 48,
-                            color:
-                                colorScheme.onSurfaceVariant.withAlpha(100),
+              if (!isLoading && filtered.isEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AthlosSpacing.xl),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.sports_gymnastics,
+                          size: 48,
+                          color:
+                              colorScheme.onSurfaceVariant.withAlpha(100),
+                        ),
+                        const Gap(AthlosSpacing.md),
+                        Text(
+                          l10n.emptyExercises,
+                          style: textTheme.titleMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
                           ),
-                          const Gap(AthlosSpacing.md),
-                          Text(
-                            l10n.emptyExercises,
-                            style: textTheme.titleMedium?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  );
-                }
+                  ),
+                );
+              }
 
-                return ListView.separated(
+              return Skeletonizer(
+                enabled: isLoading,
+                child: ListView.separated(
                   padding: const EdgeInsets.only(bottom: AthlosSpacing.fabClearance),
-                  itemCount: filtered.length,
+                  itemCount: displayList.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
-                    final exercise = filtered[index];
+                    final exercise = displayList[index];
                     final musclesSummary = exercise.muscles
                         .map((f) => localizedTargetMuscle(f.muscle, l10n))
                         .join(', ');
-
                     return ExerciseTile(
                       key: ValueKey(exercise.id),
                       displayName: localizedExerciseName(
@@ -144,14 +160,16 @@ class _TrainingExercisesScreenState
                           exercise.muscleGroup, l10n),
                       targetMusclesLabel:
                           musclesSummary.isNotEmpty ? musclesSummary : null,
-                      onTap: () => context.push(
-                        '${RoutePaths.trainingExercises}/${exercise.id}',
-                      ),
+                      onTap: isLoading
+                          ? null
+                          : () => context.push(
+                                '${RoutePaths.trainingExercises}/${exercise.id}',
+                              ),
                     );
                   },
-                );
-              },
-            ),
+                ),
+              );
+            }(),
           ),
         ],
       ),

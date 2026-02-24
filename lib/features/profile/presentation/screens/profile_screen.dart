@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
@@ -61,21 +62,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final profileAsync = ref.watch(profileProvider);
+    final resolved =
+        profileAsync.value ?? const UserProfile(id: 0);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.profile),
       ),
-      body: profileAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('$error')),
-        data: (profile) {
-          final resolved = profile ?? const UserProfile(id: 0);
-          return _isEditing
-              ? _buildEditView(resolved, l10n)
-              : _buildReadView(resolved, l10n);
-        },
-      ),
+      body: profileAsync.hasError
+          ? Center(child: Text(l10n.genericError))
+          : Skeletonizer(
+              enabled: profileAsync.isLoading,
+              child: _isEditing
+                  ? _buildEditView(resolved, l10n)
+                  : _buildReadView(resolved, l10n),
+            ),
     );
   }
 

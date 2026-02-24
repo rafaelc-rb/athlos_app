@@ -1,16 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../domain/entities/workout.dart';
 import '../../domain/entities/workout_exercise.dart';
 import '../helpers/exercise_l10n.dart';
 import '../providers/exercise_notifier.dart';
 import '../providers/workout_notifier.dart';
 import '../widgets/workout_exercise_tile.dart' show supersetColorFor;
+
+final _placeholderExercises = List.generate(
+  3,
+  (i) => WorkoutExercise(
+    workoutId: 0,
+    exerciseId: 0,
+    order: i,
+    sets: 3,
+    reps: 10,
+    restSeconds: 60,
+  ),
+);
+final _placeholderWorkout = Workout(
+  id: 0,
+  name: '',
+  description: null,
+  sortOrder: null,
+  isArchived: false,
+  createdAt: DateTime(0),
+);
 
 /// Detail view of a single workout.
 class WorkoutDetailScreen extends ConsumerWidget {
@@ -28,35 +50,35 @@ class WorkoutDetailScreen extends ConsumerWidget {
     final exercisesAsync = ref.watch(workoutExercisesProvider(workoutId));
     final nextWorkout = ref.watch(nextWorkoutProvider);
 
-    return workoutAsync.when(
-      loading: () => Scaffold(
-        appBar: AppBar(),
-        body: const Center(child: CircularProgressIndicator()),
-      ),
-      error: (e, _) => Scaffold(
-        appBar: AppBar(),
-        body: Center(child: Text('$e')),
-      ),
-      data: (workout) {
-        if (workout == null) {
-          return Scaffold(
-            appBar: AppBar(),
-            body: Center(child: Text(l10n.workoutNotFound)),
-          );
-        }
+    final workout = workoutAsync.value;
 
-        final isNext = nextWorkout?.id == workout.id;
+    if (workoutAsync.hasError) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(child: Text(l10n.genericError)),
+      );
+    }
 
-        return Scaffold(
+    if (!workoutAsync.isLoading && workout == null) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(child: Text(l10n.workoutNotFound)),
+      );
+    }
+
+    final displayWorkout = workout ?? _placeholderWorkout;
+    final isNext = nextWorkout?.id == displayWorkout.id;
+
+    return Scaffold(
           appBar: AppBar(
-            title: Text(workout.name),
+            title: Text(displayWorkout.name),
             actions: [
-              if (!workout.isArchived)
+              if (!displayWorkout.isArchived)
                 IconButton(
                   icon: const Icon(Icons.edit_outlined),
                   tooltip: l10n.edit,
                   onPressed: () => context.push(
-                    '${RoutePaths.trainingWorkouts}/${workout.id}/edit',
+                    '${RoutePaths.trainingWorkouts}/${displayWorkout.id}/edit',
                   ),
                 ),
               PopupMenuButton<String>(
@@ -66,7 +88,7 @@ class WorkoutDetailScreen extends ConsumerWidget {
                       try {
                         await ref
                             .read(workoutListProvider.notifier)
-                            .archiveWorkout(workout.id);
+                            .archiveWorkout(displayWorkout.id);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text(l10n.workoutArchived)),
@@ -85,7 +107,7 @@ class WorkoutDetailScreen extends ConsumerWidget {
                       try {
                         await ref
                             .read(workoutListProvider.notifier)
-                            .unarchiveWorkout(workout.id);
+                            .unarchiveWorkout(displayWorkout.id);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text(l10n.workoutUnarchived)),
@@ -104,7 +126,7 @@ class WorkoutDetailScreen extends ConsumerWidget {
                       try {
                         await ref
                             .read(workoutListProvider.notifier)
-                            .duplicateWorkout(workout.id,
+                            .duplicateWorkout(displayWorkout.id,
                                 nameSuffix: l10n.workoutCopySuffix);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -124,7 +146,7 @@ class WorkoutDetailScreen extends ConsumerWidget {
                   }
                 },
                 itemBuilder: (context) => [
-                  if (!workout.isArchived)
+                  if (!displayWorkout.isArchived)
                     PopupMenuItem(
                       value: 'archive',
                       child: ListTile(
@@ -168,10 +190,12 @@ class WorkoutDetailScreen extends ConsumerWidget {
               ),
             ],
           ),
-          body: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (isNext)
+          body: Skeletonizer(
+            enabled: workoutAsync.isLoading,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (isNext)
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
@@ -193,8 +217,8 @@ class WorkoutDetailScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-              if (workout.description != null &&
-                  workout.description!.isNotEmpty)
+              if (displayWorkout.description != null &&
+                  displayWorkout.description!.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
                     AthlosSpacing.md,
@@ -203,7 +227,7 @@ class WorkoutDetailScreen extends ConsumerWidget {
                     AthlosSpacing.md,
                   ),
                   child: Text(
-                    workout.description!,
+                    displayWorkout.description!,
                     style: textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
@@ -220,64 +244,70 @@ class WorkoutDetailScreen extends ConsumerWidget {
               ),
               const SizedBox(height: AthlosSpacing.sm),
               Expanded(
-                child: exercisesAsync.when(
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('$e')),
-                  data: (exercises) {
-                    if (exercises.isEmpty) {
-                      return Center(
-                        child: Text(
-                          l10n.emptyWorkoutExercises,
-                          style: textTheme.bodyLarge?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
+                child: () {
+                  if (exercisesAsync.hasError) {
+                    return Center(
+                        child: Text('${exercisesAsync.error}'));
+                  }
+                  final exercises = exercisesAsync.value ??
+                      _placeholderExercises;
+                  return Skeletonizer(
+                    enabled: exercisesAsync.isLoading,
+                    child: exercises.isEmpty
+                        ? Center(
+                            child: Text(
+                              l10n.emptyWorkoutExercises,
+                              style: textTheme.bodyLarge?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          )
+                        : Builder(
+                            builder: (context) {
+                              final groupColorMap = <int, int>{};
+                              var nextColorIdx = 0;
+                              for (final ex in exercises) {
+                                if (ex.groupId != null &&
+                                    !groupColorMap.containsKey(ex.groupId)) {
+                                  groupColorMap[ex.groupId!] = nextColorIdx++;
+                                }
+                              }
+                              return ListView.builder(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AthlosSpacing.sm,
+                                ),
+                                itemCount: exercises.length,
+                                itemBuilder: (context, index) {
+                                  final ex = exercises[index];
+                                  final gid = ex.groupId;
+                                  final isGroupedWithPrev = index > 0 &&
+                                      gid != null &&
+                                      exercises[index - 1].groupId == gid;
+                                  final isGroupedWithNext =
+                                      index < exercises.length - 1 &&
+                                          gid != null &&
+                                          exercises[index + 1].groupId == gid;
+                                  final groupColorIndex =
+                                      gid != null ? groupColorMap[gid] : null;
+
+                                  return _ExerciseDetailTile(
+                                    exercise: ex,
+                                    index: index + 1,
+                                    isGroupedWithPrev: isGroupedWithPrev,
+                                    isGroupedWithNext: isGroupedWithNext,
+                                    groupColorIndex: groupColorIndex,
+                                  );
+                                },
+                              );
+                            },
                           ),
-                        ),
-                      );
-                    }
-
-                    final groupColorMap = <int, int>{};
-                    var nextColorIdx = 0;
-                    for (final ex in exercises) {
-                      if (ex.groupId != null &&
-                          !groupColorMap.containsKey(ex.groupId)) {
-                        groupColorMap[ex.groupId!] = nextColorIdx++;
-                      }
-                    }
-
-                    return ListView.builder(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AthlosSpacing.sm,
-                      ),
-                      itemCount: exercises.length,
-                      itemBuilder: (context, index) {
-                        final ex = exercises[index];
-                        final gid = ex.groupId;
-                        final isGroupedWithPrev = index > 0 &&
-                            gid != null &&
-                            exercises[index - 1].groupId == gid;
-                        final isGroupedWithNext =
-                            index < exercises.length - 1 &&
-                                gid != null &&
-                                exercises[index + 1].groupId == gid;
-                        final groupColorIndex =
-                            gid != null ? groupColorMap[gid] : null;
-
-                        return _ExerciseDetailTile(
-                          exercise: ex,
-                          index: index + 1,
-                          isGroupedWithPrev: isGroupedWithPrev,
-                          isGroupedWithNext: isGroupedWithNext,
-                          groupColorIndex: groupColorIndex,
-                        );
-                      },
-                    );
-                  },
-                ),
+                  );
+                }(),
               ),
             ],
           ),
-          bottomNavigationBar: workout.isArchived
+        ),
+        bottomNavigationBar: displayWorkout.isArchived
               ? null
               : SafeArea(
                   child: Padding(
@@ -289,8 +319,6 @@ class WorkoutDetailScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-        );
-      },
     );
   }
 

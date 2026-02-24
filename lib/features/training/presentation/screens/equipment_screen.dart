@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
@@ -10,6 +11,16 @@ import '../../domain/enums/equipment_category.dart';
 import '../helpers/equipment_l10n.dart';
 import '../providers/equipment_notifier.dart';
 import '../widgets/equipment_tile.dart';
+
+final _placeholderEquipment = List.generate(
+  8,
+  (i) => Equipment(
+    id: i,
+    name: 'Placeholder equipment',
+    category: EquipmentCategory.accessories,
+    isVerified: true,
+  ),
+);
 
 /// Equipment screen (E-01, E-02, E-03).
 ///
@@ -75,6 +86,9 @@ class _EquipmentScreenState extends ConsumerState<EquipmentScreen> {
 
     final equipmentAsync = ref.watch(equipmentListProvider);
     final userIdsAsync = ref.watch(userEquipmentIdsProvider);
+    final allEquipment =
+        equipmentAsync.value ?? _placeholderEquipment;
+    final userIds = userIdsAsync.value ?? <int>{};
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.equipmentScreenTitle)),
@@ -83,48 +97,58 @@ class _EquipmentScreenState extends ConsumerState<EquipmentScreen> {
         tooltip: l10n.addEquipment,
         child: const Icon(Icons.add),
       ),
-      body: equipmentAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('$error')),
-        data: (allEquipment) {
-          final userIds = userIdsAsync.value ?? <int>{};
-
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(AthlosSpacing.md, AthlosSpacing.sm, AthlosSpacing.md, 0),
-                child: TextField(
-                  controller: _searchController,
-                  focusNode: _searchFocus,
-                  decoration: InputDecoration(
-                    hintText: l10n.searchEquipment,
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _isCatalogOpen
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: _closeCatalog,
-                          )
-                        : null,
-                    isDense: true,
-                    border: OutlineInputBorder(
-                      borderRadius: AthlosRadius.mdAll,
+      body: equipmentAsync.hasError
+          ? Center(child: Text(l10n.genericError))
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                      AthlosSpacing.md, AthlosSpacing.sm,
+                      AthlosSpacing.md, 0),
+                  child: TextField(
+                    controller: _searchController,
+                    focusNode: _searchFocus,
+                    decoration: InputDecoration(
+                      hintText: l10n.searchEquipment,
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _isCatalogOpen
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: _closeCatalog,
+                            )
+                          : null,
+                      isDense: true,
+                      border: OutlineInputBorder(
+                        borderRadius: AthlosRadius.mdAll,
+                      ),
                     ),
+                    onChanged: (value) =>
+                        setState(() => _searchQuery = value),
                   ),
-                  onChanged: (value) => setState(() => _searchQuery = value),
                 ),
-              ),
-              const Gap(AthlosSpacing.sm),
-              Expanded(
-                child: _isCatalogOpen
-                    ? _buildCatalog(allEquipment, userIds, l10n, colorScheme,
-                        textTheme)
-                    : _buildUserList(allEquipment, userIds, l10n, colorScheme,
-                        textTheme),
-              ),
-            ],
-          );
-        },
-      ),
+                const Gap(AthlosSpacing.sm),
+                Expanded(
+                  child: Skeletonizer(
+                    enabled: equipmentAsync.isLoading,
+                    child: _isCatalogOpen
+                        ? _buildCatalog(
+                            allEquipment,
+                            userIds,
+                            l10n,
+                            colorScheme,
+                            textTheme,
+                          )
+                        : _buildUserList(
+                            allEquipment,
+                            userIds,
+                            l10n,
+                            colorScheme,
+                            textTheme,
+                          ),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 
@@ -313,8 +337,9 @@ class _EquipmentScreenState extends ConsumerState<EquipmentScreen> {
     Set<int> userIds,
     AppLocalizations l10n,
     ColorScheme colorScheme,
-    TextTheme textTheme,
-  ) {
+    TextTheme textTheme, {
+    bool isLoading = false,
+  }) {
     final query = _searchQuery.toLowerCase();
     final results = _sortAlphabetically(
       allEquipment.where((e) {
@@ -356,7 +381,7 @@ class _EquipmentScreenState extends ConsumerState<EquipmentScreen> {
           category: localizedCategoryName(equipment.category, l10n),
           trailing: IconButton(
             icon: Icon(Icons.add_circle_outline, color: colorScheme.primary),
-            onPressed: () => _toggleEquipment(equipment.id),
+            onPressed: isLoading ? null : () => _toggleEquipment(equipment.id),
           ),
         );
       },

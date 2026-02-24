@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/athlos_radius.dart';
@@ -8,6 +9,15 @@ import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/workout.dart';
 import '../providers/workout_notifier.dart';
+
+final _placeholderWorkouts = List.generate(
+  6,
+  (i) => Workout(
+    id: -(i + 1),
+    name: BoneMock.name,
+    createdAt: DateTime(2024),
+  ),
+);
 
 /// Training module — Workouts tab.
 ///
@@ -26,49 +36,51 @@ class TrainingWorkoutsScreen extends ConsumerWidget {
     final archivedAsync = ref.watch(archivedWorkoutListProvider);
 
     return Scaffold(
-      body: workoutsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
-        data: (workouts) {
-          if (workouts.isEmpty &&
-              (archivedAsync.value == null ||
-                  archivedAsync.value!.isEmpty)) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.fitness_center_outlined,
-                    size: 64,
-                    color:
-                        colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+      body: () {
+        if (workoutsAsync.hasError) {
+          return Center(child: Text(l10n.genericError));
+        }
+        final isLoading = workoutsAsync.isLoading;
+        final workouts = workoutsAsync.value ?? [];
+        if (!isLoading &&
+            workouts.isEmpty &&
+            (archivedAsync.value == null || archivedAsync.value!.isEmpty)) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.fitness_center_outlined,
+                  size: 64,
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                ),
+                const SizedBox(height: AthlosSpacing.md),
+                Text(
+                  l10n.emptyWorkouts,
+                  style: textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
                   ),
-                  const SizedBox(height: AthlosSpacing.md),
-                  Text(
-                    l10n.emptyWorkouts,
-                    style: textTheme.titleMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                ),
+                const SizedBox(height: AthlosSpacing.sm),
+                Text(
+                  l10n.emptyWorkoutsHint,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
                   ),
-                  const SizedBox(height: AthlosSpacing.sm),
-                  Text(
-                    l10n.emptyWorkoutsHint,
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return _WorkoutListBody(
-            workouts: workouts,
+                ),
+              ],
+            ),
+          );
+        }
+        return Skeletonizer(
+          enabled: isLoading,
+          child: _WorkoutListBody(
+            workouts: isLoading ? _placeholderWorkouts : workouts,
             nextWorkoutId: nextWorkout?.id,
             archivedAsync: archivedAsync,
-          );
-        },
-      ),
+          ),
+        );
+      }(),
       floatingActionButton: _buildFab(context, ref, nextWorkout, l10n),
     );
   }

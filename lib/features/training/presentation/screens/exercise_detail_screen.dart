@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
@@ -15,6 +16,13 @@ import '../helpers/exercise_l10n.dart';
 import '../providers/equipment_notifier.dart';
 import '../providers/exercise_notifier.dart';
 import '../widgets/equipment_search_picker.dart';
+
+const _placeholderExercise = Exercise(
+  id: 0,
+  name: '',
+  muscleGroup: MuscleGroup.chest,
+  isVerified: true,
+);
 
 /// Detail screen for a single exercise.
 ///
@@ -32,56 +40,59 @@ class ExerciseDetailScreen extends ConsumerWidget {
 
     final allExercisesAsync = ref.watch(exerciseListProvider);
 
-    return allExercisesAsync.when(
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (error, _) => Scaffold(
+    final exercise = allExercisesAsync.value
+        ?.where((e) => e.id == exerciseId)
+        .firstOrNull;
+
+    if (allExercisesAsync.hasError) {
+      return Scaffold(
         appBar: AppBar(),
-        body: Center(child: Text('$error')),
-      ),
-      data: (exercises) {
-        final exercise =
-            exercises.where((e) => e.id == exerciseId).firstOrNull;
+        body: Center(child: Text(l10n.genericError)),
+      );
+    }
 
-        if (exercise == null) {
-          return Scaffold(
-            appBar: AppBar(),
-            body: Center(child: Text(l10n.exerciseNotFound)),
-          );
-        }
+    if (!allExercisesAsync.isLoading && exercise == null) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(child: Text(l10n.exerciseNotFound)),
+      );
+    }
 
-        final displayName = localizedExerciseName(
-          exercise.name,
-          isVerified: exercise.isVerified,
-          l10n: l10n,
-        );
+    final displayExercise = exercise ?? _placeholderExercise;
+    final displayName = localizedExerciseName(
+      displayExercise.name,
+      isVerified: displayExercise.isVerified,
+      l10n: l10n,
+    );
 
-        return Scaffold(
+    return Scaffold(
           appBar: AppBar(
             title: Text(displayName),
             actions: [
-              if (!exercise.isVerified) ...[
+              if (!displayExercise.isVerified) ...[
                 IconButton(
                   icon: const Icon(Icons.edit_outlined),
                   tooltip: l10n.edit,
-                  onPressed: () => _showEditSheet(context, ref, exercise),
+                  onPressed: () => _showEditSheet(context, ref, displayExercise),
                 ),
                 IconButton(
                   icon: Icon(Icons.delete_outline, color: colorScheme.error),
                   tooltip: l10n.delete,
                   onPressed: () =>
-                      _confirmDelete(context, ref, exercise, l10n),
+                      _confirmDelete(context, ref, displayExercise, l10n),
                 ),
               ],
             ],
           ),
-          body: ListView(
-            padding: const EdgeInsets.all(AthlosSpacing.md),
-            children: [
-              if (exercise.description != null &&
-                  exercise.description!.isNotEmpty) ...[
-                Text(
-                  exercise.description!,
+          body: Skeletonizer(
+            enabled: allExercisesAsync.isLoading,
+            child: ListView(
+              padding: const EdgeInsets.all(AthlosSpacing.md),
+              children: [
+                if (displayExercise.description != null &&
+                    displayExercise.description!.isNotEmpty) ...[
+                  Text(
+                    displayExercise.description!,
                   style: textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -92,15 +103,15 @@ class ExerciseDetailScreen extends ConsumerWidget {
                 context,
                 icon: Icons.sports_gymnastics,
                 title: l10n.exerciseDetailMuscleGroup,
-                value: localizedMuscleGroupName(exercise.muscleGroup, l10n),
+                value: localizedMuscleGroupName(displayExercise.muscleGroup, l10n),
                 colorScheme: colorScheme,
                 textTheme: textTheme,
               ),
-              if (exercise.muscles.isNotEmpty) ...[
+              if (displayExercise.muscles.isNotEmpty) ...[
                 const Gap(AthlosSpacing.md),
                 _buildMusclesSection(
                   context,
-                  muscles: exercise.muscles,
+                  muscles: displayExercise.muscles,
                   l10n: l10n,
                   colorScheme: colorScheme,
                   textTheme: textTheme,
@@ -115,8 +126,7 @@ class ExerciseDetailScreen extends ConsumerWidget {
               ),
             ],
           ),
-        );
-      },
+        ),
     );
   }
 

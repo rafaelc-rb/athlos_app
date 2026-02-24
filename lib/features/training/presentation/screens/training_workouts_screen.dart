@@ -21,7 +21,7 @@ class TrainingWorkoutsScreen extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final workoutsAsync = ref.watch(workoutListProvider);
-    final nextAsync = ref.watch(nextWorkoutProvider);
+    final nextWorkout = ref.watch(nextWorkoutProvider);
     final archivedAsync = ref.watch(archivedWorkoutListProvider);
 
     return Scaffold(
@@ -61,8 +61,6 @@ class TrainingWorkoutsScreen extends ConsumerWidget {
             );
           }
 
-          final nextWorkout = nextAsync.value;
-
           return _WorkoutListBody(
             workouts: workouts,
             nextWorkoutId: nextWorkout?.id,
@@ -70,18 +68,16 @@ class TrainingWorkoutsScreen extends ConsumerWidget {
           );
         },
       ),
-      floatingActionButton: _buildFab(context, ref, nextAsync, l10n),
+      floatingActionButton: _buildFab(context, ref, nextWorkout, l10n),
     );
   }
 
   Widget? _buildFab(
     BuildContext context,
     WidgetRef ref,
-    AsyncValue<Workout?> nextAsync,
+    Workout? next,
     AppLocalizations l10n,
   ) {
-    final next = nextAsync.value;
-
     if (next != null) {
       return FloatingActionButton.extended(
         heroTag: 'start_next',
@@ -176,20 +172,18 @@ class _WorkoutListBodyState extends ConsumerState<_WorkoutListBody> {
             final workout = _orderedWorkouts[index];
             final isNext = workout.id == widget.nextWorkoutId;
 
-            return ReorderableDragStartListener(
+            return _WorkoutCard(
               key: ValueKey(workout.id),
               index: index,
-              child: _WorkoutCard(
-                workout: workout,
-                isNext: isNext,
-                onTap: () => context.push(
-                  '${RoutePaths.trainingWorkouts}/${workout.id}',
-                ),
-                onStart: () => _startWorkout(context, workout.id),
-                onArchive: () => _archiveWorkout(context, workout.id),
-                onDuplicate: () => _duplicateWorkout(context, workout.id),
-                onDelete: () => _confirmDelete(context, workout),
+              workout: workout,
+              isNext: isNext,
+              onTap: () => context.push(
+                '${RoutePaths.trainingWorkouts}/${workout.id}',
               ),
+              onStart: () => _startWorkout(context, workout.id),
+              onArchive: () => _archiveWorkout(context, workout.id),
+              onDuplicate: () => _duplicateWorkout(context, workout.id),
+              onDelete: () => _confirmDelete(context, workout),
             );
           },
         ),
@@ -309,6 +303,7 @@ class _WorkoutListBodyState extends ConsumerState<_WorkoutListBody> {
 }
 
 class _WorkoutCard extends StatelessWidget {
+  final int index;
   final Workout workout;
   final bool isNext;
   final VoidCallback onTap;
@@ -318,6 +313,8 @@ class _WorkoutCard extends StatelessWidget {
   final VoidCallback onDelete;
 
   const _WorkoutCard({
+    super.key,
+    required this.index,
     required this.workout,
     required this.isNext,
     required this.onTap,
@@ -354,7 +351,13 @@ class _WorkoutCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(Icons.drag_handle, color: colorScheme.onSurfaceVariant),
+              ReorderableDragStartListener(
+                index: index,
+                child: Icon(
+                  Icons.drag_handle,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
               const SizedBox(width: AthlosSpacing.sm),
               Expanded(
                 child: Column(

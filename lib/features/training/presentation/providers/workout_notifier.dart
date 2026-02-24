@@ -7,6 +7,7 @@ import '../../../../core/errors/result.dart';
 import '../../data/repositories/training_providers.dart';
 import '../../domain/entities/workout.dart';
 import '../../domain/entities/workout_exercise.dart';
+import 'workout_execution_notifier.dart';
 
 part 'workout_notifier.g.dart';
 
@@ -85,9 +86,31 @@ class WorkoutList extends _$WorkoutList {
 
   Future<void> reorderWorkouts(List<int> orderedIds) async {
     final repo = ref.read(workoutRepositoryProvider);
+
+    // Optimistic update: apply new sortOrder values immediately so
+    // nextWorkoutProvider recomputes before the DB round-trip completes.
+    final current = state.value;
+    if (current != null) {
+      final byId = {for (final w in current) w.id: w};
+      final reordered = [
+        for (var i = 0; i < orderedIds.length; i++)
+          if (byId[orderedIds[i]] case final w?)
+            Workout(
+              id: w.id,
+              name: w.name,
+              description: w.description,
+              sortOrder: i,
+              isArchived: w.isArchived,
+              createdAt: w.createdAt,
+            ),
+      ];
+      state = AsyncData(reordered);
+    }
+
     final result = await repo.reorder(orderedIds);
     result.getOrThrow();
-    ref.invalidateSelf();
+    final fresh = await repo.getActive();
+    state = AsyncData(fresh.getOrThrow());
   }
 }
 
@@ -118,11 +141,29 @@ Future<List<WorkoutExercise>> workoutExercises(Ref ref, int workoutId) async {
   return result.getOrThrow();
 }
 
-/// Derives the next workout in the cycle from the last finished execution.
+/// Last finished workout execution. Watched by [nextWorkoutProvider].
 @riverpod
-Future<Workout?> nextWorkout(Ref ref) async {
-  final activeWorkouts = await ref.watch(workoutListProvider.future);
-  if (activeWorkouts.isEmpty) return null;
+Future<int?> lastFinishedWorkoutId(Ref ref) async {
+  final execRepo = ref.watch(workoutExecutionRepositoryProvider);
+  final result = await execRepo.getLastFinished();
+  return result.getOrThrow()?.workoutId;
+}
+
+/// Derives the next workout in the cycle.
+///
+/// Synchronous provider that watches [workoutListProvider] and
+/// [lastFinishedWorkoutIdProvider]. Recomputes automatically when
+/// either dependency changes — no manual invalidation needed.
+@riverpod
+Workout? nextWorkout(Ref ref) {
+  final workoutsAsync = ref.watch(workoutListProvider);
+  final lastExecAsync = ref.watch(lastFinishedWorkoutIdProvider);
+
+  // Skip computation while data is loading to avoid using stale sort-order.
+  if (workoutsAsync is AsyncLoading) return null;
+
+  final activeWorkouts = workoutsAsync.value;
+  if (activeWorkouts == null || activeWorkouts.isEmpty) return null;
 
   final ordered = activeWorkouts
       .where((w) => w.sortOrder != null)
@@ -130,12 +171,10 @@ Future<Workout?> nextWorkout(Ref ref) async {
     ..sort((a, b) => a.sortOrder!.compareTo(b.sortOrder!));
   if (ordered.isEmpty) return activeWorkouts.first;
 
-  final execRepo = ref.watch(workoutExecutionRepositoryProvider);
-  final lastExec = (await execRepo.getLastFinished()).getOrThrow();
+  final lastWorkoutId = lastExecAsync.value;
+  if (lastWorkoutId == null) return ordered.first;
 
-  if (lastExec == null) return ordered.first;
-
-  final lastIdx = ordered.indexWhere((w) => w.id == lastExec.workoutId);
+  final lastIdx = ordered.indexWhere((w) => w.id == lastWorkoutId);
   if (lastIdx == -1) return ordered.first;
 
   return ordered[(lastIdx + 1) % ordered.length];
@@ -153,6 +192,6 @@ Future<void> markWorkoutDone(Ref ref, int workoutId) async {
       finishedAt: Value(now),
     ),
   );
-  ref.invalidate(nextWorkoutProvider);
-  ref.invalidate(workoutListProvider);
+  ref.invalidate(lastFinishedWorkoutIdProvider);
+  ref.invalidate(workoutExecutionListProvider);
 }

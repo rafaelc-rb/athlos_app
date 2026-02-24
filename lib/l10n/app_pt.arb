@@ -845,5 +845,33 @@
   "workoutArchived": "Treino arquivado",
   "@workoutArchived": { "description": "Snackbar after archiving a workout" },
   "workoutUnarchived": "Treino restaurado",
-  "@workoutUnarchived": { "description": "Snackbar after unarchiving a workout" }
+  "@workoutUnarchived": { "description": "Snackbar after unarchiving a workout" },
+
+  "emptyHistory": "Nenhum treino realizado",
+  "@emptyHistory": { "description": "Empty state title for history screen" },
+  "emptyHistoryHint": "Seu histórico de execuções aparecerá aqui",
+  "@emptyHistoryHint": { "description": "Empty state hint for history screen" },
+  "deleteExecutionTitle": "Excluir registro",
+  "@deleteExecutionTitle": { "description": "Title for delete execution confirmation" },
+  "deleteExecutionMessage": "Tem certeza que deseja excluir este registro do histórico?",
+  "@deleteExecutionMessage": { "description": "Delete execution confirmation message" },
+  "executionDeleted": "Registro excluído",
+  "@executionDeleted": { "description": "Snackbar after deleting an execution" },
+  "unknownWorkout": "Treino removido",
+  "@unknownWorkout": { "description": "Fallback name when the workout was deleted" },
+  "durationFormat": "{hours}h {minutes}min",
+  "@durationFormat": {
+    "description": "Duration format for workout executions",
+    "placeholders": {
+      "hours": { "type": "int" },
+      "minutes": { "type": "int" }
+    }
+  },
+  "durationMinutes": "{minutes}min",
+  "@durationMinutes": {
+    "description": "Duration format when less than 1 hour",
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  }
 }

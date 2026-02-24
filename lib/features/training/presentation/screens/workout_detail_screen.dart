@@ -24,7 +24,7 @@ class WorkoutDetailScreen extends ConsumerWidget {
 
     final workoutAsync = ref.watch(workoutByIdProvider(workoutId));
     final exercisesAsync = ref.watch(workoutExercisesProvider(workoutId));
-    final nextAsync = ref.watch(nextWorkoutProvider);
+    final nextWorkout = ref.watch(nextWorkoutProvider);
 
     return workoutAsync.when(
       loading: () => Scaffold(
@@ -43,7 +43,7 @@ class WorkoutDetailScreen extends ConsumerWidget {
           );
         }
 
-        final isNext = nextAsync.value?.id == workout.id;
+        final isNext = nextWorkout?.id == workout.id;
 
         return Scaffold(
           appBar: AppBar(

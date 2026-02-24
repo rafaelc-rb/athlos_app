@@ -88,9 +88,23 @@ class AppDatabase extends _$AppDatabase {
           }
 
           // Incremental migrations for public releases.
-          // When bumping schemaVersion, run `dart run drift_dev make-migrations`
-          // and use the generated stepByStep() / migrationSteps() here.
-          // See: https://drift.simonbinder.eu/migrations/step_by_step/
+          // Each block runs exactly once per user, in ascending order.
+          //
+          // For schema changes: bump schemaVersion, run
+          //   `dart run drift_dev make-migrations`
+          // and add the generated step here.
+          //
+          // For new catalog items (exercises, equipment): create a seed
+          // function in the corresponding seeder file (e.g. seedEquipmentsV2)
+          // and call it inside the version guard.
+          //
+          // Example when bumping to schemaVersion 2:
+          //   if (from < 2) {
+          //     await m.addColumn(exercises, exercises.newColumn); // schema
+          //     await seedEquipmentsV2(this);  // new equipment
+          //     await seedExercisesV2(this);   // new exercises
+          //   }
+          //   if (from < 3) { ... }
         },
       );
 }

@@ -92,32 +92,14 @@ int get schemaVersion => 1;  // increment when schema changes
 
 `onCreate` runs when a user installs the app for the first time — it creates all tables and seeds catalog data.
 
-`onUpgrade` runs when an existing user updates to a new version with a higher schema version. It uses `runMigrationSteps` for incremental, non-destructive migrations:
-
-```dart
-await m.runMigrationSteps(
-  from: from,
-  to: to,
-  steps: {
-    2: (m) async {
-      // Example: add a new table for Diet module
-      await m.createTable(foods);
-    },
-    3: (m) async {
-      // Example: add a column to an existing table
-      await m.addColumn(workouts, workouts.notes);
-    },
-  },
-);
-```
+`onUpgrade` runs when an existing user updates to a new version with a higher schema version. It uses guarded `if (from < N)` blocks so each migration runs exactly once per user, in ascending order.
 
 ### Migration Rules
 
 1. **Never modify an existing migration step** — it may have already run on user devices
 2. **Always increment `schemaVersion`** when adding a new step
 3. **Test migrations** — install the old version, add data, then update to the new version and verify data is preserved
-4. **Seed data in migrations** — if a new table needs catalog data (e.g. food catalog), call the seeder inside the migration step
-5. **Use `transaction()` for complex migrations** — Drift wraps each step in a transaction by default, but be explicit for multi-statement operations
+4. **Use `transaction()` for complex migrations** — Drift wraps each step in a transaction by default, but be explicit for multi-statement operations
 
 ### When to Add a Migration
 
@@ -128,6 +110,42 @@ await m.runMigrationSteps(
 | Remove column | `await m.alterTable(TableMigration(table))` |
 | Rename column | `await m.alterTable(TableMigration(table, columnTransformer: {...}))` |
 | New seed data for existing table | Insert rows inside the migration step |
+
+### Evolving the Catalog (Exercises & Equipment)
+
+Catalog items (exercises, equipment) are seeded on first install via `onCreate`. **Existing users only receive new catalog items through migrations.**
+
+#### Workflow for adding catalog items after 1.0.0
+
+1. **Add items to the main seeder** — update `equipment_seeder.dart` / `exercise_seeder.dart` with the new items so fresh installs get the full catalog.
+2. **Create a versioned seed function** — e.g. `seedEquipmentsV2(db)` in the same seeder file, containing only the new items.
+3. **Bump `schemaVersion`** and add a migration guard in `onUpgrade`:
+
+```dart
+// app_database.dart
+@override
+int get schemaVersion => 2;
+
+onUpgrade: (m, from, to) async {
+  // ... dev wipe block ...
+
+  if (from < 2) {
+    await seedEquipmentsV2(this);
+    await seedExercisesV2(this);
+  }
+  // if (from < 3) { ... }
+},
+```
+
+4. **Add ARB translations** for the new items.
+5. **Publish** — new users get everything from `onCreate`; existing users get the delta from `onUpgrade`.
+
+#### Key rules
+
+- The main seeder files always contain the **full catalog** (all versions combined).
+- Each `seedXxxVN()` function contains **only the delta** for that version.
+- Never modify a published versioned seed — if an item needs correction, add a new version with an UPDATE or DELETE+INSERT.
+- Schema changes (new tables, columns) and catalog additions can share the same version bump.
 
 ## App Icons
 

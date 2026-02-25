@@ -1724,25 +1724,35 @@ class _NumberInput extends StatelessWidget {
           colorScheme: colorScheme,
         ),
         const SizedBox(width: AthlosSpacing.lg),
-        GestureDetector(
-          onTap: () => _showEditDialog(context),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                displayValue,
-                style: textTheme.displayMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: valueColor,
+        SizedBox(
+          width: 120,
+          child: GestureDetector(
+            onTap: () => _showEditDialog(context),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  height: (textTheme.displayMedium?.fontSize ?? 45) * 1.2,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      displayValue,
+                      style: textTheme.displayMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: valueColor,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              Text(
-                suffix,
-                style: textTheme.titleMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+                Text(
+                  suffix,
+                  style: textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         const SizedBox(width: AthlosSpacing.lg),

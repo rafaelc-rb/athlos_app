@@ -84,15 +84,11 @@ PATCH resets to 0 when MINOR increments. MINOR resets to 0 when MAJOR increments
 ### Release Roadmap
 
 ```
-0.1.0  — Training core (current baseline)
-0.2.0  — Training polish (custom exercises/equipment, filters)
-0.3.0  — Data backup (export/import JSON)
-  ...  — Bug fixes, stabilization
+0.1.0  — Training core (baseline)
 1.0.0  — First public store release (Training only)
-1.1.0  — Diet: Food registration
-1.2.0  — Diet: Meal builder
-1.3.0  — Diet: Caloric control
-1.4.0  — Load progression charts
+1.1.0  — Training enhancements (cardio, execution feedback)
+1.x+   — Diet (food registration → meal builder → caloric control)
+1.x+   — Load progression charts
   ...  — Patches between minors
 2.0.0  — Backend, auth, cloud sync (Supabase)
 3.0.0  — AI (Quíron), gamification (Kleos), integrations

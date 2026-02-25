@@ -25,7 +25,7 @@ Format: `MAJOR.MINOR.PATCH+build` (Semantic Versioning).
 Version is set in `pubspec.yaml`:
 
 ```yaml
-version: 0.1.0+1
+version: 1.1.0+2
 #        ^^^^^ ^
 #        │     └── build number (store identifier, always increasing)
 #        └── semantic version (user-facing)
@@ -209,7 +209,7 @@ Signing:
 - [x] Keystore backed up securely
 
 Database:
-- [x] Schema version set to 1 (baseline)
+- [x] Schema version set to 2 (v1.1.0 — cardio support, naming conventions)
 - [x] Incremental migration strategy in place
 - [ ] Destructive dev fallback removed before 1.0.0 tag
 

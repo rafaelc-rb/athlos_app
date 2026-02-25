@@ -74,7 +74,6 @@ The first store release. Training module feature-complete, fully local, zero cos
 | EX-05 | Must | As a user, I want to see variations and substitute exercises so that I have alternatives when needed | Exercise detail screen shows linked variations; tapping navigates to the variation |
 | EX-06 | Should | As a user, I want to add custom exercises so that I can include exercises not yet in the catalog | User provides name, muscle group, muscles, and optionally equipment; saved locally |
 | EX-07 | Could | As a user, I want to filter exercises by equipment I own so that I only see exercises I can actually do | Toggle filter that cross-references owned equipment with exercise requirements |
-| EX-08 | Must | As a user, I want to filter exercises by type (strength/cardio/all) so that I can find the right kind of exercise | Exercise list and picker sheet have type filter chips; default is "all" |
 
 ### Epic: Workout Builder
 
@@ -86,8 +85,6 @@ The first store release. Training module feature-complete, fully local, zero cos
 | WK-04 | Must | As a user, I want to edit existing workouts so that I can keep my plans up to date | All workout fields (name, exercises, sets/reps) are editable after creation |
 | WK-05 | Must | As a user, I want to delete workouts I no longer use so that my list stays clean | Delete with confirmation dialog; associated execution history is preserved |
 | WK-06 | Could | As a user, I want to duplicate an existing workout so that I can quickly create variations | Creates a copy with "(copy)" appended to the name; fully editable |
-| WK-07 | Must | As a user, I want to configure cardio exercises with duration instead of reps so that I can plan time-based workouts | Cardio exercises show duration field; strength exercises show reps field |
-| WK-08 | Should | As a user, I want to link exercises into supersets so that they execute in alternation | Link/unlink button between adjacent exercises; linked exercises share a group with visual indicator |
 
 ### Epic: Execution Logging
 
@@ -99,14 +96,6 @@ The first store release. Training module feature-complete, fully local, zero cos
 | LG-04 | Should | As a user, I want a rest timer between sets so that I stay on track with my rest periods | Timer starts automatically after marking a set complete; uses rest duration from workout config |
 | LG-05 | Must | As a user, I want to view my execution history so that I can see my past workouts | History screen shows list of executions with date, workout name, and duration |
 | LG-06 | Could | As a user, I want to see load progression charts per exercise so that I visualize my strength gains over time | Line chart showing weight over time for a selected exercise |
-| LG-07 | Must | As a user, I want visual feedback on rep deviation from plan so that I know if I'm on track | Color-coded reps: neutral (±1), warning (±2-3), error (±4+); same feedback in execution and history |
-| LG-08 | Should | As a user, I want load adjustment suggestions after completing sets so that I know whether to increase or decrease weight | Aggregated feedback based on rep performance across completed sets; shown during rest timer and after exercise completion |
-| LG-09 | Should | As a user, I want the reps input to default to my last completed set's value so that I don't re-enter the same number each time | Within a session, reps default dynamically from the previous completed set; first set defaults from workout config |
-| LG-10 | Must | As a user, I want a dedicated timer for cardio exercises so that I can track my actual workout time | Count-up stopwatch with play/pause/resume/stop; shows goal, progress bar, goal-reached badge, and overtime |
-| LG-11 | Should | As a user, I want to skip the cardio timer and enter duration/distance manually so that I have flexibility | "Manual entry" option on the timer ready screen redirects to input fields |
-| LG-12 | Should | As a user, I want to edit the recorded duration and distance after stopping the cardio timer so that I can correct values | Finishing screen shows editable duration (with formatted preview) and optional distance fields |
-| LG-13 | Should | As a user, I want to add drop sets during execution so that I can record reduced-weight segments within a set | Add/remove drop set segments with weight and reps fields per segment |
-| LG-14 | Should | As a user, I want superset exercises to flow automatically so that I move to the next linked exercise without extra taps | After completing a set in a superset group, auto-navigates to the next exercise in the group before triggering rest |
 
 ### Epic: Data Backup
 
@@ -117,11 +106,43 @@ The first store release. Training module feature-complete, fully local, zero cos
 
 ---
 
-## 1.1.0 — Diet: Food Registration
+## 1.1.0 — Training Enhancements (Cardio, Execution Feedback)
 
-First Diet increment. Users can register and browse foods with nutritional data.
+Cardio exercise support, execution quality feedback, and UX improvements. Database schema v2.
 
-### Epic: Diet — Food Registration
+### Epic: Cardio Exercises
+
+| ID | MoSCoW | User Story | Acceptance Criteria |
+|----|--------|------------|---------------------|
+| EX-08 | Must | As a user, I want to filter exercises by type (strength/cardio/all) so that I can find the right kind of exercise | Exercise list and picker sheet have type filter chips; default is "all" |
+| WK-07 | Must | As a user, I want to configure cardio exercises with duration instead of reps so that I can plan time-based workouts | Cardio exercises show duration field; strength exercises show reps field |
+| LG-10 | Must | As a user, I want a dedicated timer for cardio exercises so that I can track my actual workout time | Count-up stopwatch with play/pause/resume/stop; shows goal, progress bar, goal-reached badge, and overtime |
+| LG-11 | Should | As a user, I want to skip the cardio timer and enter duration/distance manually so that I have flexibility | "Manual entry" option on the timer ready screen redirects to input fields |
+| LG-12 | Should | As a user, I want to edit the recorded duration and distance after stopping the cardio timer so that I can correct values | Finishing screen shows editable duration (with formatted preview) and optional distance fields |
+
+### Epic: Execution Feedback
+
+| ID | MoSCoW | User Story | Acceptance Criteria |
+|----|--------|------------|---------------------|
+| LG-07 | Must | As a user, I want visual feedback on rep deviation from plan so that I know if I'm on track | Color-coded reps: neutral (±1), warning (±2-3), error (±4+); same feedback in execution and history |
+| LG-08 | Should | As a user, I want load adjustment suggestions after completing sets so that I know whether to increase or decrease weight | Aggregated feedback based on rep performance across completed sets; shown during rest timer and after exercise completion |
+| LG-09 | Should | As a user, I want the reps input to default to my last completed set's value so that I don't re-enter the same number each time | Within a session, reps default dynamically from the previous completed set; first set defaults from workout config |
+
+### Epic: Execution UX
+
+| ID | MoSCoW | User Story | Acceptance Criteria |
+|----|--------|------------|---------------------|
+| LG-13 | Should | As a user, I want to add drop sets during execution so that I can record reduced-weight segments within a set | Add/remove drop set segments with weight and reps fields per segment |
+| LG-14 | Should | As a user, I want superset exercises to flow automatically so that I move to the next linked exercise without extra taps | After completing a set in a superset group, auto-navigates to the next exercise in the group before triggering rest |
+| WK-08 | Should | As a user, I want to link exercises into supersets so that they execute in alternation | Link/unlink button between adjacent exercises; linked exercises share a group with visual indicator |
+
+---
+
+## 1.x+ — Diet
+
+Diet module ships incrementally across future 1.x releases. Exact version numbers are assigned at release time.
+
+### Phase 1: Food Registration
 
 | ID | MoSCoW | User Story | Acceptance Criteria |
 |----|--------|------------|---------------------|
@@ -132,13 +153,7 @@ First Diet increment. Users can register and browse foods with nutritional data.
 
 Hub update: Diet card transitions from placeholder to showing food count or last registered food.
 
----
-
-## 1.2.0 — Diet: Meal Builder
-
-Second Diet increment. Users can build meals from registered foods.
-
-### Epic: Diet — Meal Builder
+### Phase 2: Meal Builder
 
 | ID | MoSCoW | User Story | Acceptance Criteria |
 |----|--------|------------|---------------------|
@@ -148,13 +163,7 @@ Second Diet increment. Users can build meals from registered foods.
 
 Diet bottom navigation: Home, Meals, Foods tabs become active.
 
----
-
-## 1.3.0 — Diet: Caloric Control
-
-Third Diet increment. Daily tracking and caloric balance.
-
-### Epic: Diet — Caloric Control
+### Phase 3: Caloric Control
 
 | ID | MoSCoW | User Story | Acceptance Criteria |
 |----|--------|------------|---------------------|
@@ -162,7 +171,7 @@ Third Diet increment. Daily tracking and caloric balance.
 | DT-09 | Should | As a user, I want to log caloric expenditure so that I can see my daily caloric balance | Manual entry of activity + estimated kcal burned; daily balance = intake - expenditure |
 | DT-10 | Could | As a user, I want caloric expenditure pulled automatically from my logged workouts so that I don't need to enter it manually | Cross-module integration via shared interface in `core/domain/` |
 
-Diet bottom navigation: Log tab becomes active. Diet module is now feature-complete for the free tier.
+Diet module feature-complete for the free tier.
 
 ---
 

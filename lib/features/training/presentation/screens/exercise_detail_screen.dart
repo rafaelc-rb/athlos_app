@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../../../core/router/route_paths.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../../../core/theme/athlos_radius.dart';
@@ -749,11 +751,8 @@ class _VariationsSection extends ConsumerWidget {
                       color: colorScheme.onSurfaceVariant,
                     ),
                     onTap: () {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              ExerciseDetailScreen(exerciseId: v.id),
-                        ),
+                      context.push(
+                        '${RoutePaths.trainingExercises}/${v.id}',
                       );
                     },
                   );

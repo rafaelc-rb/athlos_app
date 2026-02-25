@@ -30,20 +30,29 @@ class SegmentEntry {
 class SetEntry {
   final int? id;
   final int setNumber;
-  final int plannedReps;
+  final int? plannedReps;
   final double? plannedWeight;
-  final int reps;
+  final int? reps;
   final double? weight;
+
+  /// Duration in seconds for cardio exercises.
+  final int? duration;
+
+  /// Distance in meters for cardio exercises.
+  final double? distance;
+
   final bool isCompleted;
   final List<SegmentEntry> segments;
 
   const SetEntry({
     this.id,
     required this.setNumber,
-    required this.plannedReps,
+    this.plannedReps,
     this.plannedWeight,
-    required this.reps,
+    this.reps,
     this.weight,
+    this.duration,
+    this.distance,
     this.isCompleted = false,
     this.segments = const [],
   });
@@ -53,21 +62,26 @@ class SetEntry {
   SetEntry copyWith({
     int? id,
     int? setNumber,
-    int? plannedReps,
+    int? Function()? plannedReps,
     double? Function()? plannedWeight,
-    int? reps,
+    int? Function()? reps,
     double? Function()? weight,
+    int? Function()? duration,
+    double? Function()? distance,
     bool? isCompleted,
     List<SegmentEntry>? segments,
   }) =>
       SetEntry(
         id: id ?? this.id,
         setNumber: setNumber ?? this.setNumber,
-        plannedReps: plannedReps ?? this.plannedReps,
+        plannedReps:
+            plannedReps != null ? plannedReps() : this.plannedReps,
         plannedWeight:
             plannedWeight != null ? plannedWeight() : this.plannedWeight,
-        reps: reps ?? this.reps,
+        reps: reps != null ? reps() : this.reps,
         weight: weight != null ? weight() : this.weight,
+        duration: duration != null ? duration() : this.duration,
+        distance: distance != null ? distance() : this.distance,
         isCompleted: isCompleted ?? this.isCompleted,
         segments: segments ?? this.segments,
       );
@@ -83,11 +97,13 @@ class SetEntry {
           plannedWeight == other.plannedWeight &&
           reps == other.reps &&
           weight == other.weight &&
+          duration == other.duration &&
+          distance == other.distance &&
           isCompleted == other.isCompleted;
 
   @override
-  int get hashCode =>
-      Object.hash(id, setNumber, plannedReps, plannedWeight, reps, weight, isCompleted);
+  int get hashCode => Object.hash(id, setNumber, plannedReps, plannedWeight,
+      reps, weight, duration, distance, isCompleted);
 }
 
 /// Holds the full state of an active workout execution in progress.
@@ -98,7 +114,7 @@ class ActiveExecutionState {
   /// exerciseId -> list of sets for that exercise.
   final Map<int, List<SetEntry>> exerciseSets;
 
-  /// Ordered exercise configs to access restSeconds per exercise.
+  /// Ordered exercise configs to access rest per exercise.
   final List<WorkoutExercise> exercises;
   final bool isFinishing;
 

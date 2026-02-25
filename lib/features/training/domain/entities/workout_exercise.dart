@@ -4,10 +4,15 @@ class WorkoutExercise {
   final int exerciseId;
   final int order;
   final int sets;
-  final int reps;
+
+  /// Target reps per set. Null for cardio exercises.
+  final int? reps;
 
   /// Rest time between sets in seconds.
-  final int restSeconds;
+  final int rest;
+
+  /// Planned duration per set in seconds. Used for cardio exercises.
+  final int? duration;
 
   /// Superset group ID. Exercises sharing the same non-null groupId
   /// are executed back-to-back before rest.
@@ -18,8 +23,9 @@ class WorkoutExercise {
     required this.exerciseId,
     required this.order,
     required this.sets,
-    required this.reps,
-    required this.restSeconds,
+    this.reps,
+    required this.rest,
+    this.duration,
     this.groupId,
   });
 }

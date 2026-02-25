@@ -138,7 +138,7 @@ class _ExecutionDetailBody extends StatelessWidget {
             totalVolume += seg.reps * (seg.weight ?? 0);
           }
         } else {
-          totalVolume += s.reps * (s.weight ?? 0);
+          totalVolume += (s.reps ?? 0) * (s.weight ?? 0);
         }
       }
     }
@@ -339,15 +339,27 @@ class _ExerciseBreakdown extends StatelessWidget {
                       child: Text(l10n.setsLabel,
                           style: textTheme.labelSmall?.copyWith(
                               color: colorScheme.onSurfaceVariant))),
-                  Expanded(
-                      child: Text(l10n.repsLabel,
-                          style: textTheme.labelSmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant))),
-                  SizedBox(
-                      width: 60,
-                      child: Text(l10n.weightColumnLabel,
-                          style: textTheme.labelSmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant))),
+                  if (_isCardio) ...[
+                    Expanded(
+                        child: Text(l10n.durationLabel,
+                            style: textTheme.labelSmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant))),
+                    SizedBox(
+                        width: 80,
+                        child: Text(l10n.distanceLabel,
+                            style: textTheme.labelSmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant))),
+                  ] else ...[
+                    Expanded(
+                        child: Text(l10n.repsLabel,
+                            style: textTheme.labelSmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant))),
+                    SizedBox(
+                        width: 60,
+                        child: Text(l10n.weightColumnLabel,
+                            style: textTheme.labelSmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant))),
+                  ],
                   const SizedBox(width: AthlosSpacing.lg),
                 ],
               ),
@@ -355,28 +367,33 @@ class _ExerciseBreakdown extends StatelessWidget {
 
             ...sets.map((s) => _SetRow(
                   setEntry: s,
+                  isCardio: _isCardio,
                   colorScheme: colorScheme,
                   textTheme: textTheme,
                   l10n: l10n,
                 )),
 
-            if (_feedbackChip(context) case final chip?) chip,
+            ?_feedbackChip(context),
           ],
         ),
       ),
     );
   }
 
+  bool get _isCardio => sets.isNotEmpty && sets.first.reps == null;
+
   Widget? _feedbackChip(BuildContext context) {
+    if (_isCardio) return null;
+
     final completed = sets.where((s) => s.isCompleted).toList();
     if (completed.isEmpty) return null;
 
-    final plannedReps = completed.first.plannedReps;
+    final plannedReps = completed.first.plannedReps ?? 0;
     final feedback = loadFeedback(
       cs: colorScheme,
       custom: Theme.of(context).extension<AthlosCustomColors>()!,
       l10n: l10n,
-      completedReps: completed.map((s) => s.reps).toList(),
+      completedReps: completed.map((s) => s.reps!).toList(),
       plannedReps: plannedReps,
     );
     if (feedback == null) return null;
@@ -401,12 +418,14 @@ class _ExerciseBreakdown extends StatelessWidget {
 
 class _SetRow extends StatelessWidget {
   final ExecutionSet setEntry;
+  final bool isCardio;
   final ColorScheme colorScheme;
   final TextTheme textTheme;
   final AppLocalizations l10n;
 
   const _SetRow({
     required this.setEntry,
+    this.isCardio = false,
     required this.colorScheme,
     required this.textTheme,
     required this.l10n,
@@ -414,13 +433,62 @@ class _SetRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isCardio) return _buildCardioRow(context);
+    return _buildStrengthRow(context);
+  }
+
+  Widget _buildCardioRow(BuildContext context) {
+    final statusColor = setEntry.isCompleted
+        ? colorScheme.primary
+        : colorScheme.onSurfaceVariant;
+
+    final durationStr = setEntry.duration != null
+        ? _formatDuration(setEntry.duration!)
+        : '-';
+    final distanceStr = setEntry.distance != null
+        ? '${(setEntry.distance! / 1000).toStringAsFixed(2)}km'
+        : '-';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AthlosSpacing.xs),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 40,
+            child: Text('${setEntry.setNumber}', style: textTheme.bodyMedium),
+          ),
+          Expanded(
+            child: Text(durationStr,
+                style: textTheme.bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w600)),
+          ),
+          SizedBox(
+            width: 80,
+            child: Text(distanceStr, style: textTheme.bodyMedium),
+          ),
+          SizedBox(
+            width: 24,
+            child: Icon(
+              setEntry.isCompleted
+                  ? Icons.check_circle
+                  : Icons.radio_button_unchecked,
+              size: 18,
+              color: statusColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStrengthRow(BuildContext context) {
     final customColors = Theme.of(context).extension<AthlosCustomColors>()!;
     final statusColor = setEntry.isCompleted
-        ? (repsDeviationColor(colorScheme, customColors, setEntry.reps,
-                setEntry.plannedReps) ??
+        ? (repsDeviationColor(colorScheme, customColors, setEntry.reps ?? 0,
+                setEntry.plannedReps ?? 0) ??
             colorScheme.primary)
         : colorScheme.onSurfaceVariant;
-    final diff = setEntry.reps - setEntry.plannedReps;
+    final diff = (setEntry.reps ?? 0) - (setEntry.plannedReps ?? 0);
 
     final weightStr = setEntry.weight != null
         ? '${setEntry.weight!.toStringAsFixed(setEntry.weight! % 1 == 0 ? 0 : 1)}${l10n.weightUnit}'
@@ -444,14 +512,14 @@ class _SetRow extends StatelessWidget {
                   text: TextSpan(
                     children: [
                       TextSpan(
-                        text: '${setEntry.reps}',
+                        text: '${setEntry.reps ?? 0}',
                         style: textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: statusColor,
                         ),
                       ),
                       TextSpan(
-                        text: '/${setEntry.plannedReps}',
+                        text: '/${setEntry.plannedReps ?? 0}',
                         style: textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -487,7 +555,10 @@ class _SetRow extends StatelessWidget {
                 ? '${seg.weight!.toStringAsFixed(seg.weight! % 1 == 0 ? 0 : 1)}${l10n.weightUnit}'
                 : '-';
             return Padding(
-              padding: const EdgeInsets.only(left: AthlosSpacing.lg, top: AthlosSpacing.xs, bottom: AthlosSpacing.xs),
+              padding: const EdgeInsets.only(
+                  left: AthlosSpacing.lg,
+                  top: AthlosSpacing.xs,
+                  bottom: AthlosSpacing.xs),
               child: Row(
                 children: [
                   Icon(Icons.arrow_downward,
@@ -500,16 +571,16 @@ class _SetRow extends StatelessWidget {
                   Expanded(
                     child: Text(
                       '${seg.reps}',
-                      style: textTheme.bodySmall?.copyWith(
-                          color: colorScheme.tertiary),
+                      style: textTheme.bodySmall
+                          ?.copyWith(color: colorScheme.tertiary),
                     ),
                   ),
                   SizedBox(
                     width: 60,
                     child: Text(
                       segWeightStr,
-                      style: textTheme.bodySmall?.copyWith(
-                          color: colorScheme.tertiary),
+                      style: textTheme.bodySmall
+                          ?.copyWith(color: colorScheme.tertiary),
                     ),
                   ),
                   const SizedBox(width: AthlosSpacing.lg),
@@ -519,5 +590,15 @@ class _SetRow extends StatelessWidget {
           }),
       ],
     );
+  }
+
+  static String _formatDuration(int seconds) {
+    if (seconds >= 3600) {
+      final h = seconds ~/ 3600;
+      final m = (seconds % 3600) ~/ 60;
+      return m > 0 ? '${h}h${m}min' : '${h}h';
+    }
+    if (seconds >= 60) return '${seconds ~/ 60}min';
+    return '${seconds}s';
   }
 }

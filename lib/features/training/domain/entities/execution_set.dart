@@ -7,17 +7,23 @@ class ExecutionSet {
   final int exerciseId;
   final int setNumber;
 
-  /// Snapshot of planned reps from the workout template.
-  final int plannedReps;
+  /// Snapshot of planned reps from the workout template. Null for cardio.
+  final int? plannedReps;
 
   /// Target weight (e.g. from last session). Null if not set.
   final double? plannedWeight;
 
-  /// Actual reps performed (primary segment for drop sets).
-  final int reps;
+  /// Actual reps performed (primary segment for drop sets). Null for cardio.
+  final int? reps;
 
   /// Actual weight used in kg (primary segment for drop sets).
   final double? weight;
+
+  /// Actual duration performed in seconds. Used for cardio exercises.
+  final int? duration;
+
+  /// Actual distance covered in meters. Used for cardio exercises.
+  final double? distance;
 
   final bool isCompleted;
 
@@ -32,10 +38,12 @@ class ExecutionSet {
     required this.executionId,
     required this.exerciseId,
     required this.setNumber,
-    required this.plannedReps,
+    this.plannedReps,
     this.plannedWeight,
-    required this.reps,
+    this.reps,
     this.weight,
+    this.duration,
+    this.distance,
     this.isCompleted = false,
     this.notes,
     this.segments = const [],
@@ -44,6 +52,7 @@ class ExecutionSet {
   bool get isDropSet => segments.length > 1;
 
   /// Total reps across all segments (or just [reps] for normal sets).
-  int get totalReps =>
-      segments.isEmpty ? reps : segments.fold(0, (sum, s) => sum + s.reps);
+  int get totalReps => segments.isEmpty
+      ? (reps ?? 0)
+      : segments.fold(0, (sum, s) => sum + s.reps);
 }

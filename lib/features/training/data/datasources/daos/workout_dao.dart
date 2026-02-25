@@ -75,8 +75,9 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase>
           exerciseId: ex.exerciseId,
           order: ex.order,
           sets: ex.sets,
-          reps: ex.reps,
-          restSeconds: Value(ex.restSeconds),
+          reps: Value(ex.reps),
+          rest: Value(ex.rest),
+          duration: Value(ex.duration),
           groupId: Value(ex.groupId),
         ),
       );

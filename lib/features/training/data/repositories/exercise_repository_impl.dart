@@ -4,6 +4,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/errors/result.dart';
 import '../../domain/entities/exercise.dart' as domain;
+import '../../domain/enums/exercise_type.dart';
 import '../../domain/enums/muscle_group.dart';
 import '../../domain/enums/muscle_region.dart' as domain_region;
 import '../../domain/enums/target_muscle.dart' as domain_muscle;
@@ -117,6 +118,7 @@ class ExerciseRepositoryImpl implements ExerciseRepository {
         ExercisesCompanion.insert(
           name: exercise.name,
           muscleGroup: exercise.muscleGroup,
+          type: Value(exercise.type),
           description: Value(exercise.description),
           isVerified: Value(exercise.isVerified),
         ),
@@ -146,6 +148,7 @@ class ExerciseRepositoryImpl implements ExerciseRepository {
         ExercisesCompanion(
           name: Value(exercise.name),
           muscleGroup: Value(exercise.muscleGroup),
+          type: Value(exercise.type),
           description: Value(exercise.description),
           isVerified: Value(exercise.isVerified),
         ),
@@ -208,6 +211,7 @@ class ExerciseRepositoryImpl implements ExerciseRepository {
         id: row.id as int,
         name: row.name as String,
         muscleGroup: row.muscleGroup as MuscleGroup,
+        type: row.type as ExerciseType,
         description: row.description as String?,
         isVerified: row.isVerified as bool,
         muscles: muscles,

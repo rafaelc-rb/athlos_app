@@ -16,17 +16,21 @@ Color supersetColorFor(int groupIndex, ColorScheme colorScheme) =>
 class WorkoutExerciseEntry {
   final Exercise exercise;
   int sets;
-  int reps;
-  int restSeconds;
+  int? reps;
+  int rest;
+  int? duration;
   int? groupId;
 
   WorkoutExerciseEntry({
     required this.exercise,
     this.sets = 3,
     this.reps = 12,
-    this.restSeconds = 60,
+    this.rest = 60,
+    this.duration,
     this.groupId,
   });
+
+  bool get isCardio => exercise.isCardio;
 }
 
 /// Tile for an exercise inside the workout builder form.
@@ -173,20 +177,30 @@ class WorkoutExerciseTile extends StatelessWidget {
                           },
                         ),
                         const SizedBox(width: AthlosSpacing.sm),
-                        _NumberField(
-                          label: l10n.repsLabel,
-                          value: entry.reps,
-                          onChanged: (v) {
-                            entry.reps = v;
-                            onChanged(entry);
-                          },
-                        ),
+                        if (entry.isCardio)
+                          _NumberField(
+                            label: l10n.durationSecondsLabel,
+                            value: entry.duration ?? 60,
+                            onChanged: (v) {
+                              entry.duration = v;
+                              onChanged(entry);
+                            },
+                          )
+                        else
+                          _NumberField(
+                            label: l10n.repsLabel,
+                            value: entry.reps ?? 12,
+                            onChanged: (v) {
+                              entry.reps = v;
+                              onChanged(entry);
+                            },
+                          ),
                         const SizedBox(width: AthlosSpacing.sm),
                         _NumberField(
                           label: l10n.restSecondsLabel,
-                          value: entry.restSeconds,
+                          value: entry.rest,
                           onChanged: (v) {
-                            entry.restSeconds = v;
+                            entry.rest = v;
                             onChanged(entry);
                           },
                         ),

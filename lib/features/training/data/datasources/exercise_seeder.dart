@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../domain/enums/exercise_type.dart';
 import '../../domain/enums/muscle_group.dart';
 import '../../domain/enums/muscle_region.dart';
 import '../../domain/enums/target_muscle.dart';
@@ -21,6 +22,7 @@ Future<void> seedExercises(AppDatabase db) async {
           ExercisesCompanion.insert(
             name: item.name,
             muscleGroup: item.muscleGroup,
+            type: Value(item.type),
             isVerified: const Value(true),
             description: const Value.absent(),
           ),
@@ -78,12 +80,14 @@ Future<Map<String, int>> _resolveEquipmentIds(AppDatabase db) async {
 class _SeedExercise {
   final String name;
   final MuscleGroup muscleGroup;
+  final ExerciseType type;
   final List<_MuscleFocus> muscles;
   final List<String> equipmentKeys;
 
   const _SeedExercise(
     this.name,
     this.muscleGroup, {
+    this.type = ExerciseType.strength,
     this.muscles = const [],
     this.equipmentKeys = const [],
   });
@@ -431,6 +435,65 @@ const _seedItems = [
     (muscle: TargetMuscle.pectoralisMajor, region: null),
     (muscle: TargetMuscle.anteriorDeltoid, region: null),
   ]),
+
+  // --- Cardio ---
+  _SeedExercise('treadmillRun', MuscleGroup.cardio,
+      type: ExerciseType.cardio, equipmentKeys: ['treadmill']),
+  _SeedExercise('stationaryBike', MuscleGroup.cardio,
+      type: ExerciseType.cardio, equipmentKeys: ['stationaryBike']),
+  _SeedExercise('rowingMachine', MuscleGroup.cardio,
+      type: ExerciseType.cardio, equipmentKeys: ['rowingMachine']),
+  _SeedExercise('elliptical', MuscleGroup.cardio,
+      type: ExerciseType.cardio, equipmentKeys: ['elliptical']),
+  _SeedExercise('jumpRope', MuscleGroup.cardio,
+      type: ExerciseType.cardio, equipmentKeys: ['jumpRope']),
+  _SeedExercise('jumpingJacks', MuscleGroup.cardio,
+      type: ExerciseType.cardio),
+];
+
+/// Seeds only the cardio exercises added in schema version 2.
+/// Called from migration onUpgrade when upgrading from v1.
+Future<void> seedExercisesV2(AppDatabase db) async {
+  final equipmentIds = await _resolveEquipmentIds(db);
+
+  for (final item in _cardioSeedItems) {
+    final id = await db.into(db.exercises).insert(
+          ExercisesCompanion.insert(
+            name: item.name,
+            muscleGroup: item.muscleGroup,
+            type: Value(item.type),
+            isVerified: const Value(true),
+            description: const Value.absent(),
+          ),
+        );
+
+    for (final eqName in item.equipmentKeys) {
+      final eqId = equipmentIds[eqName];
+      if (eqId != null) {
+        await db.into(db.exerciseEquipments).insert(
+              ExerciseEquipmentsCompanion(
+                exerciseId: Value(id),
+                equipmentId: Value(eqId),
+              ),
+            );
+      }
+    }
+  }
+}
+
+const _cardioSeedItems = [
+  _SeedExercise('treadmillRun', MuscleGroup.cardio,
+      type: ExerciseType.cardio, equipmentKeys: ['treadmill']),
+  _SeedExercise('stationaryBike', MuscleGroup.cardio,
+      type: ExerciseType.cardio, equipmentKeys: ['stationaryBike']),
+  _SeedExercise('rowingMachine', MuscleGroup.cardio,
+      type: ExerciseType.cardio, equipmentKeys: ['rowingMachine']),
+  _SeedExercise('elliptical', MuscleGroup.cardio,
+      type: ExerciseType.cardio, equipmentKeys: ['elliptical']),
+  _SeedExercise('jumpRope', MuscleGroup.cardio,
+      type: ExerciseType.cardio, equipmentKeys: ['jumpRope']),
+  _SeedExercise('jumpingJacks', MuscleGroup.cardio,
+      type: ExerciseType.cardio),
 ];
 
 const _variations = [

@@ -29,6 +29,7 @@ String localizedMuscleGroupName(MuscleGroup group, AppLocalizations l10n) =>
       MuscleGroup.glutes => l10n.muscleGroupGlutes,
       MuscleGroup.calves => l10n.muscleGroupCalves,
       MuscleGroup.fullBody => l10n.muscleGroupFullBody,
+      MuscleGroup.cardio => l10n.muscleGroupCardio,
     };
 
 /// Returns the localized display name for a [TargetMuscle].
@@ -123,4 +124,10 @@ Map<String, String> _exerciseNameMap(AppLocalizations l10n) => {
       'reverseWristCurl': l10n.exerciseReverseWristCurl,
       'deadlift': l10n.exerciseDeadlift,
       'burpee': l10n.exerciseBurpee,
+      'treadmillRun': l10n.exerciseTreadmillRun,
+      'stationaryBike': l10n.exerciseStationaryBike,
+      'rowingMachine': l10n.exerciseRowingMachine,
+      'elliptical': l10n.exerciseElliptical,
+      'jumpRope': l10n.exerciseJumpRope,
+      'jumpingJacks': l10n.exerciseJumpingJacks,
     };

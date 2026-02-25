@@ -59,7 +59,8 @@ class _WorkoutFormScreenState extends ConsumerState<WorkoutFormScreen> {
           exercise: exercise,
           sets: we.sets,
           reps: we.reps,
-          restSeconds: we.restSeconds,
+          rest: we.rest,
+          duration: we.duration,
           groupId: we.groupId,
         ));
         if (we.groupId != null && we.groupId! >= _nextGroupId) {
@@ -129,7 +130,11 @@ class _WorkoutFormScreenState extends ConsumerState<WorkoutFormScreen> {
       }
 
       setState(() {
-        _entries.add(WorkoutExerciseEntry(exercise: exercise));
+        _entries.add(WorkoutExerciseEntry(
+          exercise: exercise,
+          reps: exercise.isCardio ? null : 12,
+          duration: exercise.isCardio ? 300 : null,
+        ));
       });
     } on Exception catch (_) {
       if (mounted) {
@@ -164,7 +169,8 @@ class _WorkoutFormScreenState extends ConsumerState<WorkoutFormScreen> {
                 order: e.key,
                 sets: e.value.sets,
                 reps: e.value.reps,
-                restSeconds: e.value.restSeconds,
+                rest: e.value.rest,
+                duration: e.value.duration,
                 groupId: e.value.groupId,
               ))
           .toList();

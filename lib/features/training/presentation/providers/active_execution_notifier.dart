@@ -36,13 +36,15 @@ class ActiveExecution extends _$ActiveExecution {
     final exerciseSets = <int, List<SetEntry>>{};
     for (final ex in exercises) {
       final lastWeight = lastWeights[ex.exerciseId];
+      final isCardio = ex.duration != null;
       exerciseSets[ex.exerciseId] = List.generate(
         ex.sets,
         (i) => SetEntry(
           setNumber: i + 1,
-          plannedReps: ex.reps,
-          plannedWeight: lastWeight,
-          reps: ex.reps,
+          plannedReps: isCardio ? null : ex.reps,
+          plannedWeight: isCardio ? null : lastWeight,
+          reps: isCardio ? null : ex.reps,
+          duration: isCardio ? ex.duration : null,
         ),
       );
     }
@@ -55,8 +57,16 @@ class ActiveExecution extends _$ActiveExecution {
     );
   }
 
-  /// Update local set values (weight/reps) without persisting yet.
-  void updateSet(int exerciseId, int setNumber, {int? reps, double? weight}) {
+  /// Update local set values (weight/reps or duration/distance) without
+  /// persisting yet.
+  void updateSet(
+    int exerciseId,
+    int setNumber, {
+    int? reps,
+    double? weight,
+    int? duration,
+    double? distance,
+  }) {
     final current = state;
     if (current == null) return;
 
@@ -67,8 +77,10 @@ class ActiveExecution extends _$ActiveExecution {
       for (final s in sets)
         if (s.setNumber == setNumber)
           s.copyWith(
-            reps: reps ?? s.reps,
+            reps: reps != null ? () => reps : null,
             weight: weight != null ? () => weight : null,
+            duration: duration != null ? () => duration : null,
+            distance: distance != null ? () => distance : null,
           )
         else
           s,
@@ -133,12 +145,15 @@ class ActiveExecution extends _$ActiveExecution {
   }
 
   /// Mark a set as completed and persist it to the database.
-  /// Returns the restSeconds for the exercise so the caller can start the timer.
+  /// Returns the rest time (seconds) for the exercise so the caller can start
+  /// the timer.
   Future<int> completeSet(
     int exerciseId,
     int setNumber, {
-    required int reps,
+    int? reps,
     double? weight,
+    int? duration,
+    double? distance,
     List<SegmentEntry>? segments,
   }) async {
     final current = state;
@@ -159,6 +174,8 @@ class ActiveExecution extends _$ActiveExecution {
       plannedWeight: entry.plannedWeight,
       reps: reps,
       weight: weight,
+      duration: duration,
+      distance: distance,
       isCompleted: true,
     );
 
@@ -183,8 +200,10 @@ class ActiveExecution extends _$ActiveExecution {
         if (s.setNumber == setNumber)
           s.copyWith(
             id: setId,
-            reps: reps,
+            reps: reps != null ? () => reps : null,
             weight: () => weight,
+            duration: duration != null ? () => duration : null,
+            distance: distance != null ? () => distance : null,
             isCompleted: true,
             segments: effectiveSegments,
           )
@@ -199,7 +218,7 @@ class ActiveExecution extends _$ActiveExecution {
     final exercise = current.exercises.firstWhere(
       (e) => e.exerciseId == exerciseId,
     );
-    return exercise.restSeconds;
+    return exercise.rest;
   }
 
   /// Finish the active execution, persisting finishedAt.

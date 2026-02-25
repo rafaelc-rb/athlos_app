@@ -12,4 +12,5 @@ enum MuscleGroup {
   glutes,
   calves,
   fullBody,
+  cardio,
 }

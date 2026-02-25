@@ -22,7 +22,7 @@ final _placeholderExercises = List.generate(
     order: i,
     sets: 3,
     reps: 10,
-    restSeconds: 60,
+    rest: 60,
   ),
 );
 final _placeholderWorkout = Workout(
@@ -464,14 +464,25 @@ class _ExerciseDetailTile extends ConsumerWidget {
             ],
           ),
           subtitle: Text(
-            groupName.isNotEmpty
-                ? '$groupName  •  ${exercise.sets}×${exercise.reps}  •  ${exercise.restSeconds}s'
-                : '${exercise.sets}×${exercise.reps}  •  ${exercise.restSeconds}s',
+            _exerciseSubtitle(exercise, groupName),
           ),
         ),
       ),
     );
 
     return card;
+  }
+
+  String _exerciseSubtitle(WorkoutExercise ex, String groupName) {
+    final config = ex.duration != null
+        ? '${ex.sets}×${_formatDuration(ex.duration!)}  •  ${ex.rest}s'
+        : '${ex.sets}×${ex.reps}  •  ${ex.rest}s';
+    return groupName.isNotEmpty ? '$groupName  •  $config' : config;
+  }
+
+  String _formatDuration(int seconds) {
+    if (seconds >= 60 && seconds % 60 == 0) return '${seconds ~/ 60}min';
+    if (seconds >= 60) return '${seconds ~/ 60}m${seconds % 60}s';
+    return '${seconds}s';
   }
 }

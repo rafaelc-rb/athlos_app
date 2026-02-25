@@ -48,6 +48,9 @@ Future<void> _seedUserEquipments(
     'adjustableBench',
     'squatRack',
     'resistanceBands',
+    'treadmill',
+    'stationaryBike',
+    'jumpRope',
   ];
 
   await db.batch((batch) {
@@ -123,12 +126,27 @@ Future<void> _seedWorkoutsWithExercises(
     _WE('standingCalfRaise', order: 5, sets: 4, reps: 15, rest: 45),
   ]);
 
+  // --- Cardio Day ---
+  final cardioId = await db.into(db.workouts).insert(
+        WorkoutsCompanion.insert(
+          name: 'Cardio Day',
+          description: const Value('Endurance & conditioning'),
+          sortOrder: const Value(3),
+        ),
+      );
+  await _insertWorkoutExercises(db, cardioId, exerciseIds, [
+    _WE('treadmillRun', order: 0, sets: 1, duration: 1200, rest: 120),
+    _WE('stationaryBike', order: 1, sets: 1, duration: 900, rest: 90),
+    _WE('jumpRope', order: 2, sets: 3, duration: 180, rest: 60),
+    _WE('jumpingJacks', order: 3, sets: 3, duration: 60, rest: 30),
+  ]);
+
   // --- Full Body (archived) ---
   await db.into(db.workouts).insert(
         WorkoutsCompanion.insert(
           name: 'Full Body',
           description: const Value('Quick full body session'),
-          sortOrder: const Value(3),
+          sortOrder: const Value(4),
           isArchived: const Value(true),
         ),
       );
@@ -152,7 +170,8 @@ Future<void> _insertWorkoutExercises(
           order: Value(e.order),
           sets: Value(e.sets),
           reps: Value(e.reps),
-          restSeconds: Value(e.rest),
+          rest: Value(e.rest),
+          duration: Value(e.duration),
           groupId: Value(e.groupId),
         ),
       );
@@ -252,6 +271,29 @@ Future<void> _seedExecutionHistory(
       planned: 12, weights: [80, 80, 80], reps: [12, 12, 11]);
   await _insertCompletedSets(db, exec3, exerciseIds['standingCalfRaise']!,
       planned: 15, weights: [60, 60, 60, 60], reps: [15, 15, 14, 13]);
+
+  // --- Execution 4: Cardio Day — 2 days ago (completed) ---
+  final exec4 = await db.into(db.workoutExecutions).insert(
+        WorkoutExecutionsCompanion.insert(
+          workoutId: 4,
+          startedAt: Value(now.subtract(const Duration(days: 2, hours: 1))),
+          finishedAt:
+              Value(now.subtract(const Duration(days: 2, minutes: 15))),
+          notes: const Value('Good cardio session'),
+        ),
+      );
+  await _insertCompletedCardioSets(
+      db, exec4, exerciseIds['treadmillRun']!,
+      durations: [1200], distances: [3500]);
+  await _insertCompletedCardioSets(
+      db, exec4, exerciseIds['stationaryBike']!,
+      durations: [900], distances: [5200]);
+  await _insertCompletedCardioSets(
+      db, exec4, exerciseIds['jumpRope']!,
+      durations: [180, 165, 150], distances: [null, null, null]);
+  await _insertCompletedCardioSets(
+      db, exec4, exerciseIds['jumpingJacks']!,
+      durations: [60, 55, 50], distances: [null, null, null]);
 }
 
 /// Inserts completed normal sets (no drop segments).
@@ -270,10 +312,33 @@ Future<void> _insertCompletedSets(
             executionId: executionId,
             exerciseId: exerciseId,
             setNumber: i + 1,
-            plannedReps: planned,
-            reps: reps[i],
+            plannedReps: Value(planned),
+            reps: Value(reps[i]),
             plannedWeight: Value(weights[i]),
             weight: Value(weights[i]),
+            isCompleted: const Value(true),
+          ),
+        );
+  }
+}
+
+/// Inserts completed cardio sets (duration + optional distance).
+Future<void> _insertCompletedCardioSets(
+  AppDatabase db,
+  int executionId,
+  int exerciseId, {
+  required List<int> durations,
+  required List<double?> distances,
+}) async {
+  assert(durations.length == distances.length);
+  for (var i = 0; i < durations.length; i++) {
+    await db.into(db.executionSets).insert(
+          ExecutionSetsCompanion.insert(
+            executionId: executionId,
+            exerciseId: exerciseId,
+            setNumber: i + 1,
+            duration: Value(durations[i]),
+            distance: Value(distances[i]),
             isCompleted: const Value(true),
           ),
         );
@@ -298,8 +363,8 @@ Future<void> _insertSetsWithDropSet(
             executionId: executionId,
             exerciseId: exerciseId,
             setNumber: setNumber++,
-            plannedReps: planned,
-            reps: s.reps,
+            plannedReps: Value(planned),
+            reps: Value(s.reps),
             plannedWeight: Value(s.weight),
             weight: Value(s.weight),
             isCompleted: const Value(true),
@@ -313,8 +378,8 @@ Future<void> _insertSetsWithDropSet(
           executionId: executionId,
           exerciseId: exerciseId,
           setNumber: setNumber,
-          plannedReps: planned,
-          reps: dropSetPrimary.reps,
+          plannedReps: Value(planned),
+          reps: Value(dropSetPrimary.reps),
           plannedWeight: Value(dropSetPrimary.weight),
           weight: Value(dropSetPrimary.weight),
           isCompleted: const Value(true),
@@ -352,16 +417,18 @@ class _WE {
   final String exerciseName;
   final int order;
   final int sets;
-  final int reps;
+  final int? reps;
   final int rest;
+  final int? duration;
   final int? groupId;
 
   const _WE(
     this.exerciseName, {
     required this.order,
     required this.sets,
-    required this.reps,
+    this.reps,
     required this.rest,
+    this.duration,
     this.groupId,
   });
 }

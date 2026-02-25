@@ -22,6 +22,28 @@ Future<void> seedEquipments(AppDatabase db) async {
   });
 }
 
+/// Seeds only the equipment added in schema version 2 (elliptical, jumpRope).
+/// Called from migration onUpgrade when upgrading from v1.
+Future<void> seedEquipmentsV2(AppDatabase db) async {
+  await db.batch((batch) {
+    for (final item in _v2Items) {
+      batch.insert(
+        db.equipments,
+        EquipmentsCompanion.insert(
+          name: item.name,
+          category: item.category,
+          isVerified: const Value(true),
+        ),
+      );
+    }
+  });
+}
+
+const _v2Items = [
+  _SeedItem('elliptical', EquipmentCategory.cardio),
+  _SeedItem('jumpRope', EquipmentCategory.cardio),
+];
+
 class _SeedItem {
   final String name;
   final EquipmentCategory category;
@@ -68,4 +90,6 @@ const _seedItems = [
   _SeedItem('treadmill', EquipmentCategory.cardio),
   _SeedItem('stationaryBike', EquipmentCategory.cardio),
   _SeedItem('rowingMachine', EquipmentCategory.cardio),
+  _SeedItem('elliptical', EquipmentCategory.cardio),
+  _SeedItem('jumpRope', EquipmentCategory.cardio),
 ];

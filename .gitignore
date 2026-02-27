@@ -33,6 +33,12 @@ migrate_working_dir/
 /coverage/
 pubspec.lock
 
+# iOS/macOS CocoaPods
+ios/Pods/
+ios/Podfile.lock
+macos/Pods/
+macos/Podfile.lock
+
 # Generated files
 *.g.dart
 *.freezed.dart

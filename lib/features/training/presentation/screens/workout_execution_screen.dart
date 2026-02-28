@@ -26,11 +26,11 @@ String _formatSetSummary(SetEntry set) {
     final weight = w ?? 0.0;
     return '${weight.toStringAsFixed(weight % 1 == 0 ? 0 : 1)}kg x $r';
   }
-  final parts = <String>[part(set.weight, set.reps ?? 0)];
-  for (final seg in set.segments) {
-    parts.add(part(seg.weight, seg.reps));
+
+  if (set.isDropSet) {
+    return set.segments.map((s) => part(s.weight, s.reps)).join(' → ');
   }
-  return parts.join(' → ');
+  return part(set.weight, set.reps ?? 0);
 }
 
 class WorkoutExecutionScreen extends ConsumerStatefulWidget {

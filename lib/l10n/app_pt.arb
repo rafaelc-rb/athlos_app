@@ -1068,12 +1068,11 @@
       "total": { "type": "int" }
     }
   },
-  "previousSetRef": "Anterior: {weight}kg x {reps}",
+  "previousSetRef": "Anterior: {summary}",
   "@previousSetRef": {
-    "description": "Reference to previous completed set",
+    "description": "Reference to previous completed set (may include drop segments)",
     "placeholders": {
-      "weight": { "type": "String" },
-      "reps": { "type": "int" }
+      "summary": { "type": "String" }
     }
   },
   "skipTimer": "Pular",

@@ -15,9 +15,23 @@ import '../helpers/duration_format.dart';
 import '../providers/cardio_timer_notifier.dart';
 import '../providers/rest_timer_notifier.dart';
 import '../providers/workout_notifier.dart';
+import '../providers/active_execution_state.dart';
 import '../widgets/workout_exercise_tile.dart' show supersetColorFor;
 
 enum _ViewMode { overview, focused, timer, cardioTimer }
+
+/// Formats a completed set as "Wkg x R" or "Wkg x R → Wkg x R → ..." for drop sets.
+String _formatSetSummary(SetEntry set) {
+  String part(double? w, int r) {
+    final weight = w ?? 0.0;
+    return '${weight.toStringAsFixed(weight % 1 == 0 ? 0 : 1)}kg x $r';
+  }
+  final parts = <String>[part(set.weight, set.reps ?? 0)];
+  for (final seg in set.segments) {
+    parts.add(part(seg.weight, seg.reps));
+  }
+  return parts.join(' → ');
+}
 
 class WorkoutExecutionScreen extends ConsumerStatefulWidget {
   final int workoutId;
@@ -622,12 +636,7 @@ class _WorkoutExecutionScreenState
                 padding:
                     const EdgeInsets.only(bottom: AthlosSpacing.md),
                 child: Text(
-                  l10n.previousSetRef(
-                    prevSet.weight?.toStringAsFixed(
-                            prevSet.weight! % 1 == 0 ? 0 : 1) ??
-                        '0',
-                    prevSet.reps ?? 0,
-                  ),
+                  l10n.previousSetRef(_formatSetSummary(prevSet)),
                   style: textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),

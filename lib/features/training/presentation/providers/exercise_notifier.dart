@@ -27,7 +27,8 @@ class ExerciseList extends _$ExerciseList {
     String? description,
     List<int> equipmentIds = const [],
     List<({TargetMuscle muscle, MuscleRegion? region, MuscleRole role})>
-        muscles = const [],
+        muscles =
+        const [],
   }) async {
     final repo = ref.read(exerciseRepositoryProvider);
     final exercise = Exercise(
@@ -50,7 +51,7 @@ class ExerciseList extends _$ExerciseList {
     Exercise exercise, {
     List<int>? equipmentIds,
     List<({TargetMuscle muscle, MuscleRegion? region, MuscleRole role})>?
-        muscles,
+    muscles,
   }) async {
     final repo = ref.read(exerciseRepositoryProvider);
     final result = await repo.update(
@@ -101,7 +102,9 @@ Future<List<int>> exerciseEquipmentIds(Ref ref, int exerciseId) async {
 /// Loads muscle foci for a specific exercise.
 @riverpod
 Future<List<ExerciseMuscleFocus>> exerciseMuscleFoci(
-    Ref ref, int exerciseId) async {
+  Ref ref,
+  int exerciseId,
+) async {
   final repo = ref.watch(exerciseRepositoryProvider);
   final result = await repo.getMuscleFoci(exerciseId);
   return result.getOrThrow();

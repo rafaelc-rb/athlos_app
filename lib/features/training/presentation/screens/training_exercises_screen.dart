@@ -91,9 +91,7 @@ class _TrainingExercisesScreenState
                       )
                     : null,
                 isDense: true,
-                border: OutlineInputBorder(
-                  borderRadius: AthlosRadius.mdAll,
-                ),
+                border: OutlineInputBorder(borderRadius: AthlosRadius.mdAll),
               ),
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
@@ -111,8 +109,9 @@ class _TrainingExercisesScreenState
               }
               final isLoading = exercisesAsync.isLoading;
               final exercises = exercisesAsync.value ?? [];
-              final filtered =
-                  isLoading ? exercises : _filterExercises(exercises, l10n);
+              final filtered = isLoading
+                  ? exercises
+                  : _filterExercises(exercises, l10n);
               final displayList = isLoading ? _placeholderExercises : filtered;
 
               if (!isLoading && filtered.isEmpty) {
@@ -125,8 +124,7 @@ class _TrainingExercisesScreenState
                         Icon(
                           Icons.sports_gymnastics,
                           size: 48,
-                          color:
-                              colorScheme.onSurfaceVariant.withAlpha(100),
+                          color: colorScheme.onSurfaceVariant.withAlpha(100),
                         ),
                         const Gap(AthlosSpacing.md),
                         Text(
@@ -144,7 +142,9 @@ class _TrainingExercisesScreenState
               return Skeletonizer(
                 enabled: isLoading,
                 child: ListView.separated(
-                  padding: const EdgeInsets.only(bottom: AthlosSpacing.fabClearance),
+                  padding: const EdgeInsets.only(
+                    bottom: AthlosSpacing.fabClearance,
+                  ),
                   itemCount: displayList.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
@@ -160,14 +160,17 @@ class _TrainingExercisesScreenState
                         l10n: l10n,
                       ),
                       muscleGroupLabel: localizedMuscleGroupName(
-                          exercise.muscleGroup, l10n),
-                      targetMusclesLabel:
-                          musclesSummary.isNotEmpty ? musclesSummary : null,
+                        exercise.muscleGroup,
+                        l10n,
+                      ),
+                      targetMusclesLabel: musclesSummary.isNotEmpty
+                          ? musclesSummary
+                          : null,
                       onTap: isLoading
                           ? null
                           : () => context.push(
-                                '${RoutePaths.trainingExercises}/${exercise.id}',
-                              ),
+                              '${RoutePaths.trainingExercises}/${exercise.id}',
+                            ),
                     );
                   },
                 ),
@@ -189,12 +192,15 @@ class _TrainingExercisesScreenState
   }
 
   List<Exercise> _filterExercises(
-      List<Exercise> exercises, AppLocalizations l10n) {
+    List<Exercise> exercises,
+    AppLocalizations l10n,
+  ) {
     var filtered = exercises.toList();
 
     if (_selectedGroup != null) {
-      filtered =
-          filtered.where((e) => e.muscleGroup == _selectedGroup).toList();
+      filtered = filtered
+          .where((e) => e.muscleGroup == _selectedGroup)
+          .toList();
     }
 
     if (_searchQuery.isNotEmpty) {
@@ -210,10 +216,16 @@ class _TrainingExercisesScreenState
     }
 
     filtered.sort((a, b) {
-      final nameA = localizedExerciseName(a.name,
-          isVerified: a.isVerified, l10n: l10n);
-      final nameB = localizedExerciseName(b.name,
-          isVerified: b.isVerified, l10n: l10n);
+      final nameA = localizedExerciseName(
+        a.name,
+        isVerified: a.isVerified,
+        l10n: l10n,
+      );
+      final nameB = localizedExerciseName(
+        b.name,
+        isVerified: b.isVerified,
+        l10n: l10n,
+      );
       return nameA.compareTo(nameB);
     });
 
@@ -243,8 +255,8 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
   final Set<int> _selectedEquipmentIds = {};
   final List<({TargetMuscle muscle, MuscleRegion? region})> _primaryMuscles =
       [];
-  final List<({TargetMuscle muscle, MuscleRegion? region})>
-      _secondaryMuscles = [];
+  final List<({TargetMuscle muscle, MuscleRegion? region})> _secondaryMuscles =
+      [];
   bool _isSaving = false;
 
   @override
@@ -255,12 +267,14 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
   }
 
   List<({TargetMuscle muscle, MuscleRegion? region, MuscleRole role})>
-      get _allMuscles => [
-            ..._primaryMuscles.map(
-                (m) => (muscle: m.muscle, region: m.region, role: MuscleRole.primary)),
-            ..._secondaryMuscles.map(
-                (m) => (muscle: m.muscle, region: m.region, role: MuscleRole.secondary)),
-          ];
+  get _allMuscles => [
+    ..._primaryMuscles.map(
+      (m) => (muscle: m.muscle, region: m.region, role: MuscleRole.primary),
+    ),
+    ..._secondaryMuscles.map(
+      (m) => (muscle: m.muscle, region: m.region, role: MuscleRole.secondary),
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -349,8 +363,7 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
                         items: MuscleGroup.values.map((group) {
                           return DropdownMenuItem(
                             value: group,
-                            child: Text(
-                                localizedMuscleGroupName(group, l10n)),
+                            child: Text(localizedMuscleGroupName(group, l10n)),
                           );
                         }).toList(),
                         onChanged: (value) {
@@ -391,8 +404,7 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
                           ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2),
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : Text(l10n.save),
                     ),
@@ -419,8 +431,7 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
         _buildMuscleSection(
           label: l10n.primaryMusclesLabel,
           muscles: _primaryMuscles,
-          excludedMuscles:
-              _secondaryMuscles.map((m) => m.muscle).toSet(),
+          excludedMuscles: _secondaryMuscles.map((m) => m.muscle).toSet(),
           l10n: l10n,
           textTheme: textTheme,
           colorScheme: colorScheme,
@@ -429,8 +440,7 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
         _buildMuscleSection(
           label: l10n.secondaryMusclesLabel,
           muscles: _secondaryMuscles,
-          excludedMuscles:
-              _primaryMuscles.map((m) => m.muscle).toSet(),
+          excludedMuscles: _primaryMuscles.map((m) => m.muscle).toSet(),
           l10n: l10n,
           textTheme: textTheme,
           colorScheme: colorScheme,
@@ -458,8 +468,7 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
               ),
             ),
           ],
-          onChanged: (v) =>
-              setState(() => _selectedMovementPattern = v),
+          onChanged: (v) => setState(() => _selectedMovementPattern = v),
         ),
         const Gap(AthlosSpacing.md),
         EquipmentSearchPicker(
@@ -508,8 +517,9 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
       children: [
         Text(
           label,
-          style: textTheme.titleSmall
-              ?.copyWith(color: colorScheme.onSurfaceVariant),
+          style: textTheme.titleSmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
         ),
         const Gap(AthlosSpacing.xs),
         ...grouped.entries.map((entry) {
@@ -523,8 +533,7 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
               spacing: AthlosSpacing.xs,
               runSpacing: 0,
               children: groupMuscles.map((muscle) {
-                final isSelected =
-                    muscles.any((f) => f.muscle == muscle);
+                final isSelected = muscles.any((f) => f.muscle == muscle);
                 return FilterChip(
                   label: Text(
                     localizedTargetMuscle(muscle, l10n),
@@ -535,11 +544,9 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
                   onSelected: (selected) {
                     setState(() {
                       if (selected) {
-                        muscles
-                            .add((muscle: muscle, region: null));
+                        muscles.add((muscle: muscle, region: null));
                       } else {
-                        muscles.removeWhere(
-                            (f) => f.muscle == muscle);
+                        muscles.removeWhere((f) => f.muscle == muscle);
                       }
                     });
                   },
@@ -553,20 +560,17 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
   }
 
   List<Widget> _buildRegionDropdowns(AppLocalizations l10n) {
-    final all = [
-      ..._primaryMuscles,
-      ..._secondaryMuscles,
-    ];
-    final musclesWithRegions =
-        all.where((f) => f.muscle.validRegions.isNotEmpty).toList();
+    final all = [..._primaryMuscles, ..._secondaryMuscles];
+    final musclesWithRegions = all
+        .where((f) => f.muscle.validRegions.isNotEmpty)
+        .toList();
 
     if (musclesWithRegions.isEmpty) return [];
 
     return [
       const Gap(AthlosSpacing.md),
       ...musclesWithRegions.map((focus) {
-        final inPrimary =
-            _primaryMuscles.any((f) => f.muscle == focus.muscle);
+        final inPrimary = _primaryMuscles.any((f) => f.muscle == focus.muscle);
         final list = inPrimary ? _primaryMuscles : _secondaryMuscles;
         final idx = list.indexWhere((f) => f.muscle == focus.muscle);
         return Padding(
@@ -616,7 +620,9 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
     try {
       final description = _descriptionController.text.trim();
 
-      await ref.read(exerciseListProvider.notifier).addCustomExercise(
+      await ref
+          .read(exerciseListProvider.notifier)
+          .addCustomExercise(
             name: _nameController.text.trim(),
             muscleGroup: _selectedGroup,
             description: description.isEmpty ? null : description,
@@ -630,9 +636,7 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
     } on Exception catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.genericError),
-          ),
+          SnackBar(content: Text(AppLocalizations.of(context)!.genericError)),
         );
       }
     } finally {
@@ -642,4 +646,3 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
     }
   }
 }
-

@@ -1098,6 +1098,8 @@
   "@exerciseCompleteMessage": { "description": "Message when all sets of the current exercise are done" },
   "nextSetLabel": "Próxima série",
   "@nextSetLabel": { "description": "Button to go to the next set after rest" },
+  "nextExerciseButton": "Próximo exercício",
+  "@nextExerciseButton": { "description": "Button to advance to the next exercise after completing all sets" },
   "backToOverview": "Voltar ao resumo",
   "@backToOverview": { "description": "Button to return to the overview screen" },
   "backToHub": "Voltar ao Olympus",

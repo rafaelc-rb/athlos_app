@@ -18,7 +18,7 @@ import '../providers/workout_notifier.dart';
 import '../providers/active_execution_state.dart';
 import '../widgets/workout_exercise_tile.dart' show supersetColorFor;
 
-enum _ViewMode { overview, focused, timer, cardioTimer }
+enum _ViewMode { overview, focused, timer, cardioTimer, exerciseTransition }
 
 /// Formats a completed set as "Wkg x R" or "Wkg x R → Wkg x R → ..." for drop sets.
 String _formatSetSummary(SetEntry set) {
@@ -94,7 +94,8 @@ class _WorkoutExecutionScreenState
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
         if (_viewMode == _ViewMode.focused ||
-            _viewMode == _ViewMode.cardioTimer) {
+            _viewMode == _ViewMode.cardioTimer ||
+            _viewMode == _ViewMode.exerciseTransition) {
           ref.read(cardioTimerProvider.notifier).reset();
           setState(() => _viewMode = _ViewMode.overview);
         } else {
@@ -112,6 +113,8 @@ class _WorkoutExecutionScreenState
                 _buildTimer(context, execState, timerState),
               _ViewMode.cardioTimer =>
                 _buildCardioTimer(context, execState, cardioState),
+              _ViewMode.exerciseTransition =>
+                _buildExerciseCompleteTransition(context, execState),
             },
     );
   }
@@ -277,6 +280,22 @@ class _WorkoutExecutionScreenState
   void _returnToOverviewFromTimer() {
     ref.read(restTimerProvider.notifier).reset();
     setState(() => _viewMode = _ViewMode.overview);
+  }
+
+  void _goToNextExerciseOrOverview(ActiveExecutionState exec) {
+    ref.read(restTimerProvider.notifier).reset();
+    final next = _findNextPendingSet(exec);
+    if (next != null) {
+      _goToFocused(exec, next.$1, next.$2);
+    } else {
+      setState(() => _viewMode = _ViewMode.overview);
+    }
+  }
+
+  bool _isExerciseComplete(ActiveExecutionState exec) {
+    final exId = exec.exercises[_focusedExerciseIndex].exerciseId;
+    final sets = exec.exerciseSets[exId] ?? [];
+    return sets.every((s) => s.isCompleted);
   }
 
   // ---------------------------------------------------------------------------
@@ -663,7 +682,6 @@ class _WorkoutExecutionScreenState
                 height: 56,
                 child: FilledButton.tonalIcon(
                   onPressed: () {
-                    // Move to next set or back to overview
                     final nextInExercise = sets
                         .where((s) =>
                             !s.isCompleted &&
@@ -673,7 +691,8 @@ class _WorkoutExecutionScreenState
                       _goToFocused(exec, _focusedExerciseIndex,
                           nextInExercise.first.setNumber);
                     } else {
-                      setState(() => _viewMode = _ViewMode.overview);
+                      setState(() =>
+                          _viewMode = _ViewMode.exerciseTransition);
                     }
                   },
                   icon: const Icon(Icons.arrow_forward),
@@ -858,20 +877,39 @@ class _WorkoutExecutionScreenState
             Padding(
               padding: const EdgeInsets.symmetric(
                   horizontal: AthlosSpacing.xl),
-              child: SizedBox(
-                width: double.infinity,
-                child: hasMoreSetsInExercise
-                    ? FilledButton.icon(
+              child: hasMoreSetsInExercise
+                  ? SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
                         onPressed: () => _goToNextSetFromTimer(exec),
                         icon: const Icon(Icons.arrow_forward),
                         label: Text(l10n.nextSetLabel),
-                      )
-                    : OutlinedButton.icon(
-                        onPressed: () => _returnToOverviewFromTimer(),
-                        icon: const Icon(Icons.list_alt),
-                        label: Text(l10n.backToOverview),
                       ),
-              ),
+                    )
+                  : Column(
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () {
+                              ref.read(restTimerProvider.notifier).reset();
+                              _goToNextExerciseOrOverview(exec);
+                            },
+                            icon: const Icon(Icons.arrow_forward),
+                            label: Text(l10n.nextExerciseButton),
+                          ),
+                        ),
+                        const SizedBox(height: AthlosSpacing.md),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _returnToOverviewFromTimer(),
+                            icon: const Icon(Icons.list_alt),
+                            label: Text(l10n.backToOverview),
+                          ),
+                        ),
+                      ],
+                    ),
             ),
 
             const SizedBox(height: AthlosSpacing.xl),
@@ -918,6 +956,79 @@ class _WorkoutExecutionScreenState
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // View: Exercise Complete Transition
+  // ---------------------------------------------------------------------------
+
+  Widget _buildExerciseCompleteTransition(
+      BuildContext context, ActiveExecutionState exec) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Scaffold(
+      backgroundColor: colorScheme.surfaceContainerHighest,
+      body: SafeArea(
+        child: Column(
+          children: [
+            const Spacer(flex: 2),
+
+            Icon(
+              Icons.check_circle_outline,
+              size: 80,
+              color: colorScheme.primary,
+            ),
+
+            const SizedBox(height: AthlosSpacing.lg),
+
+            Text(
+              l10n.exerciseCompleteMessage,
+              style: textTheme.headlineMedium?.copyWith(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+
+            ?_buildLoadFeedback(exec, context),
+
+            const Spacer(flex: 3),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AthlosSpacing.xl),
+              child: Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => _goToNextExerciseOrOverview(exec),
+                      icon: const Icon(Icons.arrow_forward),
+                      label: Text(l10n.nextExerciseButton),
+                    ),
+                  ),
+                  const SizedBox(height: AthlosSpacing.md),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        ref.read(restTimerProvider.notifier).reset();
+                        setState(() => _viewMode = _ViewMode.overview);
+                      },
+                      icon: const Icon(Icons.list_alt),
+                      label: Text(l10n.backToOverview),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AthlosSpacing.xl),
+          ],
+        ),
       ),
     );
   }
@@ -1309,13 +1420,20 @@ class _WorkoutExecutionScreenState
                 icon: const Icon(Icons.arrow_forward),
                 label: Text(l10n.nextSetLabel),
               )
-            else
+            else ...[
+              FilledButton.icon(
+                onPressed: () => _goToNextExerciseOrOverview(exec),
+                icon: const Icon(Icons.arrow_forward),
+                label: Text(l10n.nextExerciseButton),
+              ),
+              const SizedBox(height: AthlosSpacing.md),
               OutlinedButton.icon(
                 onPressed: () =>
                     setState(() => _viewMode = _ViewMode.overview),
                 icon: const Icon(Icons.list_alt),
                 label: Text(l10n.backToOverview),
               ),
+            ],
           ],
         ),
       ),
@@ -1383,11 +1501,15 @@ class _WorkoutExecutionScreenState
       ref.read(restTimerProvider.notifier).start(rest);
       setState(() => _viewMode = _ViewMode.timer);
     } else {
-      final next = _findNextPendingSet(updatedExec);
-      if (next != null) {
-        _goToFocused(updatedExec, next.$1, next.$2);
+      if (_isExerciseComplete(updatedExec)) {
+        setState(() => _viewMode = _ViewMode.exerciseTransition);
       } else {
-        setState(() => _viewMode = _ViewMode.overview);
+        final next = _findNextPendingSet(updatedExec);
+        if (next != null) {
+          _goToFocused(updatedExec, next.$1, next.$2);
+        } else {
+          setState(() => _viewMode = _ViewMode.overview);
+        }
       }
     }
   }
@@ -1425,11 +1547,15 @@ class _WorkoutExecutionScreenState
       ref.read(restTimerProvider.notifier).start(rest);
       setState(() => _viewMode = _ViewMode.timer);
     } else {
-      final next = _findNextPendingSet(updatedExec);
-      if (next != null) {
-        _goToFocused(updatedExec, next.$1, next.$2);
+      if (_isExerciseComplete(updatedExec)) {
+        setState(() => _viewMode = _ViewMode.exerciseTransition);
       } else {
-        setState(() => _viewMode = _ViewMode.overview);
+        final next = _findNextPendingSet(updatedExec);
+        if (next != null) {
+          _goToFocused(updatedExec, next.$1, next.$2);
+        } else {
+          setState(() => _viewMode = _ViewMode.overview);
+        }
       }
     }
   }

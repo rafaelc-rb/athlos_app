@@ -15,7 +15,6 @@ import '../helpers/duration_format.dart';
 import '../providers/cardio_timer_notifier.dart';
 import '../providers/rest_timer_notifier.dart';
 import '../providers/workout_notifier.dart';
-import '../providers/active_execution_state.dart';
 import '../widgets/workout_exercise_tile.dart' show supersetColorFor;
 
 enum _ViewMode { overview, focused, timer, cardioTimer, exerciseTransition }

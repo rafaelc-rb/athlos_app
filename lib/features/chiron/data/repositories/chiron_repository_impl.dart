@@ -5,8 +5,10 @@ import '../../../profile/domain/entities/user_profile.dart';
 import '../../../profile/domain/enums/experience_level.dart';
 import '../../../profile/domain/enums/gender.dart';
 import '../../../profile/domain/repositories/user_profile_repository.dart';
+import '../../../training/domain/entities/cycle_step.dart';
 import '../../../training/domain/entities/workout.dart' as domain_workout;
 import '../../../training/domain/entities/workout_exercise.dart' as domain_we;
+import '../../../training/domain/repositories/cycle_repository.dart';
 import '../../../training/domain/repositories/equipment_repository.dart';
 import '../../../training/domain/repositories/exercise_repository.dart';
 import '../../../training/domain/repositories/workout_repository.dart';
@@ -30,11 +32,13 @@ class ChironRepositoryImpl implements ChironRepository {
     required EquipmentRepository equipmentRepo,
     required WorkoutRepository workoutRepo,
     required ExerciseRepository exerciseRepo,
+    required CycleRepository cycleRepo,
     GeminiModelsLoader? modelsLoader,
   })  : _profileRepo = profileRepo,
         _equipmentRepo = equipmentRepo,
         _workoutRepo = workoutRepo,
         _exerciseRepo = exerciseRepo,
+        _cycleRepo = cycleRepo,
         _modelsLoader = modelsLoader ?? GeminiModelsLoader(apiKey: apiKey),
         _restClient = GeminiRestClient(apiKey: apiKey);
 
@@ -43,6 +47,7 @@ class ChironRepositoryImpl implements ChironRepository {
   final EquipmentRepository _equipmentRepo;
   final WorkoutRepository _workoutRepo;
   final ExerciseRepository _exerciseRepo;
+  final CycleRepository _cycleRepo;
   final GeminiModelsLoader _modelsLoader;
 
   static const _maxMessagesPerMinute = 10;
@@ -65,13 +70,17 @@ Progresso: Usa o histórico de execuções para sugerir troca de treino, progres
 
 Treinos — nunca excluir: Não tens função para excluir treinos. Só podes criar (createWorkout) e arquivar (archiveWorkout). Para substituir um plano: cria o novo treino e depois arquiva o(s) antigo(s) com archiveWorkout(workoutId). O contexto lista treinos ativos com id=X; usa esse id ao arquivar.
 
+Ciclo (rotina): Após criar novos treinos e arquivar os antigos, deves definir o ciclo com setCycle(steps). steps é uma lista ordenada: cada item é { type: "workout", workoutId: N } ou { type: "rest" }. Inclui só workoutIds de treinos ativos (os que acabaste de criar ou que ficaram). Exemplo: [ { type: "workout", workoutId: 5 }, { type: "rest" }, { type: "workout", workoutId: 6 } ]. Isto persiste a rotina e evita versões antigas ficarem ativas.
+
+Revisão final: Depois de aplicar todas as alterações (criar, arquivar, setCycle), chama getTrainingState(). Compara o retorno (activeWorkouts e cycleSteps) com o que pretendias. Se estiver correto, confirma ao utilizador que tudo foi aplicado. Se algo estiver diferente (ex.: treino antigo ainda ativo, ciclo desatualizado), informa o que falhou e sugere verificar no módulo Treino.
+
 Tempo disponível: Se o contexto indicar "Tempo disponível por treino: X min", monta treinos que cabem nesse tempo (estimativa: séries × (reps ou duração) + descansos). Não sugiras treinos que excedam esse tempo.
 
 Dois cenários:
-1) Utilizador sem treinos ativos: foca em montar o primeiro plano. createWorkout com name e exercises (exerciseName, sets, reps, restSeconds). Perfil e equipamentos no contexto. Respeita o tempo disponível se estiver definido.
-2) Utilizador com treinos ativos: analisa o plano atual, as sessões e progressões. Diz se faz sentido continuar, acrescentar, substituir ou modificar treino/ciclo. Se sugerires substituir: createWorkout para o novo e archiveWorkout para o antigo. Podes criar novos treinos e arquivar antigos; nunca excluir.
+1) Utilizador sem treinos ativos: foca em montar o primeiro plano. createWorkout com name e exercises (exerciseName, sets, reps, restSeconds). Depois setCycle com o(s) treino(s) criado(s). Por fim getTrainingState e confirma ao utilizador.
+2) Utilizador com treinos ativos: analisa o plano atual, as sessões e progressões. Diz se faz sentido continuar, acrescentar, substituir ou modificar treino/ciclo. Se sugerires substituir: createWorkout para o novo, archiveWorkout para o(s) antigo(s), setCycle com a nova ordem (só treinos ativos + descansos), getTrainingState e revisa se está tudo certo.
 
-Uso de funções: createWorkout e archiveWorkout conforme acima. updateBio, updateInjuries, updateExperienceLevel, updateGender, updateTrainingFrequency quando tiveres informação concreta; agrupa se possível. registerEquipment/removeEquipment quando o utilizador confirmar.
+Uso de funções: createWorkout e archiveWorkout conforme acima; setCycle após alterar treinos; getTrainingState no final para revisar. updateBio, updateInjuries, updateExperienceLevel, updateGender, updateTrainingFrequency quando tiveres informação concreta; agrupa se possível. registerEquipment/removeEquipment quando o utilizador confirmar.
 ''';
 
   @override
@@ -242,6 +251,12 @@ Uso de funções: createWorkout e archiveWorkout conforme acima. updateBio, upda
                   : int.tryParse(args['workoutId'].toString()))
               : null,
         );
+      case 'setCycle':
+        return _handleSetCycle(
+          args['steps'] is List ? args['steps'] as List? : null,
+        );
+      case 'getTrainingState':
+        return _handleGetTrainingState();
       default:
         return {'success': false, 'error': 'Unknown function: $name'};
     }
@@ -322,6 +337,16 @@ Uso de funções: createWorkout e archiveWorkout conforme acima. updateBio, upda
     }
 
     final id = result.getOrThrow();
+    final cycleResult = await _cycleRepo.appendWorkoutToCycle(id);
+    if (!cycleResult.isSuccess) {
+      return {
+        'success': true,
+        'workoutId': id,
+        'workoutName': workout.name,
+        'exerciseCount': workoutExercises.length,
+        'warning': 'Treino criado mas falha ao adicionar ao ciclo',
+      };
+    }
     return {
       'success': true,
       'workoutId': id,
@@ -335,9 +360,98 @@ Uso de funções: createWorkout e archiveWorkout conforme acima. updateBio, upda
       return {'success': false, 'error': 'workoutId inválido'};
     }
     final result = await _workoutRepo.archive(workoutId);
-    return result.isSuccess
-        ? {'success': true, 'workoutId': workoutId}
-        : {'success': false, 'error': 'Falha ao arquivar o treino'};
+    if (!result.isSuccess) {
+      return {'success': false, 'error': 'Falha ao arquivar o treino'};
+    }
+    final cycleResult = await _cycleRepo.removeWorkoutFromCycle(workoutId);
+    if (!cycleResult.isSuccess) {
+      return {
+        'success': true,
+        'workoutId': workoutId,
+        'warning': 'Treino arquivado mas falha ao remover do ciclo',
+      };
+    }
+    return {'success': true, 'workoutId': workoutId};
+  }
+
+  Future<Map<String, Object?>> _handleSetCycle(List? stepsList) async {
+    if (stepsList == null || stepsList.isEmpty) {
+      return {'success': false, 'error': 'steps é obrigatório e não pode ser vazio'};
+    }
+    final cycleSteps = <TrainingCycleStep>[];
+    for (var i = 0; i < stepsList.length; i++) {
+      final item = stepsList[i];
+      if (item is! Map) continue;
+      final map = item;
+      final typeStr = map['type']?.toString().toLowerCase();
+      if (typeStr == 'rest') {
+        cycleSteps.add(TrainingCycleStep(
+          id: 0,
+          orderIndex: i,
+          type: CycleStepType.rest,
+          workoutId: null,
+        ));
+      } else if (typeStr == 'workout') {
+        final workoutId = map['workoutId'] != null
+            ? (map['workoutId'] is int
+                ? map['workoutId'] as int
+                : int.tryParse(map['workoutId'].toString()))
+            : null;
+        if (workoutId == null || workoutId <= 0) continue;
+        cycleSteps.add(TrainingCycleStep(
+          id: 0,
+          orderIndex: i,
+          type: CycleStepType.workout,
+          workoutId: workoutId,
+        ));
+      }
+    }
+    if (cycleSteps.isEmpty) {
+      return {'success': false, 'error': 'Nenhum passo válido (use type: workout com workoutId ou type: rest)'};
+    }
+    final result = await _cycleRepo.setSteps(cycleSteps);
+    if (!result.isSuccess) {
+      return {'success': false, 'error': 'Falha ao guardar o ciclo'};
+    }
+    return {
+      'success': true,
+      'stepCount': cycleSteps.length,
+    };
+  }
+
+  Future<Map<String, Object?>> _handleGetTrainingState() async {
+    final activeResult = await _workoutRepo.getActive();
+    if (!activeResult.isSuccess) {
+      return {'success': false, 'error': 'Falha ao obter treinos ativos'};
+    }
+    final active = activeResult.getOrThrow();
+    final stepsResult = await _cycleRepo.getSteps();
+    if (!stepsResult.isSuccess) {
+      return {'success': false, 'error': 'Falha ao obter o ciclo'};
+    }
+    final steps = stepsResult.getOrThrow();
+    final activeById = {for (final w in active) w.id: w};
+    final activeWorkouts = active
+        .map((w) => {'id': w.id, 'name': w.name})
+        .toList();
+    final cycleSteps = <Map<String, Object?>>[];
+    for (final s in steps) {
+      if (s.type == CycleStepType.rest) {
+        cycleSteps.add({'type': 'rest'});
+      } else if (s.workoutId != null) {
+        final w = activeById[s.workoutId];
+        cycleSteps.add({
+          'type': 'workout',
+          'workoutId': s.workoutId,
+          'workoutName': w?.name ?? 'Treino #${s.workoutId}',
+        });
+      }
+    }
+    return {
+      'success': true,
+      'activeWorkouts': activeWorkouts,
+      'cycleSteps': cycleSteps,
+    };
   }
 
   int _parseInt(dynamic value, int fallback) {

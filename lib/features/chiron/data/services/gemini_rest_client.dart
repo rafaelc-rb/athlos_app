@@ -318,6 +318,45 @@ List<Map<String, dynamic>> getChironToolDeclarations() {
         required: ['workoutId'],
       ),
     },
+    {
+      'name': 'setCycle',
+      'description':
+          'Define a ordem do ciclo de treinos (rotina). Chamar após criar novos treinos e arquivar os antigos. '
+              'steps: lista ordenada; cada item é { type: "workout", workoutId: N } ou { type: "rest" }. '
+              'Só incluir workoutIds de treinos ativos (os que acabou de criar ou que ficaram). Substitui o ciclo inteiro.',
+      'parameters': _schema(
+        properties: {
+          'steps': {
+            'type': 'array',
+            'description': 'Passos do ciclo na ordem: workout (com workoutId) ou rest',
+            'items': _schema(
+              properties: {
+                'type': _propEnum(
+                  ['workout', 'rest'],
+                  'Tipo do passo: workout ou rest',
+                ),
+                'workoutId': _propInteger(
+                  'ID do treino (obrigatório quando type=workout)',
+                  nullable: true,
+                ),
+              },
+              required: ['type'],
+            ),
+          },
+        },
+        required: ['steps'],
+      ),
+    },
+    {
+      'name': 'getTrainingState',
+      'description':
+          'Obtém o estado atual: treinos ativos (id e nome) e o ciclo (ordem dos passos). '
+              'Usar no final para verificar se tudo foi aplicado corretamente e informar o utilizador.',
+      'parameters': _schema(
+        properties: {},
+        required: [],
+      ),
+    },
   ];
 }
 

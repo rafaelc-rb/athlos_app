@@ -1364,5 +1364,29 @@
   "profileInjuries": "Lesões",
   "profileBio": "Histórico",
   "yes": "Sim",
-  "no": "Não"
+  "no": "Não",
+
+  "setupChatGreeting": "Olá! Sou o Quíron, seu assistente de treino. Vou te ajudar a configurar seu perfil.",
+  "setupChatAskName": "Como posso te chamar?",
+  "setupChatGreetName": "Prazer, {name}! Vamos montar seu perfil.",
+  "@setupChatGreetName": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "setupChatGreetNoName": "Sem problemas! Vamos continuar.",
+  "setupChatAskBody": "Me conta um pouco sobre você — peso, altura e idade. Pode pular o que preferir.",
+  "setupChatAskGoal": "Qual seu objetivo principal no treino?",
+  "setupChatAskAesthetic": "Que tipo de corpo você busca?",
+  "setupChatAskStyle": "Qual seu estilo de treino preferido?",
+  "setupChatAskExperience": "Qual seu nível de experiência com treino?",
+  "setupChatAskFrequency": "Quantos dias por semana você costuma treinar?",
+  "setupChatAskGym": "Você treina em academia? Ter acesso a equipamentos muda as sugestões de treino.",
+  "setupChatAskInjuries": "Tem alguma lesão ou limitação física que eu deva saber? Ex: dor no ombro, hérnia discal...",
+  "setupChatAskBio": "Conta um pouco do seu histórico — há quanto tempo treina, esportes que já praticou, etc.",
+  "setupChatReady": "Pronto! Tenho tudo que preciso para começar a te ajudar. Vamos lá?",
+  "setupChatStart": "Começar",
+  "setupChatSkipped": "Prefiro não dizer",
+  "setupChatNone": "Nenhuma",
+  "setupChatChipHint": "Segure em uma opção para ver o que significa"
 }

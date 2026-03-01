@@ -180,6 +180,15 @@ class _WorkoutListBodyState extends ConsumerState<_WorkoutListBody> {
                   icon: Icon(Icons.auto_awesome, size: 20, color: colorScheme.primary),
                   label: Text(l10n.chironCreateWorkoutShortcut),
                 ),
+                const SizedBox(height: AthlosSpacing.xs),
+                TextButton.icon(
+                  onPressed: () => showChironSheet(
+                    context,
+                    initialMessage: l10n.chironQuickWorkoutMessage,
+                  ),
+                  icon: Icon(Icons.timer_outlined, size: 20, color: colorScheme.primary),
+                  label: Text(l10n.chironQuickWorkoutLabel),
+                ),
               ],
             ),
           ),

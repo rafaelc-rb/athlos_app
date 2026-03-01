@@ -76,6 +76,7 @@ Criação de treino: Perfil completo + equipamentos. createWorkout com name e ex
     required String userMessage,
     required List<ChironMessage> history,
     required String userContext,
+    ChironToolInvokedCallback? onToolInvoked,
   }) async* {
     _enforceRateLimit();
 
@@ -95,6 +96,7 @@ Criação de treino: Perfil completo + equipamentos. createWorkout com name e ex
           userMessage: userMessage,
           history: trimmedHistory,
           userContext: userContext,
+          onToolInvoked: onToolInvoked,
         )) {
           yield chunk;
         }
@@ -125,6 +127,7 @@ Criação de treino: Perfil completo + equipamentos. createWorkout com name e ex
     required String userMessage,
     required List<ChironMessage> history,
     required String userContext,
+    ChironToolInvokedCallback? onToolInvoked,
   }) async* {
     final systemInstruction = '$_systemPrompt\n\n$userContext';
     final toolDeclarations = getChironToolDeclarations();
@@ -170,6 +173,12 @@ Criação de treino: Perfil completo + equipamentos. createWorkout com name e ex
           createWorkoutSucceededThisTurn = true;
         }
         nameToResponse.add(MapEntry(call.name, result));
+        final success = result['success'] == true;
+        onToolInvoked?.call(
+          call.name,
+          success,
+          result.map((k, v) => MapEntry(k.toString(), v)),
+        );
       }
 
       contents = List<Map<String, dynamic>>.from(contents);

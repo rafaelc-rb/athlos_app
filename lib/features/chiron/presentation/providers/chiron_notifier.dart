@@ -18,6 +18,9 @@ class ChironNotifier extends _$ChironNotifier {
   Future<void> send(String userMessage) async {
     if (userMessage.trim().isEmpty || state.isStreaming) return;
 
+    final toolFeedback = <ChironToolFeedback>[];
+    int? createdWorkoutId;
+
     final userMsg = ChironMessage(
       role: ChironRole.user,
       content: userMessage.trim(),
@@ -33,6 +36,8 @@ class ChironNotifier extends _$ChironNotifier {
     state = state.copyWith(
       messages: [...state.messages, userMsg, assistantMsg],
       isStreaming: true,
+      lastResponseToolFeedback: [],
+      clearCreatedWorkoutId: true,
     );
 
     try {
@@ -45,6 +50,19 @@ class ChironNotifier extends _$ChironNotifier {
         history: state.messages.where((m) => m.content.isNotEmpty).toList()
           ..removeLast(),
         userContext: userContext,
+        onToolInvoked: (toolName, success, resultData) {
+          toolFeedback.add(ChironToolFeedback(
+            toolName: toolName,
+            success: success,
+          ));
+          if (toolName == 'createWorkout' &&
+              success &&
+              resultData != null &&
+              resultData['workoutId'] != null) {
+            final id = resultData['workoutId'];
+            createdWorkoutId = id is int ? id : int.tryParse(id.toString());
+          }
+        },
       );
 
       final buffer = StringBuffer();
@@ -73,7 +91,11 @@ class ChironNotifier extends _$ChironNotifier {
           updated.last.copyWith(content: errorText);
       state = state.copyWith(messages: updated);
     } finally {
-      state = state.copyWith(isStreaming: false);
+      state = state.copyWith(
+        isStreaming: false,
+        lastResponseToolFeedback: toolFeedback,
+        lastCreatedWorkoutId: createdWorkoutId,
+      );
       // Refresh profile and workout list in case function calling updated them
       ref.invalidate(profileProvider);
       ref.invalidate(workoutListProvider);
@@ -81,6 +103,11 @@ class ChironNotifier extends _$ChironNotifier {
   }
 
   void clear() => state = const ChironChatState();
+
+  /// Call after navigating to the created workout so we don't navigate again.
+  void clearCreatedWorkoutId() {
+    state = state.copyWith(clearCreatedWorkoutId: true);
+  }
 
   static String _errorMessage(Exception e) {
     final msg = e.toString().toLowerCase();

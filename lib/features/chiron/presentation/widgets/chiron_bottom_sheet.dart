@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../providers/chiron_chat_state.dart';
 import '../providers/chiron_notifier.dart';
 import 'chiron_message_bubble.dart';
 
@@ -91,7 +94,15 @@ class _ChironSheetState extends ConsumerState<_ChironSheet> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    ref.listen(chironProvider, (prev, next) => _scrollToBottom());
+    ref.listen(chironProvider, (prev, next) {
+      _scrollToBottom();
+      final workoutId = next.lastCreatedWorkoutId;
+      if (workoutId != null && context.mounted) {
+        Navigator.of(context).pop();
+        context.push('${RoutePaths.trainingWorkouts}/$workoutId');
+        ref.read(chironProvider.notifier).clearCreatedWorkoutId();
+      }
+    });
 
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
@@ -107,23 +118,39 @@ class _ChironSheetState extends ConsumerState<_ChironSheet> {
             Expanded(
               child: chatState.messages.isEmpty
                   ? _buildEmptyState(l10n, colorScheme, textTheme)
-                  : ListView.separated(
-                      controller: _scrollController,
-                      reverse: true,
-                      padding: const EdgeInsets.all(AthlosSpacing.md),
-                      itemCount: chatState.messages.length,
-                      separatorBuilder: (context, index) => const Gap(AthlosSpacing.sm),
-                      itemBuilder: (context, index) {
-                        final reverseIndex =
-                            chatState.messages.length - 1 - index;
-                        final message = chatState.messages[reverseIndex];
-                        final isNewest = index == 0;
-                        return ChironMessageBubble(
-                          key: ValueKey(reverseIndex),
-                          message: message,
-                          isStreaming: isNewest && chatState.isStreaming,
-                        );
-                      },
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: ListView.separated(
+                            controller: _scrollController,
+                            reverse: true,
+                            padding: const EdgeInsets.all(AthlosSpacing.md),
+                            itemCount: chatState.messages.length,
+                            separatorBuilder: (context, index) =>
+                                const Gap(AthlosSpacing.sm),
+                            itemBuilder: (context, index) {
+                              final reverseIndex =
+                                  chatState.messages.length - 1 - index;
+                              final message =
+                                  chatState.messages[reverseIndex];
+                              final isNewest = index == 0;
+                              return ChironMessageBubble(
+                                key: ValueKey(reverseIndex),
+                                message: message,
+                                isStreaming:
+                                    isNewest && chatState.isStreaming,
+                              );
+                            },
+                          ),
+                        ),
+                        if (chatState.lastResponseToolFeedback.isNotEmpty)
+                          _buildToolFeedbackChips(
+                            l10n,
+                            colorScheme,
+                            chatState.lastResponseToolFeedback,
+                          ),
+                      ],
                     ),
             ),
             _buildInputBar(l10n, colorScheme, chatState.isStreaming),
@@ -131,6 +158,70 @@ class _ChironSheetState extends ConsumerState<_ChironSheet> {
         ),
       ),
     );
+  }
+
+  Widget _buildToolFeedbackChips(
+    AppLocalizations l10n,
+    ColorScheme colorScheme,
+    List<ChironToolFeedback> feedback,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AthlosSpacing.md,
+        0,
+        AthlosSpacing.md,
+        AthlosSpacing.sm,
+      ),
+      child: Wrap(
+        spacing: AthlosSpacing.xs,
+        runSpacing: AthlosSpacing.xs,
+        children: feedback
+            .where((f) => f.success)
+            .map(
+              (f) => Chip(
+                label: Text(
+                  _toolFeedbackLabel(l10n, f.toolName),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.primary,
+                  ),
+                ),
+                side: BorderSide(color: colorScheme.primary.withValues(alpha: 0.5)),
+                backgroundColor: colorScheme.primaryContainer.withValues(alpha: 0.5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AthlosSpacing.sm,
+                  vertical: AthlosSpacing.xxs,
+                ),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  String _toolFeedbackLabel(AppLocalizations l10n, String toolName) {
+    switch (toolName) {
+      case 'createWorkout':
+        return l10n.chironToolFeedbackCreateWorkout;
+      case 'updateBio':
+        return l10n.chironToolFeedbackUpdateBio;
+      case 'updateInjuries':
+        return l10n.chironToolFeedbackUpdateInjuries;
+      case 'updateExperienceLevel':
+        return l10n.chironToolFeedbackUpdateExperienceLevel;
+      case 'updateGender':
+        return l10n.chironToolFeedbackUpdateGender;
+      case 'updateTrainingFrequency':
+        return l10n.chironToolFeedbackUpdateTrainingFrequency;
+      case 'registerEquipment':
+        return l10n.chironToolFeedbackRegisterEquipment;
+      case 'removeEquipment':
+        return l10n.chironToolFeedbackRemoveEquipment;
+      default:
+        return toolName;
+    }
   }
 
   Widget _buildHandle(ColorScheme colorScheme) {
@@ -188,6 +279,9 @@ class _ChironSheetState extends ConsumerState<_ChironSheet> {
       l10n.chironSuggestion1,
       l10n.chironSuggestion2,
       l10n.chironSuggestion3,
+      l10n.chironSuggestion4,
+      l10n.chironSuggestion5,
+      l10n.chironSuggestion6,
     ];
 
     return Center(
@@ -218,14 +312,18 @@ class _ChironSheetState extends ConsumerState<_ChironSheet> {
               textAlign: TextAlign.center,
             ),
             const Gap(AthlosSpacing.lg),
-            ...suggestions.map(
-              (s) => Padding(
-                padding: const EdgeInsets.only(bottom: AthlosSpacing.sm),
-                child: ActionChip(
-                  label: Text(s),
-                  onPressed: () => _sendSuggestion(s),
-                ),
-              ),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: AthlosSpacing.sm,
+              runSpacing: AthlosSpacing.sm,
+              children: suggestions
+                  .map(
+                    (s) => ActionChip(
+                      label: Text(s),
+                      onPressed: () => _sendSuggestion(s),
+                    ),
+                  )
+                  .toList(),
             ),
           ],
         ),

@@ -1336,6 +1336,25 @@
   "@chironCreateWorkoutShortcut": {
     "description": "Button/link in workout list to open Chiron with create-workout shortcut"
   },
+  "chironQuickWorkoutMessage": "Monte um treino de 45 minutos para mim",
+  "@chironQuickWorkoutMessage": {
+    "description": "Initial message for quick workout shortcut"
+  },
+  "chironQuickWorkoutLabel": "Treino rápido (45 min)",
+  "@chironQuickWorkoutLabel": {
+    "description": "Button label for quick workout shortcut"
+  },
+  "chironSuggestion4": "Ajustar meu perfil",
+  "chironSuggestion5": "Sugerir exercícios para costas",
+  "chironSuggestion6": "Explicar um exercício",
+  "chironToolFeedbackCreateWorkout": "Treino criado",
+  "chironToolFeedbackUpdateBio": "Perfil atualizado",
+  "chironToolFeedbackUpdateInjuries": "Lesões atualizadas",
+  "chironToolFeedbackUpdateExperienceLevel": "Experiência atualizada",
+  "chironToolFeedbackUpdateGender": "Gênero atualizado",
+  "chironToolFeedbackUpdateTrainingFrequency": "Frequência atualizada",
+  "chironToolFeedbackRegisterEquipment": "Equipamento registado",
+  "chironToolFeedbackRemoveEquipment": "Equipamento removido",
 
   "stepExperience": "Experiência",
   "@stepExperience": {

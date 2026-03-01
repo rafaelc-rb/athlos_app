@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../profile/presentation/providers/profile_notifier.dart';
@@ -88,10 +87,6 @@ class ChironNotifier extends _$ChironNotifier {
     if (msg.contains('rate limit') || msg.contains('quota')) {
       return 'Limite de uso da API do Quíron atingido no momento. '
           'Tente novamente daqui a alguns minutos.';
-    }
-    if (kDebugMode && e.toString().isNotEmpty) {
-      return 'Desculpe, ocorreu um erro. Tente novamente.\n\n'
-          '(_debug: ${e.toString().length > 200 ? "${e.toString().substring(0, 200)}..." : e} )';
     }
     return 'Desculpe, ocorreu um erro. Tente novamente.';
   }

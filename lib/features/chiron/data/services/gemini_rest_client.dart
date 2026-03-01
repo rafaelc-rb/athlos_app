@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 /// REST client for Gemini generateContent API with support for
@@ -146,16 +145,6 @@ GeminiResponseParse parseGenerateContentResponse(Map<String, dynamic> json) {
   String? outText = buffer.isEmpty ? null : buffer.toString();
   if (outText == null && thoughtBuffer.isNotEmpty) {
     outText = thoughtBuffer.toString();
-  }
-
-  if (kDebugMode && outText == null && parts.isNotEmpty) {
-    for (var i = 0; i < parts.length; i++) {
-      final p = parts[i];
-      if (p is Map<String, dynamic>) {
-        final keys = p.keys.toList();
-        debugPrint('[Chiron] Part $i keys: $keys');
-      }
-    }
   }
 
   return GeminiResponseParse(

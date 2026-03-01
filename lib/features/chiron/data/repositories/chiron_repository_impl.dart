@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
-
 import '../../../../core/errors/result.dart';
 import '../../../profile/domain/entities/user_profile.dart';
 import '../../../profile/domain/enums/experience_level.dart';
@@ -178,26 +176,15 @@ Quando o utilizador pedir para criar, montar ou sugerir um treino para salvar no
 
       parse = parseGenerateContentResponse(responseJson);
 
-      if (kDebugMode && parse.functionCalls.isEmpty && (parse.text == null || parse.text!.isEmpty)) {
-        final candidate = (responseJson['candidates'] as List<dynamic>?)?.firstOrNull as Map<String, dynamic>?;
-        final content = candidate?['content'] as Map<String, dynamic>?;
-        final contentParts = content?['parts'] as List<dynamic>?;
-        debugPrint('[Chiron] Empty response. finishReason=${candidate?['finishReason']}, parts count=${contentParts?.length ?? 0}');
-      }
-
       if (parse.functionCalls.isEmpty) {
         break;
       }
 
       final nameToResponse = <MapEntry<String, Map<String, Object?>>>[];
       for (final call in parse.functionCalls) {
-        if (kDebugMode) debugPrint('[Chiron] Function call: ${call.name}');
         final result = await _handleFunctionCallByName(call.name, call.args);
         if (call.name == 'createWorkout' && result['success'] == true) {
           createWorkoutSucceededThisTurn = true;
-        }
-        if (kDebugMode && result['success'] == false) {
-          debugPrint('[Chiron] ${call.name} failed: ${result['error']}');
         }
         nameToResponse.add(MapEntry(call.name, result));
       }

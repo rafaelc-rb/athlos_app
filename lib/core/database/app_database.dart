@@ -17,10 +17,12 @@ import '../../features/training/data/datasources/exercise_seeder.dart';
 import '../../features/training/domain/enums/exercise_type.dart';
 import '../../features/training/domain/enums/movement_pattern.dart';
 import '../../features/training/domain/enums/muscle_role.dart';
+import '../../features/training/data/datasources/daos/cycle_step_dao.dart';
 import '../../features/training/data/datasources/daos/equipment_dao.dart';
 import '../../features/training/data/datasources/daos/exercise_dao.dart';
 import '../../features/training/data/datasources/daos/workout_dao.dart';
 import '../../features/training/data/datasources/daos/workout_execution_dao.dart';
+import '../../features/training/data/datasources/tables/cycle_steps_table.dart';
 import '../../features/training/data/datasources/tables/equipments_table.dart';
 import '../../features/training/data/datasources/tables/execution_set_segments_table.dart';
 import '../../features/training/data/datasources/tables/execution_sets_table.dart';
@@ -55,6 +57,7 @@ bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed;
     WorkoutExecutions,
     ExecutionSets,
     ExecutionSetSegments,
+    CycleSteps,
     UserEquipments,
     // Profile
     UserProfiles,
@@ -64,6 +67,7 @@ bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed;
     ExerciseDao,
     WorkoutDao,
     WorkoutExecutionDao,
+    CycleStepDao,
     UserProfileDao,
   ],
 )
@@ -71,7 +75,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(driftDatabase(name: 'athlos'));
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -204,6 +208,29 @@ class AppDatabase extends _$AppDatabase {
           if (from < 5) {
             await customStatement(
               'ALTER TABLE user_profiles ADD COLUMN gender TEXT',
+            );
+          }
+
+          if (from < 6) {
+            await m.createTable(cycleSteps);
+            // Seed cycle from current active workouts order so behaviour is unchanged until user edits.
+            final active = await (select(workouts)
+                  ..where((w) =>
+                      w.isArchived.equals(false) & w.sortOrder.isNotNull())
+                  ..orderBy([(w) => OrderingTerm.asc(w.sortOrder)]))
+                .get();
+            for (var i = 0; i < active.length; i++) {
+              await into(cycleSteps).insert(CycleStepsCompanion.insert(
+                    orderIndex: i,
+                    stepType: 'workout',
+                    workoutId: Value(active[i].id),
+                  ));
+            }
+          }
+
+          if (from < 7) {
+            await customStatement(
+              'ALTER TABLE user_profiles ADD COLUMN available_workout_minutes INTEGER',
             );
           }
         },

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart' as intl;
 import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../../../core/router/route_paths.dart';
@@ -12,6 +14,7 @@ import '../../domain/entities/workout_exercise.dart';
 import '../helpers/duration_format.dart';
 import '../helpers/exercise_l10n.dart';
 import '../providers/exercise_notifier.dart';
+import '../providers/training_analytics_provider.dart';
 import '../providers/workout_notifier.dart';
 import '../widgets/workout_exercise_tile.dart' show supersetColorFor;
 
@@ -234,6 +237,7 @@ class WorkoutDetailScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
+              _WorkoutLastVsPreviousSection(workoutId: workoutId),
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AthlosSpacing.md,
@@ -480,5 +484,75 @@ class _ExerciseDetailTile extends ConsumerWidget {
         : '${ex.sets}×${ex.reps}  •  ${ex.rest}s';
     return groupName.isNotEmpty ? '$groupName  •  $config' : config;
   }
+}
 
+class _WorkoutLastVsPreviousSection extends ConsumerWidget {
+  const _WorkoutLastVsPreviousSection({required this.workoutId});
+
+  final int workoutId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final comparisonAsync =
+        ref.watch(lastVsPreviousComparisonProvider(workoutId));
+    return comparisonAsync.when(
+      data: (c) {
+        if (c == null) return const SizedBox.shrink();
+        final l10n = AppLocalizations.of(context)!;
+        final textTheme = Theme.of(context).textTheme;
+        final colorScheme = Theme.of(context).colorScheme;
+        final locale = Localizations.localeOf(context);
+        final lastDate = intl.DateFormat.MMMd(locale.toString())
+            .format(c.last.startedAt.toLocal());
+        final prevDate = intl.DateFormat.MMMd(locale.toString())
+            .format(c.previous.startedAt.toLocal());
+        final lastDur = formatDuration(c.last.duration?.inSeconds ?? 0);
+        final prevDur = formatDuration(c.previous.duration?.inSeconds ?? 0);
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AthlosSpacing.md,
+            0,
+            AthlosSpacing.md,
+            AthlosSpacing.sm,
+          ),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(AthlosSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.trainingLastVsPrevious,
+                    style: textTheme.titleSmall,
+                  ),
+                  const Gap(AthlosSpacing.xs),
+                  Text(
+                    '${l10n.trainingLastSession}: $lastDate · $lastDur · ${c.volumeLast.toStringAsFixed(0)} kg',
+                    style: textTheme.bodySmall,
+                  ),
+                  Text(
+                    '${l10n.trainingPreviousSession}: $prevDate · $prevDur · ${c.volumePrevious.toStringAsFixed(0)} kg',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  if (c.volumeDelta != 0) ...[
+                    const Gap(AthlosSpacing.xs),
+                    Text(
+                      l10n.trainingVolumeDelta(c.volumeDelta.toStringAsFixed(1)),
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (err, stackTrace) => const SizedBox.shrink(),
+    );
+  }
 }

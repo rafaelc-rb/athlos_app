@@ -33,6 +33,12 @@
     "description": "Label para features ainda não disponíveis"
   },
   "profile": "Perfil",
+  "profileSectionPersonal": "Dados pessoais",
+  "@profileSectionPersonal": { "description": "Profile section: personal data" },
+  "profileSectionTraining": "Objetivos e treino",
+  "@profileSectionTraining": { "description": "Profile section: goals and training" },
+  "profileSectionHealth": "Saúde e histórico",
+  "@profileSectionHealth": { "description": "Profile section: health and bio" },
   "@profile": {
     "description": "Label do perfil"
   },
@@ -528,6 +534,63 @@
       "count": { "type": "int" }
     }
   },
+
+  "trainingSummarySection": "Resumo",
+  "@trainingSummarySection": { "description": "Section title for training home summary" },
+  "trainingSessionsPerWorkout": "Sessões por treino",
+  "trainingArchivedSessions": "Arquivados",
+  "trainingOtherSessions": "Outros",
+  "@trainingOtherSessions": {
+    "description": "Label in analytics for sessions from non-active (archived/other) workouts"
+  },
+  "trainingTotalSessions": "Total de sessões",
+  "trainingSessionsCount": "{count} sessões",
+  "@trainingSessionsCount": {
+    "description": "Session count for a workout or total",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "trainingEvolutionRecent": "Evolução recente",
+  "trainingLastSession": "Última sessão",
+  "trainingPreviousSession": "Sessão anterior",
+  "trainingVolumeTotal": "Volume total",
+  "trainingDuration": "Duração",
+  "trainingVolumeDelta": "+{delta} kg volume",
+  "@trainingVolumeDelta": {
+    "placeholders": { "delta": { "type": "String" } }
+  },
+  "trainingVolumePercent": "+{percent}%",
+  "@trainingVolumePercent": {
+    "placeholders": { "percent": { "type": "String" } }
+  },
+  "trainingLastVsPrevious": "Última vs anterior",
+
+  "trainingStreakLabel": "Sequência",
+  "trainingStreakCount": "{count} treinos na ordem",
+  "@trainingStreakCount": {
+    "description": "Streak count in cycle order",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "trainingRest": "Descanso",
+  "@trainingRest": { "description": "Rest day label in cycle" },
+  "trainingNextStepRest": "Próximo: Descanso",
+  "@trainingNextStepRest": { "description": "Next step is rest day" },
+  "trainingCycleConfigure": "Configurar ciclo",
+  "@trainingCycleConfigure": { "description": "Button to open cycle configuration" },
+  "trainingCycleTitle": "Ciclo de treinos",
+  "@trainingCycleTitle": { "description": "Cycle edit screen title" },
+  "trainingCycleAddStep": "Adicionar passo",
+  "@trainingCycleAddStep": { "description": "Add step to cycle" },
+  "trainingCycleAddWorkout": "Treino",
+  "@trainingCycleAddWorkout": { "description": "Add workout step" },
+  "trainingCycleAddRest": "Descanso",
+  "@trainingCycleAddRest": { "description": "Add rest step" },
+  "trainingCycleEmptyHint": "O ciclo está vazio. A ordem dos treinos usa a ordem da lista na aba Treinos. Adicione passos para definir um ciclo com descanso.",
+  "@trainingCycleEmptyHint": { "description": "Hint when cycle has no steps" },
+  "trainingCycleSave": "Guardar ciclo",
+  "@trainingCycleSave": { "description": "Save cycle button" },
 
   "filterAll": "Todos",
   "@filterAll": { "description": "Filter chip: all items" },
@@ -1334,20 +1397,24 @@
   },
   "chironCreateWorkoutShortcut": "Pedir ao Quíron para montar",
   "@chironCreateWorkoutShortcut": {
-    "description": "Button/link in workout list to open Chiron with create-workout shortcut"
+    "description": "Button when no active workouts: open Chiron to create first plan"
   },
-  "chironQuickWorkoutMessage": "Monte um treino de 45 minutos para mim",
-  "@chironQuickWorkoutMessage": {
-    "description": "Initial message for quick workout shortcut"
+  "chironAnalyzeWorkoutsMessage": "Analisa meus treinos atuais, as minhas sessões e progressões, e diz se faz sentido continuar assim ou se devo acrescentar, substituir ou modificar algum treino ou o ciclo.",
+  "@chironAnalyzeWorkoutsMessage": {
+    "description": "Initial message when user has active workouts: ask Chiron to analyze plan"
   },
-  "chironQuickWorkoutLabel": "Treino rápido (45 min)",
-  "@chironQuickWorkoutLabel": {
-    "description": "Button label for quick workout shortcut"
+  "chironAnalyzeWorkoutsShortcut": "Analisar treinos com o Quíron",
+  "@chironAnalyzeWorkoutsShortcut": {
+    "description": "Button when has active workouts: open Chiron to analyze current plan"
   },
   "chironSuggestion4": "Ajustar meu perfil",
   "chironSuggestion5": "Sugerir exercícios para costas",
   "chironSuggestion6": "Explicar um exercício",
   "chironToolFeedbackCreateWorkout": "Treino criado",
+  "chironToolFeedbackArchiveWorkout": "Treino arquivado",
+  "@chironToolFeedbackArchiveWorkout": {
+    "description": "Tool feedback when Chiron archives a workout"
+  },
   "chironToolFeedbackUpdateBio": "Perfil atualizado",
   "chironToolFeedbackUpdateInjuries": "Lesões atualizadas",
   "chironToolFeedbackUpdateExperienceLevel": "Experiência atualizada",
@@ -1391,6 +1458,27 @@
 
   "profileExperience": "Experiência",
   "profileFrequency": "Frequência",
+  "profileAvailableWorkoutMinutes": "Tempo por treino",
+  "@profileAvailableWorkoutMinutes": {
+    "description": "Profile field: available time per workout"
+  },
+  "profileAvailableWorkoutMinutesValue": "{minutes} min",
+  "@profileAvailableWorkoutMinutesValue": {
+    "description": "Display value for available workout minutes",
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+  "profileAvailableWorkoutMinutesNotSet": "Não definido",
+  "@profileAvailableWorkoutMinutesNotSet": {
+    "description": "When user has not set available workout time"
+  },
+  "profileAvailableWorkoutMinutesLabel": "Tempo disponível por treino",
+  "@profileAvailableWorkoutMinutesLabel": {
+    "description": "Label for available workout minutes in edit form"
+  },
+  "profileAvailableWorkoutMinutesHint": "O Quíron monta treinos dentro deste tempo (séries, reps e descanso).",
+  "@profileAvailableWorkoutMinutesHint": {
+    "description": "Hint for available workout minutes field"
+  },
   "profileGym": "Academia",
   "profileInjuries": "Lesões",
   "profileBio": "Histórico",

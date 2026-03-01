@@ -9,6 +9,7 @@ import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/workout.dart';
+import '../providers/training_analytics_provider.dart';
 import '../providers/workout_notifier.dart';
 
 final _placeholderWorkouts = List.generate(
@@ -33,8 +34,15 @@ class TrainingWorkoutsScreen extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final workoutsAsync = ref.watch(workoutListProvider);
-    final nextWorkout = ref.watch(nextWorkoutProvider);
+    final nextCycleStepAsync = ref.watch(nextCycleStepProvider);
+    final nextWorkoutFallback = ref.watch(nextWorkoutProvider);
     final archivedAsync = ref.watch(archivedWorkoutListProvider);
+
+    final nextStep = nextCycleStepAsync.value;
+    final nextWorkout = nextStep != null
+        ? (nextStep.isRest ? null : nextStep.workout)
+        : nextWorkoutFallback;
+    final isNextRest = nextStep != null && nextStep.isRest;
 
     return Scaffold(
       body: () {
@@ -78,11 +86,12 @@ class TrainingWorkoutsScreen extends ConsumerWidget {
           child: _WorkoutListBody(
             workouts: isLoading ? _placeholderWorkouts : workouts,
             nextWorkoutId: nextWorkout?.id,
+            isNextRest: isNextRest,
             archivedAsync: archivedAsync,
           ),
         );
       }(),
-      floatingActionButton: _buildFab(context, ref, nextWorkout, l10n),
+      floatingActionButton: _buildFab(context, ref, nextWorkout, isNextRest, l10n),
     );
   }
 
@@ -90,6 +99,7 @@ class TrainingWorkoutsScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     Workout? next,
+    bool isNextRest,
     AppLocalizations l10n,
   ) {
     if (next != null) {
@@ -98,6 +108,14 @@ class TrainingWorkoutsScreen extends ConsumerWidget {
         onPressed: () => _startWorkout(context, ref, next.id),
         tooltip: l10n.startNextWorkout(next.name),
         child: const Icon(Icons.play_arrow),
+      );
+    }
+    if (isNextRest) {
+      return FloatingActionButton(
+        heroTag: 'add_workout',
+        onPressed: () => context.push(RoutePaths.trainingWorkoutNew),
+        tooltip: l10n.createWorkout,
+        child: const Icon(Icons.add),
       );
     }
 
@@ -116,11 +134,13 @@ class TrainingWorkoutsScreen extends ConsumerWidget {
 class _WorkoutListBody extends ConsumerStatefulWidget {
   final List<Workout> workouts;
   final int? nextWorkoutId;
+  final bool isNextRest;
   final AsyncValue<List<Workout>> archivedAsync;
 
   const _WorkoutListBody({
     required this.workouts,
     required this.nextWorkoutId,
+    this.isNextRest = false,
     required this.archivedAsync,
   });
 
@@ -175,19 +195,30 @@ class _WorkoutListBodyState extends ConsumerState<_WorkoutListBody> {
                 TextButton.icon(
                   onPressed: () => showChironSheet(
                     context,
-                    initialMessage: l10n.chironAskToCreateWorkout,
+                    initialMessage: widget.workouts.isEmpty
+                        ? l10n.chironAskToCreateWorkout
+                        : l10n.chironAnalyzeWorkoutsMessage,
                   ),
                   icon: Icon(Icons.auto_awesome, size: 20, color: colorScheme.primary),
-                  label: Text(l10n.chironCreateWorkoutShortcut),
-                ),
-                const SizedBox(height: AthlosSpacing.xs),
-                TextButton.icon(
-                  onPressed: () => showChironSheet(
-                    context,
-                    initialMessage: l10n.chironQuickWorkoutMessage,
+                  label: Text(
+                    widget.workouts.isEmpty
+                        ? l10n.chironCreateWorkoutShortcut
+                        : l10n.chironAnalyzeWorkoutsShortcut,
                   ),
-                  icon: Icon(Icons.timer_outlined, size: 20, color: colorScheme.primary),
-                  label: Text(l10n.chironQuickWorkoutLabel),
+                ),
+                if (widget.isNextRest) ...[
+                  const SizedBox(height: AthlosSpacing.sm),
+                  Chip(
+                    avatar: Icon(Icons.hotel, size: 18, color: colorScheme.onSurfaceVariant),
+                    label: Text(l10n.trainingNextStepRest),
+                    backgroundColor: colorScheme.surfaceContainerHighest,
+                  ),
+                ],
+                const SizedBox(height: AthlosSpacing.sm),
+                OutlinedButton.icon(
+                  onPressed: () => context.push(RoutePaths.trainingCycleEdit),
+                  icon: const Icon(Icons.loop),
+                  label: Text(l10n.trainingCycleConfigure),
                 ),
               ],
             ),

@@ -30,6 +30,9 @@ class UserProfile {
   /// Preferred training days per week (1-7).
   final int? trainingFrequency;
 
+  /// Available time per workout in minutes (e.g. 45, 60). Null = not set.
+  final int? availableWorkoutMinutes;
+
   /// Whether the user trains at a gym (has access to full equipment).
   final bool? trainsAtGym;
 
@@ -54,6 +57,7 @@ class UserProfile {
     this.experienceLevel,
     this.gender,
     this.trainingFrequency,
+    this.availableWorkoutMinutes,
     this.trainsAtGym,
     this.injuries,
     this.bio,
@@ -72,6 +76,7 @@ class UserProfile {
     ExperienceLevel? Function()? experienceLevel,
     Gender? Function()? gender,
     int? Function()? trainingFrequency,
+    int? Function()? availableWorkoutMinutes,
     bool? Function()? trainsAtGym,
     String? Function()? injuries,
     String? Function()? bio,
@@ -94,6 +99,9 @@ class UserProfile {
         trainingFrequency: trainingFrequency != null
             ? trainingFrequency()
             : this.trainingFrequency,
+        availableWorkoutMinutes: availableWorkoutMinutes != null
+            ? availableWorkoutMinutes()
+            : this.availableWorkoutMinutes,
         trainsAtGym: trainsAtGym != null ? trainsAtGym() : this.trainsAtGym,
         injuries: injuries != null ? injuries() : this.injuries,
         bio: bio != null ? bio() : this.bio,

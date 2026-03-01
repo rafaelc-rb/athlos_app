@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/errors/result.dart';
+import '../../domain/entities/execution_comparison.dart';
 import '../../domain/entities/execution_set.dart' as domain;
 import '../../domain/entities/execution_set_segment.dart' as domain;
 import '../../domain/entities/workout_execution.dart' as domain;
@@ -55,6 +56,47 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
       return Failure(
           DatabaseException('Failed to load last finished execution: $e'));
     }
+  }
+
+  @override
+  Future<Result<ExecutionComparison?>> getLastTwoFinishedWithVolume(
+      int workoutId) async {
+    try {
+      final byWorkout = await _dao.getByWorkout(workoutId);
+      final finished = byWorkout
+          .where((e) => e.finishedAt != null)
+          .take(2)
+          .toList();
+      if (finished.length < 2) return const Success(null);
+
+      final last = _executionToDomain(finished[0]);
+      final previous = _executionToDomain(finished[1]);
+
+      final volumeLast = await _volumeForExecution(last.id);
+      final volumePrevious = await _volumeForExecution(previous.id);
+
+      return Success(ExecutionComparison(
+        last: last,
+        previous: previous,
+        volumeLast: volumeLast,
+        volumePrevious: volumePrevious,
+      ));
+    } on Exception catch (e) {
+      return Failure(DatabaseException(
+          'Failed to load last two executions with volume: $e'));
+    }
+  }
+
+  Future<double> _volumeForExecution(int executionId) async {
+    final setsResult = await getSets(executionId);
+    final sets = setsResult.getOrThrow();
+    var volume = 0.0;
+    for (final s in sets) {
+      if (s.isCompleted && s.weight != null && s.reps != null) {
+        volume += s.weight! * s.reps!;
+      }
+    }
+    return volume;
   }
 
   @override

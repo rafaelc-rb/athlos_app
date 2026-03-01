@@ -32,6 +32,9 @@ class UserProfiles extends Table {
   /// Preferred training days per week (1-7).
   IntColumn get trainingFrequency => integer().nullable()();
 
+  /// Available time per workout in minutes (e.g. 45, 60). Null = not set.
+  IntColumn get availableWorkoutMinutes => integer().nullable()();
+
   /// Whether the user trains at a gym.
   BoolColumn get trainsAtGym =>
       boolean().nullable().withDefault(const Constant(null))();

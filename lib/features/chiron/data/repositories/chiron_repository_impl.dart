@@ -63,12 +63,15 @@ Equipamentos: Ao montar treino, usa só equipamentos registados. Se precisares d
 
 Progresso: Usa o histórico de execuções para sugerir troca de treino, progressões e descanso. Compara pesos/reps entre sessões.
 
-Uso de funções (importante):
-- createWorkout: chama só quando o utilizador pedir explicitamente para criar, montar ou salvar um treino no app. Usa nomes exatos do catálogo. Um treino por pedido.
-- updateBio, updateInjuries, updateExperienceLevel, updateGender, updateTrainingFrequency: chama quando tiveres informação concreta do utilizador; evita múltiplas chamadas em sequência — agrupa se possível.
-- registerEquipment/removeEquipment: quando o utilizador confirmar que tem ou não tem o equipamento.
+Treinos — nunca excluir: Não tens função para excluir treinos. Só podes criar (createWorkout) e arquivar (archiveWorkout). Para substituir um plano: cria o novo treino e depois arquiva o(s) antigo(s) com archiveWorkout(workoutId). O contexto lista treinos ativos com id=X; usa esse id ao arquivar.
 
-Criação de treino: Perfil completo + equipamentos. createWorkout com name e exercises (exerciseName, sets, reps, restSeconds). Após criar, confirma e sugere abrir o módulo Treino.
+Tempo disponível: Se o contexto indicar "Tempo disponível por treino: X min", monta treinos que cabem nesse tempo (estimativa: séries × (reps ou duração) + descansos). Não sugiras treinos que excedam esse tempo.
+
+Dois cenários:
+1) Utilizador sem treinos ativos: foca em montar o primeiro plano. createWorkout com name e exercises (exerciseName, sets, reps, restSeconds). Perfil e equipamentos no contexto. Respeita o tempo disponível se estiver definido.
+2) Utilizador com treinos ativos: analisa o plano atual, as sessões e progressões. Diz se faz sentido continuar, acrescentar, substituir ou modificar treino/ciclo. Se sugerires substituir: createWorkout para o novo e archiveWorkout para o antigo. Podes criar novos treinos e arquivar antigos; nunca excluir.
+
+Uso de funções: createWorkout e archiveWorkout conforme acima. updateBio, updateInjuries, updateExperienceLevel, updateGender, updateTrainingFrequency quando tiveres informação concreta; agrupa se possível. registerEquipment/removeEquipment quando o utilizador confirmar.
 ''';
 
   @override
@@ -231,6 +234,14 @@ Criação de treino: Perfil completo + equipamentos. createWorkout com name e ex
           args['description']?.toString(),
           args['exercises'] is List ? args['exercises'] as List? : null,
         );
+      case 'archiveWorkout':
+        return _handleArchiveWorkout(
+          args['workoutId'] != null
+              ? (args['workoutId'] is int
+                  ? args['workoutId'] as int
+                  : int.tryParse(args['workoutId'].toString()))
+              : null,
+        );
       default:
         return {'success': false, 'error': 'Unknown function: $name'};
     }
@@ -317,6 +328,16 @@ Criação de treino: Perfil completo + equipamentos. createWorkout com name e ex
       'workoutName': workout.name,
       'exerciseCount': workoutExercises.length,
     };
+  }
+
+  Future<Map<String, Object?>> _handleArchiveWorkout(int? workoutId) async {
+    if (workoutId == null || workoutId <= 0) {
+      return {'success': false, 'error': 'workoutId inválido'};
+    }
+    final result = await _workoutRepo.archive(workoutId);
+    return result.isSuccess
+        ? {'success': true, 'workoutId': workoutId}
+        : {'success': false, 'error': 'Falha ao arquivar o treino'};
   }
 
   int _parseInt(dynamic value, int fallback) {

@@ -1,4 +1,5 @@
 import '../../../../core/errors/result.dart';
+import '../entities/execution_comparison.dart';
 import '../entities/execution_set.dart';
 import '../entities/execution_set_segment.dart';
 import '../entities/workout_execution.dart';
@@ -9,6 +10,11 @@ abstract interface class WorkoutExecutionRepository {
   Future<Result<List<WorkoutExecution>>> getByWorkout(int workoutId);
   Future<Result<WorkoutExecution?>> getById(int id);
   Future<Result<WorkoutExecution?>> getLastFinished();
+
+  /// Last two finished executions for [workoutId] with total volume (weight×reps).
+  /// Returns null if there are fewer than two finished executions.
+  Future<Result<ExecutionComparison?>> getLastTwoFinishedWithVolume(
+      int workoutId);
   Future<Result<int>> start(int workoutId);
   Future<Result<void>> finish(int executionId, {String? notes});
   Future<Result<void>> delete(int id);

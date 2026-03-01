@@ -70,6 +70,10 @@ class PromptBuilder {
           lines.add(
               '- Frequência: ${profile.trainingFrequency}x por semana');
         }
+        if (profile.availableWorkoutMinutes != null) {
+          lines.add(
+              '- Tempo disponível por treino: ${profile.availableWorkoutMinutes} min (monta treinos dentro deste tempo)');
+        }
         if (profile.trainsAtGym != null) {
           lines.add(
               '- Treina em academia: ${profile.trainsAtGym! ? "Sim" : "Não"}');
@@ -119,7 +123,7 @@ class PromptBuilder {
           final exStr = exerciseNames.isNotEmpty
               ? ' → ${exerciseNames.join(", ")}'
               : '';
-          lines.add('- ${w.name} (criado há $age dias, '
+          lines.add('- id=${w.id} ${w.name} (criado há $age dias, '
               '${exerciseNames.length} exercícios)$exStr');
         }
         sections.add(lines.join('\n'));

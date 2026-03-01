@@ -305,6 +305,19 @@ List<Map<String, dynamic>> getChironToolDeclarations() {
         required: ['name', 'exercises'],
       ),
     },
+    {
+      'name': 'archiveWorkout',
+      'description':
+          'Arquiva um treino (remove dos ativos, mantém no histórico). '
+              'Usa o ID do treino indicado no contexto (Treinos Ativos: id=X). '
+              'Nunca exclui treinos — só arquivar. Para substituir um plano, crie o novo com createWorkout e depois archiveWorkout no antigo.',
+      'parameters': _schema(
+        properties: {
+          'workoutId': _propInteger('ID do treino a arquivar (ver contexto)'),
+        },
+        required: ['workoutId'],
+      ),
+    },
   ];
 }
 

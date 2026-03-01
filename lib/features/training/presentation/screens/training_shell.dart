@@ -8,6 +8,7 @@ import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../core/widgets/app_bar_menu.dart';
 import '../../../../l10n/app_localizations.dart';
 import 'equipment_screen.dart';
+import 'cycle_edit_screen.dart';
 import 'training_exercises_screen.dart';
 import 'training_history_screen.dart';
 import 'training_home_screen.dart';
@@ -51,6 +52,10 @@ ShellRoute trainingShellRoute() {
       GoRoute(
         path: RoutePaths.trainingEquipment,
         builder: (context, state) => const EquipmentScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.trainingCycleEdit,
+        builder: (context, state) => const CycleEditScreen(),
       ),
     ],
   );

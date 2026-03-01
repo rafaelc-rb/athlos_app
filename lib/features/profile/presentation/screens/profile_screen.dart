@@ -46,6 +46,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   TrainingStyle? _selectedStyle;
   ExperienceLevel? _selectedExperience;
   int? _trainingFrequency;
+  int? _availableWorkoutMinutes;
   bool? _trainsAtGym;
 
   @override
@@ -72,6 +73,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _selectedStyle = profile.trainingStyle;
     _selectedExperience = profile.experienceLevel;
     _trainingFrequency = profile.trainingFrequency;
+    _availableWorkoutMinutes = profile.availableWorkoutMinutes;
     _trainsAtGym = profile.trainsAtGym;
     setState(() => _isEditing = true);
   }
@@ -105,108 +107,166 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AthlosSpacing.md),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Avatar placeholder
-          CircleAvatar(
-            radius: 48,
-            backgroundColor: colorScheme.primaryContainer,
-            child: Icon(
-              Icons.person,
-              size: 48,
-              color: colorScheme.onPrimaryContainer,
+          Center(
+            child: CircleAvatar(
+              radius: 48,
+              backgroundColor: colorScheme.primaryContainer,
+              child: Icon(
+                Icons.person,
+                size: 48,
+                color: colorScheme.onPrimaryContainer,
+              ),
             ),
           ),
           const Gap(AthlosSpacing.lg),
 
-          // Data cards
-          _ProfileTile(
-            icon: Icons.person_outline,
-            label: l10n.profileName,
-            value: profile.name ?? l10n.profileNotSet,
+          // Dados pessoais
+          _SectionHeader(title: l10n.profileSectionPersonal),
+          const Gap(AthlosSpacing.xs),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: AthlosSpacing.sm,
+                horizontal: AthlosSpacing.md,
+              ),
+              child: Column(
+                children: [
+                  _ProfileTile(
+                    icon: Icons.person_outline,
+                    label: l10n.profileName,
+                    value: profile.name ?? l10n.profileNotSet,
+                  ),
+                  _ProfileTile(
+                    icon: Icons.monitor_weight_outlined,
+                    label: l10n.profileWeight,
+                    value: profile.weight != null
+                        ? '${profile.weight} ${l10n.weightUnit}'
+                        : l10n.profileNotSet,
+                  ),
+                  _ProfileTile(
+                    icon: Icons.height,
+                    label: l10n.profileHeight,
+                    value: profile.height != null
+                        ? '${profile.height} ${l10n.heightUnit}'
+                        : l10n.profileNotSet,
+                  ),
+                  _ProfileTile(
+                    icon: Icons.cake_outlined,
+                    label: l10n.profileAge,
+                    value: profile.age != null
+                        ? '${profile.age} ${l10n.yearsUnit}'
+                        : l10n.profileNotSet,
+                  ),
+                  _ProfileTile(
+                    icon: Icons.wc,
+                    label: l10n.profileGender,
+                    value: profile.gender != null
+                        ? _genderLabel(profile.gender!, l10n)
+                        : l10n.profileNotSet,
+                  ),
+                ],
+              ),
+            ),
           ),
-          _ProfileTile(
-            icon: Icons.monitor_weight_outlined,
-            label: l10n.profileWeight,
-            value: profile.weight != null
-                ? '${profile.weight} ${l10n.weightUnit}'
-                : l10n.profileNotSet,
+          const Gap(AthlosSpacing.md),
+
+          // Objetivos e treino
+          _SectionHeader(title: l10n.profileSectionTraining),
+          const Gap(AthlosSpacing.xs),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: AthlosSpacing.sm,
+                horizontal: AthlosSpacing.md,
+              ),
+              child: Column(
+                children: [
+                  _ProfileTile(
+                    icon: Icons.flag_outlined,
+                    label: l10n.profileGoal,
+                    value: profile.goal != null
+                        ? _goalLabel(profile.goal!, l10n)
+                        : l10n.profileNotSet,
+                  ),
+                  _ProfileTile(
+                    icon: Icons.sports_gymnastics,
+                    label: l10n.profileAesthetic,
+                    value: profile.bodyAesthetic != null
+                        ? _aestheticLabel(profile.bodyAesthetic!, l10n)
+                        : l10n.profileNotSet,
+                  ),
+                  _ProfileTile(
+                    icon: Icons.sync_alt,
+                    label: l10n.profileStyle,
+                    value: profile.trainingStyle != null
+                        ? _styleLabel(profile.trainingStyle!, l10n)
+                        : l10n.profileNotSet,
+                  ),
+                  _ProfileTile(
+                    icon: Icons.trending_up,
+                    label: l10n.profileExperience,
+                    value: profile.experienceLevel != null
+                        ? _experienceLabel(profile.experienceLevel!, l10n)
+                        : l10n.profileNotSet,
+                  ),
+                  _ProfileTile(
+                    icon: Icons.calendar_today,
+                    label: l10n.profileFrequency,
+                    value: profile.trainingFrequency != null
+                        ? '${profile.trainingFrequency}x ${l10n.perWeek}'
+                        : l10n.profileNotSet,
+                  ),
+                  _ProfileTile(
+                    icon: Icons.timer_outlined,
+                    label: l10n.profileAvailableWorkoutMinutes,
+                    value: profile.availableWorkoutMinutes != null
+                        ? l10n.profileAvailableWorkoutMinutesValue(
+                            profile.availableWorkoutMinutes!)
+                        : l10n.profileAvailableWorkoutMinutesNotSet,
+                  ),
+                  _ProfileTile(
+                    icon: Icons.store,
+                    label: l10n.profileGym,
+                    value: profile.trainsAtGym != null
+                        ? (profile.trainsAtGym! ? l10n.yes : l10n.no)
+                        : l10n.profileNotSet,
+                  ),
+                ],
+              ),
+            ),
           ),
-          _ProfileTile(
-            icon: Icons.height,
-            label: l10n.profileHeight,
-            value: profile.height != null
-                ? '${profile.height} ${l10n.heightUnit}'
-                : l10n.profileNotSet,
-          ),
-          _ProfileTile(
-            icon: Icons.cake_outlined,
-            label: l10n.profileAge,
-            value: profile.age != null
-                ? '${profile.age} ${l10n.yearsUnit}'
-                : l10n.profileNotSet,
-          ),
-          _ProfileTile(
-            icon: Icons.wc,
-            label: l10n.profileGender,
-            value: profile.gender != null
-                ? _genderLabel(profile.gender!, l10n)
-                : l10n.profileNotSet,
-          ),
-          _ProfileTile(
-            icon: Icons.flag_outlined,
-            label: l10n.profileGoal,
-            value: profile.goal != null
-                ? _goalLabel(profile.goal!, l10n)
-                : l10n.profileNotSet,
-          ),
-          _ProfileTile(
-            icon: Icons.sports_gymnastics,
-            label: l10n.profileAesthetic,
-            value: profile.bodyAesthetic != null
-                ? _aestheticLabel(profile.bodyAesthetic!, l10n)
-                : l10n.profileNotSet,
-          ),
-          _ProfileTile(
-            icon: Icons.sync_alt,
-            label: l10n.profileStyle,
-            value: profile.trainingStyle != null
-                ? _styleLabel(profile.trainingStyle!, l10n)
-                : l10n.profileNotSet,
-          ),
-          _ProfileTile(
-            icon: Icons.trending_up,
-            label: l10n.profileExperience,
-            value: profile.experienceLevel != null
-                ? _experienceLabel(profile.experienceLevel!, l10n)
-                : l10n.profileNotSet,
-          ),
-          _ProfileTile(
-            icon: Icons.calendar_today,
-            label: l10n.profileFrequency,
-            value: profile.trainingFrequency != null
-                ? '${profile.trainingFrequency}x ${l10n.perWeek}'
-                : l10n.profileNotSet,
-          ),
-          _ProfileTile(
-            icon: Icons.store,
-            label: l10n.profileGym,
-            value: profile.trainsAtGym != null
-                ? (profile.trainsAtGym! ? l10n.yes : l10n.no)
-                : l10n.profileNotSet,
-          ),
-          _ProfileTile(
-            icon: Icons.healing,
-            label: l10n.profileInjuries,
-            value: profile.injuries ?? l10n.profileNotSet,
-          ),
-          _ProfileTile(
-            icon: Icons.auto_stories,
-            label: l10n.profileBio,
-            value: profile.bio ?? l10n.profileNotSet,
+          const Gap(AthlosSpacing.md),
+
+          // Saúde e histórico
+          _SectionHeader(title: l10n.profileSectionHealth),
+          const Gap(AthlosSpacing.xs),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: AthlosSpacing.sm,
+                horizontal: AthlosSpacing.md,
+              ),
+              child: Column(
+                children: [
+                  _ProfileTile(
+                    icon: Icons.healing,
+                    label: l10n.profileInjuries,
+                    value: profile.injuries ?? l10n.profileNotSet,
+                  ),
+                  _ProfileTile(
+                    icon: Icons.auto_stories,
+                    label: l10n.profileBio,
+                    value: profile.bio ?? l10n.profileNotSet,
+                  ),
+                ],
+              ),
+            ),
           ),
           const Gap(AthlosSpacing.lg),
 
-          // Edit button
           FilledButton.icon(
             onPressed: () => _startEditing(profile),
             icon: const Icon(Icons.edit),
@@ -218,6 +278,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildEditView(UserProfile profile, AppLocalizations l10n) {
+    final textTheme = Theme.of(context).textTheme;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AthlosSpacing.md),
       child: Form(
@@ -225,6 +287,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _SectionHeader(title: l10n.profileSectionPersonal),
+            const Gap(AthlosSpacing.sm),
             TextFormField(
               controller: _nameController,
               decoration: InputDecoration(
@@ -283,9 +347,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 return null;
               },
             ),
-            const Gap(AthlosSpacing.lg),
+            const Gap(AthlosSpacing.md),
             Text(l10n.profileGender,
-                style: Theme.of(context).textTheme.titleMedium),
+                style: textTheme.titleMedium),
             Wrap(
               spacing: AthlosSpacing.sm,
               children: [
@@ -308,6 +372,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ],
             ),
             const Gap(AthlosSpacing.lg),
+            _SectionHeader(title: l10n.profileSectionTraining),
+            const Gap(AthlosSpacing.sm),
             GoalSelector(
               selected: _selectedGoal,
               onSelected: (goal) => setState(() => _selectedGoal = goal),
@@ -347,11 +413,51 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const Gap(AthlosSpacing.md),
             SwitchListTile(
+              title: Text(l10n.profileAvailableWorkoutMinutesLabel),
+              subtitle: Text(
+                l10n.profileAvailableWorkoutMinutesHint,
+                style: textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              value: _availableWorkoutMinutes != null,
+              onChanged: (v) => setState(() =>
+                  _availableWorkoutMinutes = v ? 60 : null),
+            ),
+            if (_availableWorkoutMinutes != null) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: Slider(
+                      value: (_availableWorkoutMinutes!.toDouble())
+                          .clamp(30, 120),
+                      min: 30,
+                      max: 120,
+                      divisions: 6,
+                      label: '$_availableWorkoutMinutes min',
+                      onChanged: (v) =>
+                          setState(() => _availableWorkoutMinutes = v.round()),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 48,
+                    child: Text(
+                      '$_availableWorkoutMinutes min',
+                      style: textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const Gap(AthlosSpacing.md),
+            SwitchListTile(
               title: Text(l10n.trainsAtGymLabel),
               value: _trainsAtGym ?? false,
               onChanged: (v) => setState(() => _trainsAtGym = v),
             ),
-            const Gap(AthlosSpacing.md),
+            const Gap(AthlosSpacing.lg),
+            _SectionHeader(title: l10n.profileSectionHealth),
+            const Gap(AthlosSpacing.sm),
             TextFormField(
               controller: _injuriesController,
               decoration: InputDecoration(
@@ -415,6 +521,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       trainingStyle: _selectedStyle,
       experienceLevel: _selectedExperience,
       trainingFrequency: _trainingFrequency,
+      availableWorkoutMinutes: _availableWorkoutMinutes,
       trainsAtGym: _trainsAtGym,
       injuries: injuries.isEmpty ? null : injuries,
       bio: bio.isEmpty ? null : bio,
@@ -471,6 +578,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         Gender.male => l10n.genderMale,
         Gender.female => l10n.genderFemale,
       };
+}
+
+/// Section title in profile (read and edit views).
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Text(
+      title,
+      style: textTheme.titleSmall?.copyWith(
+        color: colorScheme.primary,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
 }
 
 /// A single profile data row.

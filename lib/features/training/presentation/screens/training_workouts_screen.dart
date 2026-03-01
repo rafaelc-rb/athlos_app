@@ -4,10 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../../chiron/presentation/widgets/chiron_bottom_sheet.dart';
+import '../../../../core/errors/result.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../data/repositories/training_providers.dart';
+import '../../domain/entities/cycle_step.dart';
 import '../../domain/entities/workout.dart';
 import '../providers/training_analytics_provider.dart';
 import '../providers/workout_notifier.dart';
@@ -33,16 +36,15 @@ class TrainingWorkoutsScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    ref.watch(ensureCycleSyncProvider);
     final workoutsAsync = ref.watch(workoutListProvider);
-    final nextCycleStepAsync = ref.watch(nextCycleStepProvider);
-    final nextWorkoutFallback = ref.watch(nextWorkoutProvider);
+    final cycleListAsync = ref.watch(cycleListItemsProvider);
+    final nextWorkoutToStartAsync = ref.watch(nextWorkoutToStartProvider);
+    final nextStepIndexAsync = ref.watch(nextCycleStepIndexProvider);
     final archivedAsync = ref.watch(archivedWorkoutListProvider);
 
-    final nextStep = nextCycleStepAsync.value;
-    final nextWorkout = nextStep != null
-        ? (nextStep.isRest ? null : nextStep.workout)
-        : nextWorkoutFallback;
-    final isNextRest = nextStep != null && nextStep.isRest;
+    final nextWorkout = nextWorkoutToStartAsync.value;
+    final nextStepIndex = nextStepIndexAsync.value;
     final workoutCount = workoutsAsync.value?.length ?? 0;
 
     return Scaffold(
@@ -83,97 +85,88 @@ class TrainingWorkoutsScreen extends ConsumerWidget {
           );
         }
         return Skeletonizer(
-          enabled: isLoading,
-          child: _WorkoutListBody(
-            workouts: isLoading ? _placeholderWorkouts : workouts,
-            nextWorkoutId: nextWorkout?.id,
-            isNextRest: isNextRest,
-            archivedAsync: archivedAsync,
+          enabled: isLoading || cycleListAsync.isLoading,
+          child: cycleListAsync.when(
+            data: (data) => _CycleListBody(
+              items: data.items,
+              isFromCycle: data.isFromCycle,
+              nextStepIndex: nextStepIndex,
+              nextWorkoutId: nextWorkout?.id,
+              archivedAsync: archivedAsync,
+            ),
+            loading: () => _CycleListBody(
+              items: (workouts.isEmpty ? _placeholderWorkouts : workouts)
+                  .map((w) => CycleListWorkoutItem(stepIndex: 0, workout: w))
+                  .toList(),
+              isFromCycle: false,
+              nextStepIndex: null,
+              nextWorkoutId: null,
+              archivedAsync: archivedAsync,
+            ),
+            error: (_, stackTrace) => Center(child: Text(l10n.genericError)),
           ),
         );
       }(),
       floatingActionButton: _ExpandableWorkoutFab(
-        nextWorkout: nextWorkout,
-        startNextLabel: nextWorkout != null
-            ? l10n.startNextWorkout(nextWorkout.name)
-            : null,
-        configureCycleLabel: l10n.trainingCycleConfigure,
-        createLabel: l10n.trainingWorkoutNewAction,
-        onStartNext: () => _startWorkout(context, ref, nextWorkout!.id),
-        onConfigureCycle: () => context.push(RoutePaths.trainingCycleEdit),
-        onCreate: () => _showAddWorkoutSheet(context, workoutCount, l10n),
-      ),
-    );
-  }
-
-  void _showAddWorkoutSheet(
-    BuildContext context,
-    int workoutCount,
-    AppLocalizations l10n,
-  ) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    showModalBottomSheet<void>(
-      context: context,
-      useRootNavigator: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.edit_note),
-              title: Text(l10n.trainingWorkoutActionCreateManual),
-              onTap: () {
-                Navigator.pop(ctx);
-                context.push(RoutePaths.trainingWorkoutNew);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.auto_awesome, color: colorScheme.primary),
-              title: Text(
-                workoutCount == 0
-                    ? l10n.chironCreateWorkoutShortcut
-                    : l10n.chironAnalyzeWorkoutsShortcut,
-              ),
-              onTap: () {
-                Navigator.pop(ctx);
-                showChironSheet(
-                  context,
-                  initialMessage: workoutCount == 0
-                      ? l10n.chironAskToCreateWorkout
-                      : l10n.chironAnalyzeWorkoutsMessage,
-                );
-              },
-            ),
-          ],
+        chironLabel: workoutCount == 0
+            ? l10n.chironCreateWorkoutShortcut
+            : l10n.chironAnalyzeWorkoutsShortcut,
+        createManualLabel: l10n.trainingWorkoutActionCreateManual,
+        addRestLabel: l10n.trainingAddRestToCycleAction,
+        onChiron: () => showChironSheet(
+          context,
+          initialMessage: workoutCount == 0
+              ? l10n.chironAskToCreateWorkout
+              : l10n.chironAnalyzeWorkoutsMessage,
         ),
+        onCreateManual: () => context.push(RoutePaths.trainingWorkoutNew),
+        onAddRest: () => _addRestToCycle(context, ref),
       ),
     );
   }
 
-  void _startWorkout(BuildContext context, WidgetRef ref, int workoutId) {
-    context.push('${RoutePaths.trainingWorkouts}/$workoutId/execute');
+  Future<void> _addRestToCycle(BuildContext context, WidgetRef ref) async {
+    try {
+      final cycleRepo = ref.read(cycleRepositoryProvider);
+      final result = await cycleRepo.appendRestToCycle();
+      result.getOrThrow();
+      ref.invalidate(cycleStepsProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.trainingCycleAddRest),
+          ),
+        );
+      }
+    } on Exception catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.genericError),
+          ),
+        );
+      }
+    }
   }
+
 }
 
-/// Expandable FAB (speed dial): tap to show Iniciar próximo, Configurar ciclo, Criar.
+/// Expandable FAB (speed dial): Quíron, Criar treino manual, Adicionar descanso.
 class _ExpandableWorkoutFab extends StatefulWidget {
-  final Workout? nextWorkout;
-  final String? startNextLabel;
-  final String configureCycleLabel;
-  final String createLabel;
-  final VoidCallback onStartNext;
-  final VoidCallback onConfigureCycle;
-  final VoidCallback onCreate;
+  final String chironLabel;
+  final String createManualLabel;
+  final String addRestLabel;
+  final VoidCallback onChiron;
+  final VoidCallback onCreateManual;
+  final VoidCallback onAddRest;
 
   const _ExpandableWorkoutFab({
-    required this.nextWorkout,
-    this.startNextLabel,
-    required this.configureCycleLabel,
-    required this.createLabel,
-    required this.onStartNext,
-    required this.onConfigureCycle,
-    required this.onCreate,
+    required this.chironLabel,
+    required this.createManualLabel,
+    required this.addRestLabel,
+    required this.onChiron,
+    required this.onCreateManual,
+    required this.onAddRest,
   });
 
   @override
@@ -211,24 +204,22 @@ class _ExpandableWorkoutFabState extends State<_ExpandableWorkoutFab> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       _ActionChip(
-                        icon: Icons.add,
-                        label: widget.createLabel,
-                        onPressed: () => _onAction(widget.onCreate),
+                        icon: Icons.auto_awesome,
+                        label: widget.chironLabel,
+                        onPressed: () => _onAction(widget.onChiron),
                       ),
                       const SizedBox(height: AthlosSpacing.sm),
                       _ActionChip(
-                        icon: Icons.loop,
-                        label: widget.configureCycleLabel,
-                        onPressed: () => _onAction(widget.onConfigureCycle),
+                        icon: Icons.edit_note,
+                        label: widget.createManualLabel,
+                        onPressed: () => _onAction(widget.onCreateManual),
                       ),
-                      if (widget.nextWorkout != null) ...[
-                        const SizedBox(height: AthlosSpacing.sm),
-                        _ActionChip(
-                          icon: Icons.play_arrow,
-                          label: widget.startNextLabel ?? '',
-                          onPressed: () => _onAction(widget.onStartNext),
-                        ),
-                      ],
+                      const SizedBox(height: AthlosSpacing.sm),
+                      _ActionChip(
+                        icon: Icons.hotel,
+                        label: widget.addRestLabel,
+                        onPressed: () => _onAction(widget.onAddRest),
+                      ),
                     ],
                   ),
                 )
@@ -237,7 +228,7 @@ class _ExpandableWorkoutFabState extends State<_ExpandableWorkoutFab> {
         FloatingActionButton(
           heroTag: 'workouts_fab',
           onPressed: _toggle,
-          tooltip: _expanded ? '' : widget.createLabel,
+          tooltip: _expanded ? '' : widget.createManualLabel,
           child: AnimatedRotation(
             turns: _expanded ? 0.125 : 0,
             duration: const Duration(milliseconds: 200),
@@ -302,114 +293,80 @@ class _ActionChip extends StatelessWidget {
   }
 }
 
-class _WorkoutListBody extends ConsumerStatefulWidget {
-  final List<Workout> workouts;
+class _CycleListBody extends ConsumerStatefulWidget {
+  final List<CycleListItem> items;
+  final bool isFromCycle;
+  final int? nextStepIndex;
   final int? nextWorkoutId;
-  final bool isNextRest;
   final AsyncValue<List<Workout>> archivedAsync;
 
-  const _WorkoutListBody({
-    required this.workouts,
+  const _CycleListBody({
+    required this.items,
+    required this.isFromCycle,
+    required this.nextStepIndex,
     required this.nextWorkoutId,
-    this.isNextRest = false,
     required this.archivedAsync,
   });
 
   @override
-  ConsumerState<_WorkoutListBody> createState() => _WorkoutListBodyState();
+  ConsumerState<_CycleListBody> createState() => _CycleListBodyState();
 }
 
-class _WorkoutListBodyState extends ConsumerState<_WorkoutListBody> {
-  late List<Workout> _orderedWorkouts;
+class _CycleListBodyState extends ConsumerState<_CycleListBody> {
+  late List<CycleListItem> _items;
   bool _isArchivedExpanded = false;
 
   @override
   void initState() {
     super.initState();
-    _orderedWorkouts = List.of(widget.workouts);
+    _items = List.of(widget.items);
   }
 
   @override
-  void didUpdateWidget(covariant _WorkoutListBody oldWidget) {
+  void didUpdateWidget(covariant _CycleListBody oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.workouts != oldWidget.workouts) {
-      _orderedWorkouts = List.of(widget.workouts);
+    if (widget.items != oldWidget.items) {
+      _items = List.of(widget.items);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
     return CustomScrollView(
       slivers: [
-        // Rest banner when next step is rest
-        if (widget.isNextRest)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AthlosSpacing.md,
-                AthlosSpacing.sm,
-                AthlosSpacing.md,
-                AthlosSpacing.xs,
-              ),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AthlosSpacing.md,
-                  vertical: AthlosSpacing.sm,
-                ),
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest,
-                  borderRadius: AthlosRadius.mdAll,
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.hotel,
-                      size: 20,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: AthlosSpacing.sm),
-                    Text(
-                      l10n.trainingNextStepRest,
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-        // Active workouts — reorderable
         SliverReorderableList(
-          itemCount: _orderedWorkouts.length,
+          itemCount: _items.length,
           onReorder: _onReorder,
           itemBuilder: (context, index) {
-            final workout = _orderedWorkouts[index];
-            final isNext = workout.id == widget.nextWorkoutId;
-
-            return _WorkoutCard(
-              key: ValueKey(workout.id),
-              index: index,
-              workout: workout,
-              isNext: isNext,
-              onTap: () => context.push(
-                '${RoutePaths.trainingWorkouts}/${workout.id}',
-              ),
-              onStart: () => _startWorkout(context, workout.id),
-              onArchive: () => _archiveWorkout(context, workout.id),
-              onDuplicate: () => _duplicateWorkout(context, workout.id),
-              onDelete: () => _confirmDelete(context, workout),
-            );
+            final item = _items[index];
+            return switch (item) {
+              CycleListRestItem() => _RestTile(
+                  key: ValueKey('rest_$index'),
+                  index: index,
+                  isNext: index == widget.nextStepIndex,
+                  canReorder: widget.isFromCycle,
+                  label: l10n.trainingCycleRestLabel,
+                ),
+              CycleListWorkoutItem(:final workout) => _WorkoutCard(
+                  key: ValueKey(workout.id),
+                  index: index,
+                  workout: workout,
+                  isNext: workout.id == widget.nextWorkoutId,
+                  onTap: () => context.push(
+                    '${RoutePaths.trainingWorkouts}/${workout.id}',
+                  ),
+                  onStart: () => _startWorkout(context, workout.id),
+                  onArchive: () => _archiveWorkout(context, workout.id),
+                  onDuplicate: () => _duplicateWorkout(context, workout.id),
+                  onDelete: () => _confirmDelete(context, workout),
+                ),
+            };
           },
         ),
 
-        // Archived section
         if (widget.archivedAsync.value != null &&
             widget.archivedAsync.value!.isNotEmpty)
           SliverToBoxAdapter(
@@ -417,7 +374,7 @@ class _WorkoutListBodyState extends ConsumerState<_WorkoutListBody> {
               title: Text(
                 l10n.archivedSection,
                 style: textTheme.titleSmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               initiallyExpanded: _isArchivedExpanded,
@@ -435,8 +392,8 @@ class _WorkoutListBodyState extends ConsumerState<_WorkoutListBody> {
             ),
           ),
 
-        // Bottom padding for FAB
-        const SliverPadding(padding: EdgeInsets.only(bottom: AthlosSpacing.fabClearance)),
+        const SliverPadding(
+            padding: EdgeInsets.only(bottom: AthlosSpacing.fabClearance)),
       ],
     );
   }
@@ -444,19 +401,57 @@ class _WorkoutListBodyState extends ConsumerState<_WorkoutListBody> {
   Future<void> _onReorder(int oldIndex, int newIndex) async {
     setState(() {
       if (oldIndex < newIndex) newIndex -= 1;
-      final item = _orderedWorkouts.removeAt(oldIndex);
-      _orderedWorkouts.insert(newIndex, item);
+      final item = _items.removeAt(oldIndex);
+      _items.insert(newIndex, item);
     });
-    final orderedIds = _orderedWorkouts.map((w) => w.id).toList();
-    try {
-      await ref.read(workoutListProvider.notifier).reorderWorkouts(orderedIds);
-    } on Exception catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.genericError),
-          ),
-        );
+
+    if (widget.isFromCycle) {
+      final steps = <TrainingCycleStep>[];
+      for (var i = 0; i < _items.length; i++) {
+        final it = _items[i];
+        switch (it) {
+          case CycleListRestItem():
+            steps.add(TrainingCycleStep(
+              id: 0,
+              orderIndex: i,
+              type: CycleStepType.rest,
+              workoutId: null,
+            ));
+          case CycleListWorkoutItem(:final workout):
+            steps.add(TrainingCycleStep(
+              id: 0,
+              orderIndex: i,
+              type: CycleStepType.workout,
+              workoutId: workout.id,
+            ));
+        }
+      }
+      try {
+        final result = await ref
+            .read(cycleRepositoryProvider)
+            .setSteps(steps);
+        result.getOrThrow();
+        ref.invalidate(cycleStepsProvider);
+      } on Exception catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context)!.genericError)),
+          );
+        }
+      }
+    } else {
+      final orderedIds = <int>[
+        for (final it in _items)
+          if (it is CycleListWorkoutItem) it.workout.id,
+      ];
+      try {
+        await ref.read(workoutListProvider.notifier).reorderWorkouts(orderedIds);
+      } on Exception catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context)!.genericError)),
+          );
+        }
       }
     }
   }
@@ -564,6 +559,91 @@ class _WorkoutListBodyState extends ConsumerState<_WorkoutListBody> {
             child: Text(l10n.delete),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RestTile extends StatelessWidget {
+  final int index;
+  final bool isNext;
+  final bool canReorder;
+  final String label;
+
+  const _RestTile({
+    super.key,
+    required this.index,
+    required this.isNext,
+    required this.canReorder,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final l10n = AppLocalizations.of(context)!;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(
+        horizontal: AthlosSpacing.sm,
+        vertical: AthlosSpacing.xs,
+      ),
+      shape: isNext
+          ? RoundedRectangleBorder(
+              borderRadius: AthlosRadius.mdAll,
+              side: BorderSide(color: colorScheme.primary, width: 2),
+            )
+          : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AthlosSpacing.md,
+          vertical: AthlosSpacing.sm,
+        ),
+        child: Row(
+          children: [
+            if (canReorder)
+              ReorderableDragStartListener(
+                index: index,
+                child: Icon(
+                  Icons.drag_handle,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            if (canReorder) const SizedBox(width: AthlosSpacing.sm),
+            Icon(
+              Icons.hotel,
+              size: 24,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: AthlosSpacing.sm),
+            Expanded(
+              child: Text(
+                label,
+                style: textTheme.titleMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            if (isNext)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AthlosSpacing.sm,
+                  vertical: AthlosSpacing.xxs,
+                ),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  borderRadius: AthlosRadius.mdAll,
+                ),
+                child: Text(
+                  l10n.nextWorkoutBadge,
+                  style: textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

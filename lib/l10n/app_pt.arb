@@ -579,13 +579,17 @@
   "@trainingNextStepRest": { "description": "Next step is rest day" },
   "trainingCycleConfigure": "Configurar ciclo",
   "@trainingCycleConfigure": { "description": "Button to open cycle configuration" },
+  "trainingCycleSection": "Ciclo",
+  "@trainingCycleSection": { "description": "Section title for cycle strip on workouts screen" },
+  "trainingCycleRestLabel": "Descanso",
+  "@trainingCycleRestLabel": { "description": "Label for rest day in cycle strip" },
   "trainingWorkoutNewAction": "Novo treino",
   "@trainingWorkoutNewAction": {
     "description": "Main button label that opens menu: create manual, Chiron, configure cycle"
   },
-  "trainingWorkoutActionCreateManual": "Criar manualmente",
+  "trainingWorkoutActionCreateManual": "Criar treino",
   "@trainingWorkoutActionCreateManual": {
-    "description": "Menu option: create workout manually"
+    "description": "FAB/menu option: create workout manually"
   },
   "trainingCycleTitle": "Ciclo de treinos",
   "@trainingCycleTitle": { "description": "Cycle edit screen title" },
@@ -595,6 +599,8 @@
   "@trainingCycleAddWorkout": { "description": "Add workout step" },
   "trainingCycleAddRest": "Descanso",
   "@trainingCycleAddRest": { "description": "Add rest step" },
+  "trainingAddRestToCycleAction": "Adicionar descanso",
+  "@trainingAddRestToCycleAction": { "description": "FAB action to add a rest day to the cycle" },
   "trainingCycleEmptyHint": "O ciclo está vazio. A ordem dos treinos usa a ordem da lista na aba Treinos. Adicione passos para definir um ciclo com descanso.",
   "@trainingCycleEmptyHint": { "description": "Hint when cycle has no steps" },
   "trainingCycleSave": "Guardar ciclo",
@@ -968,10 +974,14 @@
   "@nextWorkoutBadge": { "description": "Badge label for next workout in cycle" },
   "startNextWorkout": "Iniciar: {name}",
   "@startNextWorkout": {
-    "description": "FAB label to start the next workout",
+    "description": "FAB/tooltip with workout name",
     "placeholders": {
       "name": { "type": "String" }
     }
+  },
+  "startNextWorkoutShort": "Iniciar próximo treino",
+  "@startNextWorkoutShort": {
+    "description": "Short label for speed dial (no workout name)"
   },
   "archivedSection": "Arquivados",
   "@archivedSection": { "description": "Section title for archived workouts" },

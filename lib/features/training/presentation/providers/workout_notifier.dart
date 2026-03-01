@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/errors/result.dart';
 import '../../data/repositories/training_providers.dart';
 import '../../domain/entities/workout.dart';
+import 'training_analytics_provider.dart';
 import '../../domain/entities/workout_exercise.dart';
 
 part 'workout_notifier.g.dart';
@@ -31,7 +32,11 @@ class WorkoutList extends _$WorkoutList {
     );
     final result = await repo.create(workout, exercises);
     final id = result.getOrThrow();
+    final cycleRepo = ref.read(cycleRepositoryProvider);
+    final cycleResult = await cycleRepo.appendWorkoutToCycle(id);
+    cycleResult.getOrThrow();
     ref.invalidateSelf();
+    ref.invalidate(cycleStepsProvider);
     return id;
   }
 
@@ -60,23 +65,35 @@ class WorkoutList extends _$WorkoutList {
     final repo = ref.read(workoutRepositoryProvider);
     final result = await repo.archive(id);
     result.getOrThrow();
+    final cycleRepo = ref.read(cycleRepositoryProvider);
+    final cycleResult = await cycleRepo.removeWorkoutFromCycle(id);
+    cycleResult.getOrThrow();
     ref.invalidateSelf();
     ref.invalidate(archivedWorkoutListProvider);
+    ref.invalidate(cycleStepsProvider);
   }
 
   Future<void> unarchiveWorkout(int id) async {
     final repo = ref.read(workoutRepositoryProvider);
     final result = await repo.unarchive(id);
     result.getOrThrow();
+    final cycleRepo = ref.read(cycleRepositoryProvider);
+    final cycleResult = await cycleRepo.appendWorkoutToCycle(id);
+    cycleResult.getOrThrow();
     ref.invalidateSelf();
     ref.invalidate(archivedWorkoutListProvider);
+    ref.invalidate(cycleStepsProvider);
   }
 
   Future<int> duplicateWorkout(int id, {required String nameSuffix}) async {
     final repo = ref.read(workoutRepositoryProvider);
     final result = await repo.duplicate(id, nameSuffix: nameSuffix);
     final newId = result.getOrThrow();
+    final cycleRepo = ref.read(cycleRepositoryProvider);
+    final cycleResult = await cycleRepo.appendWorkoutToCycle(newId);
+    cycleResult.getOrThrow();
     ref.invalidateSelf();
+    ref.invalidate(cycleStepsProvider);
     return newId;
   }
 

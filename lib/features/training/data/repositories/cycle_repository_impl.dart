@@ -40,6 +40,116 @@ class CycleRepositoryImpl implements CycleRepository {
     }
   }
 
+  @override
+  Future<Result<void>> removeWorkoutFromCycle(int workoutId) async {
+    try {
+      final steps = await _dao.getAllOrdered();
+      final filtered = steps
+          .where((row) =>
+              row.stepType != 'workout' || row.workoutId != workoutId)
+          .toList();
+      if (filtered.length == steps.length) return const Success(null);
+      final companions = filtered.asMap().entries.map((e) {
+        final row = e.value;
+        return CycleStepsCompanion.insert(
+          orderIndex: e.key,
+          stepType: row.stepType,
+          workoutId: Value(row.workoutId),
+        );
+      }).toList();
+      await _dao.replaceAll(companions);
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(
+          DatabaseException('Failed to remove workout from cycle: $e'));
+    }
+  }
+
+  @override
+  Future<Result<void>> appendWorkoutToCycle(int workoutId) async {
+    try {
+      final steps = await _dao.getAllOrdered();
+      final companions = steps.asMap().entries.map((e) {
+        final row = e.value;
+        return CycleStepsCompanion.insert(
+          orderIndex: e.key,
+          stepType: row.stepType,
+          workoutId: Value(row.workoutId),
+        );
+      }).toList();
+      companions.add(CycleStepsCompanion.insert(
+        orderIndex: steps.length,
+        stepType: 'workout',
+        workoutId: Value(workoutId),
+      ));
+      await _dao.replaceAll(companions);
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(
+          DatabaseException('Failed to append workout to cycle: $e'));
+    }
+  }
+
+  @override
+  Future<Result<void>> appendRestToCycle() async {
+    try {
+      final steps = await _dao.getAllOrdered();
+      final companions = steps.asMap().entries.map((e) {
+        final row = e.value;
+        return CycleStepsCompanion.insert(
+          orderIndex: e.key,
+          stepType: row.stepType,
+          workoutId: Value(row.workoutId),
+        );
+      }).toList();
+      companions.add(CycleStepsCompanion.insert(
+        orderIndex: steps.length,
+        stepType: 'rest',
+        workoutId: const Value.absent(),
+      ));
+      await _dao.replaceAll(companions);
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(
+          DatabaseException('Failed to append rest to cycle: $e'));
+    }
+  }
+
+  @override
+  Future<Result<void>> syncWithActiveWorkoutIds(List<int> activeIds) async {
+    if (activeIds.isEmpty) return const Success(null);
+    try {
+      final steps = await _dao.getAllOrdered();
+      final inCycle = {
+        for (final row in steps)
+          if (row.stepType == 'workout' && row.workoutId != null) row.workoutId!,
+      };
+      final toAdd =
+          activeIds.where((id) => !inCycle.contains(id)).toList();
+      if (toAdd.isEmpty) return const Success(null);
+      final companions = steps.asMap().entries.map((e) {
+        final row = e.value;
+        return CycleStepsCompanion.insert(
+          orderIndex: e.key,
+          stepType: row.stepType,
+          workoutId: Value(row.workoutId),
+        );
+      }).toList();
+      for (var i = 0; i < toAdd.length; i++) {
+        companions.add(CycleStepsCompanion.insert(
+          orderIndex: steps.length + i,
+          stepType: 'workout',
+          workoutId: Value(toAdd[i]),
+        ));
+      }
+      await _dao.replaceAll(companions);
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(
+          DatabaseException('Failed to sync cycle with active workouts: $e'));
+    }
+  }
+
   TrainingCycleStep _rowToDomain(CycleStep row) => TrainingCycleStep(
         id: row.id,
         orderIndex: row.orderIndex,

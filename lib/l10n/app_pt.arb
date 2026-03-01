@@ -579,6 +579,14 @@
   "@trainingNextStepRest": { "description": "Next step is rest day" },
   "trainingCycleConfigure": "Configurar ciclo",
   "@trainingCycleConfigure": { "description": "Button to open cycle configuration" },
+  "trainingWorkoutNewAction": "Novo treino",
+  "@trainingWorkoutNewAction": {
+    "description": "Main button label that opens menu: create manual, Chiron, configure cycle"
+  },
+  "trainingWorkoutActionCreateManual": "Criar manualmente",
+  "@trainingWorkoutActionCreateManual": {
+    "description": "Menu option: create workout manually"
+  },
   "trainingCycleTitle": "Ciclo de treinos",
   "@trainingCycleTitle": { "description": "Cycle edit screen title" },
   "trainingCycleAddStep": "Adicionar passo",

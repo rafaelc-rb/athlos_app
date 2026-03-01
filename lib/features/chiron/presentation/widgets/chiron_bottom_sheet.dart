@@ -18,6 +18,7 @@ import 'chiron_message_bubble.dart';
 void showChironSheet(BuildContext context, {String? initialMessage}) {
   showModalBottomSheet(
     context: context,
+    useRootNavigator: true,
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Theme.of(context).colorScheme.surface,

@@ -9,7 +9,11 @@ DART_DEFINES = \
 SIM_DEVICE = iPhone 17 Pro
 SIM_UDID = A60DDE07-87E2-4D7E-A79E-3188235C7783
 
-.PHONY: run run-ios run-release sim-boot sim-open build-apk build-aab build-ipa gen gen-watch gen-l10n analyze clean
+.PHONY: help run run-ios run-release run-clean-ios sim-boot sim-open build-apk build-aab build-ipa gen gen-watch gen-l10n analyze clean
+
+help:                 ## Show this help
+	@echo "Athlos — available targets:"
+	@grep -E '^[a-zA-Z0-9_-]+:[^=]*## .*$$' Makefile | sed 's/:.*##/##/' | awk -F '##' '{gsub(/^[ \t]+|[ \t]+$$/, "", $$1); gsub(/^[ \t]+/, "", $$2); printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}' | sort
 
 ## ── Dev ──────────────────────────────────────────────
 

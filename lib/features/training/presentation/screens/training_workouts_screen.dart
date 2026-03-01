@@ -43,6 +43,7 @@ class TrainingWorkoutsScreen extends ConsumerWidget {
         ? (nextStep.isRest ? null : nextStep.workout)
         : nextWorkoutFallback;
     final isNextRest = nextStep != null && nextStep.isRest;
+    final workoutCount = workoutsAsync.value?.length ?? 0;
 
     return Scaffold(
       body: () {
@@ -91,43 +92,213 @@ class TrainingWorkoutsScreen extends ConsumerWidget {
           ),
         );
       }(),
-      floatingActionButton: _buildFab(context, ref, nextWorkout, isNextRest, l10n),
+      floatingActionButton: _ExpandableWorkoutFab(
+        nextWorkout: nextWorkout,
+        startNextLabel: nextWorkout != null
+            ? l10n.startNextWorkout(nextWorkout.name)
+            : null,
+        configureCycleLabel: l10n.trainingCycleConfigure,
+        createLabel: l10n.trainingWorkoutNewAction,
+        onStartNext: () => _startWorkout(context, ref, nextWorkout!.id),
+        onConfigureCycle: () => context.push(RoutePaths.trainingCycleEdit),
+        onCreate: () => _showAddWorkoutSheet(context, workoutCount, l10n),
+      ),
     );
   }
 
-  Widget? _buildFab(
+  void _showAddWorkoutSheet(
     BuildContext context,
-    WidgetRef ref,
-    Workout? next,
-    bool isNextRest,
+    int workoutCount,
     AppLocalizations l10n,
   ) {
-    if (next != null) {
-      return FloatingActionButton(
-        heroTag: 'start_next',
-        onPressed: () => _startWorkout(context, ref, next.id),
-        tooltip: l10n.startNextWorkout(next.name),
-        child: const Icon(Icons.play_arrow),
-      );
-    }
-    if (isNextRest) {
-      return FloatingActionButton(
-        heroTag: 'add_workout',
-        onPressed: () => context.push(RoutePaths.trainingWorkoutNew),
-        tooltip: l10n.createWorkout,
-        child: const Icon(Icons.add),
-      );
-    }
+    final colorScheme = Theme.of(context).colorScheme;
 
-    return FloatingActionButton(
-      onPressed: () => context.push(RoutePaths.trainingWorkoutNew),
-      tooltip: l10n.createWorkout,
-      child: const Icon(Icons.add),
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_note),
+              title: Text(l10n.trainingWorkoutActionCreateManual),
+              onTap: () {
+                Navigator.pop(ctx);
+                context.push(RoutePaths.trainingWorkoutNew);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.auto_awesome, color: colorScheme.primary),
+              title: Text(
+                workoutCount == 0
+                    ? l10n.chironCreateWorkoutShortcut
+                    : l10n.chironAnalyzeWorkoutsShortcut,
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                showChironSheet(
+                  context,
+                  initialMessage: workoutCount == 0
+                      ? l10n.chironAskToCreateWorkout
+                      : l10n.chironAnalyzeWorkoutsMessage,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   void _startWorkout(BuildContext context, WidgetRef ref, int workoutId) {
     context.push('${RoutePaths.trainingWorkouts}/$workoutId/execute');
+  }
+}
+
+/// Expandable FAB (speed dial): tap to show Iniciar próximo, Configurar ciclo, Criar.
+class _ExpandableWorkoutFab extends StatefulWidget {
+  final Workout? nextWorkout;
+  final String? startNextLabel;
+  final String configureCycleLabel;
+  final String createLabel;
+  final VoidCallback onStartNext;
+  final VoidCallback onConfigureCycle;
+  final VoidCallback onCreate;
+
+  const _ExpandableWorkoutFab({
+    required this.nextWorkout,
+    this.startNextLabel,
+    required this.configureCycleLabel,
+    required this.createLabel,
+    required this.onStartNext,
+    required this.onConfigureCycle,
+    required this.onCreate,
+  });
+
+  @override
+  State<_ExpandableWorkoutFab> createState() => _ExpandableWorkoutFabState();
+}
+
+class _ExpandableWorkoutFabState extends State<_ExpandableWorkoutFab> {
+  bool _expanded = false;
+
+  void _toggle() {
+    setState(() => _expanded = !_expanded);
+  }
+
+  void _onAction(VoidCallback action) {
+    action();
+    _toggle();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        // Expanded actions (top to bottom: Criar, Configurar ciclo, Iniciar próximo)
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          alignment: Alignment.bottomCenter,
+          child: _expanded
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: AthlosSpacing.sm),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _ActionChip(
+                        icon: Icons.add,
+                        label: widget.createLabel,
+                        onPressed: () => _onAction(widget.onCreate),
+                      ),
+                      const SizedBox(height: AthlosSpacing.sm),
+                      _ActionChip(
+                        icon: Icons.loop,
+                        label: widget.configureCycleLabel,
+                        onPressed: () => _onAction(widget.onConfigureCycle),
+                      ),
+                      if (widget.nextWorkout != null) ...[
+                        const SizedBox(height: AthlosSpacing.sm),
+                        _ActionChip(
+                          icon: Icons.play_arrow,
+                          label: widget.startNextLabel ?? '',
+                          onPressed: () => _onAction(widget.onStartNext),
+                        ),
+                      ],
+                    ],
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+        FloatingActionButton(
+          heroTag: 'workouts_fab',
+          onPressed: _toggle,
+          tooltip: _expanded ? '' : widget.createLabel,
+          child: AnimatedRotation(
+            turns: _expanded ? 0.125 : 0,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            child: const Icon(Icons.add),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  const _ActionChip({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AthlosSpacing.xs),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Material(
+            color: colorScheme.surfaceContainerHigh,
+            borderRadius: AthlosRadius.mdAll,
+            elevation: 2,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AthlosSpacing.sm,
+                vertical: AthlosSpacing.xs,
+              ),
+              child: Text(
+                label,
+                style: textTheme.labelLarge,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+          const SizedBox(width: AthlosSpacing.sm),
+          FloatingActionButton.small(
+            heroTag: null,
+            onPressed: onPressed,
+            tooltip: label,
+            child: Icon(icon),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -174,56 +345,45 @@ class _WorkoutListBodyState extends ConsumerState<_WorkoutListBody> {
 
     return CustomScrollView(
       slivers: [
-        // New workout: manual create + Chiron shortcut
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AthlosSpacing.md,
-              AthlosSpacing.sm,
-              AthlosSpacing.md,
-              AthlosSpacing.xs,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () => context.push(RoutePaths.trainingWorkoutNew),
-                  icon: const Icon(Icons.add),
-                  label: Text(l10n.createWorkout),
+        // Rest banner when next step is rest
+        if (widget.isNextRest)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AthlosSpacing.md,
+                AthlosSpacing.sm,
+                AthlosSpacing.md,
+                AthlosSpacing.xs,
+              ),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AthlosSpacing.md,
+                  vertical: AthlosSpacing.sm,
                 ),
-                const SizedBox(height: AthlosSpacing.sm),
-                TextButton.icon(
-                  onPressed: () => showChironSheet(
-                    context,
-                    initialMessage: widget.workouts.isEmpty
-                        ? l10n.chironAskToCreateWorkout
-                        : l10n.chironAnalyzeWorkoutsMessage,
-                  ),
-                  icon: Icon(Icons.auto_awesome, size: 20, color: colorScheme.primary),
-                  label: Text(
-                    widget.workouts.isEmpty
-                        ? l10n.chironCreateWorkoutShortcut
-                        : l10n.chironAnalyzeWorkoutsShortcut,
-                  ),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest,
+                  borderRadius: AthlosRadius.mdAll,
                 ),
-                if (widget.isNextRest) ...[
-                  const SizedBox(height: AthlosSpacing.sm),
-                  Chip(
-                    avatar: Icon(Icons.hotel, size: 18, color: colorScheme.onSurfaceVariant),
-                    label: Text(l10n.trainingNextStepRest),
-                    backgroundColor: colorScheme.surfaceContainerHighest,
-                  ),
-                ],
-                const SizedBox(height: AthlosSpacing.sm),
-                OutlinedButton.icon(
-                  onPressed: () => context.push(RoutePaths.trainingCycleEdit),
-                  icon: const Icon(Icons.loop),
-                  label: Text(l10n.trainingCycleConfigure),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.hotel,
+                      size: 20,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: AthlosSpacing.sm),
+                    Text(
+                      l10n.trainingNextStepRest,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
 
         // Active workouts — reorderable
         SliverReorderableList(

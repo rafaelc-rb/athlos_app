@@ -6,6 +6,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../features/profile/data/datasources/daos/user_profile_dao.dart';
 import '../../features/profile/data/datasources/tables/user_profiles_table.dart';
 import '../../features/profile/domain/enums/body_aesthetic.dart';
+import '../../features/profile/domain/enums/experience_level.dart';
 import '../../features/profile/domain/enums/selected_module.dart';
 import '../../features/profile/domain/enums/training_goal.dart';
 import '../../features/profile/domain/enums/training_style.dart';
@@ -69,7 +70,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(driftDatabase(name: 'athlos'));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -80,7 +81,7 @@ class AppDatabase extends _$AppDatabase {
           if (_shouldSeedDevData) await seedDevData(this);
         },
         onUpgrade: (m, from, to) async {
-          if (_shouldSeedDevData && from >= 3 && from <= 10) {
+          if (_shouldSeedDevData && from >= 3 && from <= 11) {
             for (final table in allTables) {
               await m.deleteTable(table.actualTableName);
             }
@@ -179,6 +180,24 @@ class AppDatabase extends _$AppDatabase {
             );
             await seedEquipmentsV3(this);
             await seedExercisesV3(this);
+          }
+
+          if (from < 4) {
+            await customStatement(
+              'ALTER TABLE user_profiles ADD COLUMN experience_level TEXT',
+            );
+            await customStatement(
+              'ALTER TABLE user_profiles ADD COLUMN training_frequency INTEGER',
+            );
+            await customStatement(
+              'ALTER TABLE user_profiles ADD COLUMN trains_at_gym INTEGER',
+            );
+            await customStatement(
+              'ALTER TABLE user_profiles ADD COLUMN injuries TEXT',
+            );
+            await customStatement(
+              'ALTER TABLE user_profiles ADD COLUMN bio TEXT',
+            );
           }
         },
       );

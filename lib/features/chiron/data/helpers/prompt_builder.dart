@@ -51,6 +51,24 @@ class PromptBuilder {
           lines.add(
               '- Estilo de treino: ${_humanize(profile.trainingStyle!.name)}');
         }
+        if (profile.experienceLevel != null) {
+          lines.add(
+              '- Nível de experiência: ${_humanize(profile.experienceLevel!.name)}');
+        }
+        if (profile.trainingFrequency != null) {
+          lines.add(
+              '- Frequência: ${profile.trainingFrequency}x por semana');
+        }
+        if (profile.trainsAtGym != null) {
+          lines.add(
+              '- Treina em academia: ${profile.trainsAtGym! ? "Sim" : "Não"}');
+        }
+        if (profile.injuries != null && profile.injuries!.isNotEmpty) {
+          lines.add('- Lesões/limitações: ${profile.injuries}');
+        }
+        if (profile.bio != null && profile.bio!.isNotEmpty) {
+          lines.add('- Histórico: ${profile.bio}');
+        }
         sections.add(lines.join('\n'));
       }
     }
@@ -61,42 +79,84 @@ class PromptBuilder {
       final equipment = equipResult.getOrThrow();
       if (equipment.isNotEmpty) {
         final names = equipment.map((e) => e.name).join(', ');
-        sections.add('## Equipamentos Disponíveis\n$names');
+        sections.add('## Equipamentos Registados\n$names');
+      } else {
+        sections.add('## Equipamentos Registados\nNenhum equipamento registado.');
       }
     }
 
-    // Workouts
+    // Workouts with exercises and creation date
     final workoutResult = await _workoutRepo.getActive();
     if (workoutResult.isSuccess) {
       final workouts = workoutResult.getOrThrow();
       if (workouts.isNotEmpty) {
         final lines = <String>['## Treinos Ativos'];
         for (final w in workouts) {
+          final age = DateTime.now().difference(w.createdAt).inDays;
           final exercisesResult = await _workoutRepo.getExercises(w.id);
-          final exerciseCount = exercisesResult.isSuccess
-              ? exercisesResult.getOrThrow().length
-              : 0;
-          lines.add('- ${w.name} ($exerciseCount exercícios)');
+          final exerciseNames = <String>[];
+          if (exercisesResult.isSuccess) {
+            for (final we in exercisesResult.getOrThrow()) {
+              final exResult = await _exerciseRepo.getById(we.exerciseId);
+              if (exResult.isSuccess) {
+                final ex = exResult.getOrThrow();
+                if (ex != null) exerciseNames.add(ex.name);
+              }
+            }
+          }
+          final exStr = exerciseNames.isNotEmpty
+              ? ' → ${exerciseNames.join(", ")}'
+              : '';
+          lines.add('- ${w.name} (criado há $age dias, '
+              '${exerciseNames.length} exercícios)$exStr');
         }
         sections.add(lines.join('\n'));
       }
     }
 
-    // Recent executions
+    // Recent executions with set details
     final execResult = await _executionRepo.getAll();
     if (execResult.isSuccess) {
       final executions = execResult.getOrThrow();
-      final recent = executions.where((e) => e.isFinished).take(5).toList();
+      final recent = executions.where((e) => e.isFinished).take(10).toList();
       if (recent.isNotEmpty) {
-        final lines = <String>['## Histórico Recente (últimas 5 sessões)'];
+        final lines = <String>['## Histórico Recente (últimas ${recent.length} sessões)'];
+
+        // Map workout IDs to names
+        final workoutNames = <int, String>{};
+        final workoutResult2 = await _workoutRepo.getActive();
+        if (workoutResult2.isSuccess) {
+          for (final w in workoutResult2.getOrThrow()) {
+            workoutNames[w.id] = w.name;
+          }
+        }
+
         for (final exec in recent) {
           final duration = exec.duration != null
               ? _formatDuration(exec.duration!)
-              : 'em andamento';
-          lines.add(
-            '- ${exec.startedAt.toLocal().toString().substring(0, 10)} '
-            '| Duração: $duration',
-          );
+              : '?';
+          final wName = workoutNames[exec.workoutId] ?? 'Treino #${exec.workoutId}';
+          final dateFmt = exec.startedAt.toLocal().toString().substring(0, 10);
+
+          final setsResult = await _executionRepo.getSets(exec.id);
+          if (setsResult.isSuccess) {
+            final sets = setsResult.getOrThrow();
+            final exerciseGroups = <int, List<String>>{};
+            for (final s in sets.where((s) => s.isCompleted)) {
+              final label = s.weight != null
+                  ? '${s.weight}kg×${s.reps ?? 0}'
+                  : s.duration != null
+                      ? '${s.duration}s'
+                      : '${s.reps ?? 0} reps';
+              exerciseGroups.putIfAbsent(s.exerciseId, () => []).add(label);
+            }
+            final summary = exerciseGroups.entries.map((e) {
+              return 'ex#${e.key}: ${e.value.join(", ")}';
+            }).join(' | ');
+            lines.add('- $dateFmt — $wName ($duration) [$summary]');
+          } else {
+            lines.add('- $dateFmt — $wName ($duration)');
+          }
         }
         sections.add(lines.join('\n'));
       }

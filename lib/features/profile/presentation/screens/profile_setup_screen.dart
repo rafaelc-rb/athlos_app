@@ -10,10 +10,12 @@ import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/enums/body_aesthetic.dart';
+import '../../domain/enums/experience_level.dart';
 import '../../domain/enums/training_goal.dart';
 import '../../domain/enums/training_style.dart';
 import '../providers/profile_notifier.dart';
 import '../widgets/aesthetic_selector.dart';
+import '../widgets/experience_selector.dart';
 import '../widgets/goal_selector.dart';
 import '../widgets/style_selector.dart';
 
@@ -30,7 +32,7 @@ class ProfileSetupScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
-  static const _totalSteps = 4;
+  static const _totalSteps = 6;
   int _currentStep = 0;
 
   final _formKey = GlobalKey<FormState>();
@@ -38,10 +40,15 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final _weightController = TextEditingController();
   final _heightController = TextEditingController();
   final _ageController = TextEditingController();
+  final _injuriesController = TextEditingController();
+  final _bioController = TextEditingController();
 
   TrainingGoal? _selectedGoal;
   BodyAesthetic? _selectedAesthetic;
   TrainingStyle? _selectedStyle;
+  ExperienceLevel? _selectedExperience;
+  int? _trainingFrequency;
+  bool? _trainsAtGym;
   bool _isSaving = false;
   bool _shouldShowHelp = false;
 
@@ -51,6 +58,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     _weightController.dispose();
     _heightController.dispose();
     _ageController.dispose();
+    _injuriesController.dispose();
+    _bioController.dispose();
     super.dispose();
   }
 
@@ -95,6 +104,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 l10n.stepGoal,
                 l10n.stepAesthetic,
                 l10n.stepStyle,
+                l10n.stepExperience,
+                l10n.stepHealth,
               ],
             ),
             const Gap(AthlosSpacing.lg),
@@ -110,6 +121,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                     1 => _buildGoalStep(),
                     2 => _buildAestheticStep(),
                     3 => _buildStyleStep(),
+                    4 => _buildExperienceStep(l10n, colorScheme, textTheme),
+                    5 => _buildHealthStep(l10n),
                     _ => const SizedBox.shrink(),
                   },
                 ),
@@ -272,6 +285,87 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     );
   }
 
+  Widget _buildExperienceStep(
+    AppLocalizations l10n,
+    ColorScheme colorScheme,
+    TextTheme textTheme,
+  ) {
+    return Column(
+      key: const ValueKey(4),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ExperienceSelector(
+          selected: _selectedExperience,
+          onSelected: (level) =>
+              setState(() => _selectedExperience = level),
+          shouldShowHelp: _shouldShowHelp,
+        ),
+        const Gap(AthlosSpacing.lg),
+        Text(l10n.trainingFrequencyLabel, style: textTheme.titleMedium),
+        const Gap(AthlosSpacing.sm),
+        Text(
+          l10n.trainingFrequencyHint,
+          style: textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const Gap(AthlosSpacing.md),
+        Slider(
+          value: (_trainingFrequency ?? 3).toDouble(),
+          min: 1,
+          max: 7,
+          divisions: 6,
+          label: '${_trainingFrequency ?? 3}x',
+          onChanged: (v) =>
+              setState(() => _trainingFrequency = v.round()),
+        ),
+        Center(
+          child: Text(
+            '${_trainingFrequency ?? 3} ${l10n.daysPerWeek}',
+            style: textTheme.titleSmall,
+          ),
+        ),
+        const Gap(AthlosSpacing.lg),
+        SwitchListTile(
+          title: Text(l10n.trainsAtGymLabel),
+          subtitle: Text(l10n.trainsAtGymHint),
+          value: _trainsAtGym ?? false,
+          onChanged: (v) => setState(() => _trainsAtGym = v),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHealthStep(AppLocalizations l10n) {
+    return Column(
+      key: const ValueKey(5),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          controller: _injuriesController,
+          decoration: InputDecoration(
+            labelText: l10n.injuriesLabel,
+            hintText: l10n.injuriesHint,
+            alignLabelWithHint: true,
+          ),
+          maxLines: 3,
+          textCapitalization: TextCapitalization.sentences,
+        ),
+        const Gap(AthlosSpacing.lg),
+        TextFormField(
+          controller: _bioController,
+          decoration: InputDecoration(
+            labelText: l10n.bioLabel,
+            hintText: l10n.bioHint,
+            alignLabelWithHint: true,
+          ),
+          maxLines: 4,
+          textCapitalization: TextCapitalization.sentences,
+        ),
+      ],
+    );
+  }
+
   void _onNext() {
     switch (_currentStep) {
       case 0:
@@ -283,6 +377,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       case 2:
         setState(() => _currentStep = 3);
       case 3:
+        setState(() => _currentStep = 4);
+      case 4:
+        setState(() => _currentStep = 5);
+      case 5:
         _saveProfile();
     }
   }
@@ -302,6 +400,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       final height = double.tryParse(_heightController.text);
       final age = int.tryParse(_ageController.text);
 
+      final injuries = _injuriesController.text.trim();
+      final bio = _bioController.text.trim();
+
       await ref.read(profileProvider.notifier).create(
             name: name.isEmpty ? null : name,
             weight: weight,
@@ -310,6 +411,11 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             goal: _selectedGoal,
             bodyAesthetic: _selectedAesthetic,
             trainingStyle: _selectedStyle,
+            experienceLevel: _selectedExperience,
+            trainingFrequency: _trainingFrequency,
+            trainsAtGym: _trainsAtGym,
+            injuries: injuries.isEmpty ? null : injuries,
+            bio: bio.isEmpty ? null : bio,
           );
 
       ref.read(hasProfileProvider.notifier).markAsCreated();
@@ -340,6 +446,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       final weight = double.tryParse(_weightController.text);
       final height = double.tryParse(_heightController.text);
       final age = int.tryParse(_ageController.text);
+      final injuries = _injuriesController.text.trim();
+      final bio = _bioController.text.trim();
+
       await ref.read(profileProvider.notifier).create(
             name: name.isEmpty ? null : name,
             weight: weight,
@@ -348,6 +457,11 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             goal: _selectedGoal,
             bodyAesthetic: _selectedAesthetic,
             trainingStyle: _selectedStyle,
+            experienceLevel: _selectedExperience,
+            trainingFrequency: _trainingFrequency,
+            trainsAtGym: _trainsAtGym,
+            injuries: injuries.isEmpty ? null : injuries,
+            bio: bio.isEmpty ? null : bio,
           );
 
       ref.read(hasProfileProvider.notifier).markAsCreated();

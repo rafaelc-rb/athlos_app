@@ -19,5 +19,8 @@ PromptBuilder promptBuilder(Ref ref) => PromptBuilder(
     );
 
 @riverpod
-ChironRepository chironRepository(Ref ref) =>
-    ChironRepositoryImpl(apiKey: geminiApiKey);
+ChironRepository chironRepository(Ref ref) => ChironRepositoryImpl(
+      apiKey: geminiApiKey,
+      profileRepo: ref.watch(userProfileRepositoryProvider),
+      equipmentRepo: ref.watch(equipmentRepositoryProvider),
+    );

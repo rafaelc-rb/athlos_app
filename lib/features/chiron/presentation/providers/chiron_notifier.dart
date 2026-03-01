@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../profile/presentation/providers/profile_notifier.dart';
 import '../../data/repositories/chiron_providers.dart';
 import '../../domain/entities/chiron_message.dart';
 import 'chiron_chat_state.dart';
@@ -64,6 +65,8 @@ class ChironNotifier extends _$ChironNotifier {
       state = state.copyWith(messages: updated);
     } finally {
       state = state.copyWith(isStreaming: false);
+      // Refresh profile in case function calling updated it
+      ref.invalidate(profileProvider);
     }
   }
 

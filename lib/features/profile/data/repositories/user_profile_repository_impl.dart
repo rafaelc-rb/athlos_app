@@ -34,6 +34,11 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
           goal: Value(profile.goal),
           bodyAesthetic: Value(profile.bodyAesthetic),
           trainingStyle: Value(profile.trainingStyle),
+          experienceLevel: Value(profile.experienceLevel),
+          trainingFrequency: Value(profile.trainingFrequency),
+          trainsAtGym: Value(profile.trainsAtGym),
+          injuries: Value(profile.injuries),
+          bio: Value(profile.bio),
           lastActiveModule: Value(profile.lastActiveModule),
         ),
       );
@@ -56,6 +61,11 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
           goal: Value(profile.goal),
           bodyAesthetic: Value(profile.bodyAesthetic),
           trainingStyle: Value(profile.trainingStyle),
+          experienceLevel: Value(profile.experienceLevel),
+          trainingFrequency: Value(profile.trainingFrequency),
+          trainsAtGym: Value(profile.trainsAtGym),
+          injuries: Value(profile.injuries),
+          bio: Value(profile.bio),
           lastActiveModule: Value(profile.lastActiveModule),
         ),
       );
@@ -84,6 +94,11 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
         goal: row.goal,
         bodyAesthetic: row.bodyAesthetic,
         trainingStyle: row.trainingStyle,
+        experienceLevel: row.experienceLevel,
+        trainingFrequency: row.trainingFrequency,
+        trainsAtGym: row.trainsAtGym,
+        injuries: row.injuries,
+        bio: row.bio,
         lastActiveModule: row.lastActiveModule,
       );
 }

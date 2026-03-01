@@ -8,10 +8,12 @@ import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/enums/body_aesthetic.dart';
+import '../../domain/enums/experience_level.dart';
 import '../../domain/enums/training_goal.dart';
 import '../../domain/enums/training_style.dart';
 import '../providers/profile_notifier.dart';
 import '../widgets/aesthetic_selector.dart';
+import '../widgets/experience_selector.dart';
 import '../widgets/goal_selector.dart';
 import '../widgets/style_selector.dart';
 
@@ -34,9 +36,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _weightController = TextEditingController();
   final _heightController = TextEditingController();
   final _ageController = TextEditingController();
+  final _injuriesController = TextEditingController();
+  final _bioController = TextEditingController();
   TrainingGoal? _selectedGoal;
   BodyAesthetic? _selectedAesthetic;
   TrainingStyle? _selectedStyle;
+  ExperienceLevel? _selectedExperience;
+  int? _trainingFrequency;
+  bool? _trainsAtGym;
 
   @override
   void dispose() {
@@ -44,6 +51,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _weightController.dispose();
     _heightController.dispose();
     _ageController.dispose();
+    _injuriesController.dispose();
+    _bioController.dispose();
     super.dispose();
   }
 
@@ -52,9 +61,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _weightController.text = profile.weight?.toString() ?? '';
     _heightController.text = profile.height?.toString() ?? '';
     _ageController.text = profile.age?.toString() ?? '';
+    _injuriesController.text = profile.injuries ?? '';
+    _bioController.text = profile.bio ?? '';
     _selectedGoal = profile.goal;
     _selectedAesthetic = profile.bodyAesthetic;
     _selectedStyle = profile.trainingStyle;
+    _selectedExperience = profile.experienceLevel;
+    _trainingFrequency = profile.trainingFrequency;
+    _trainsAtGym = profile.trainsAtGym;
     setState(() => _isEditing = true);
   }
 
@@ -146,6 +160,37 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             value: profile.trainingStyle != null
                 ? _styleLabel(profile.trainingStyle!, l10n)
                 : l10n.profileNotSet,
+          ),
+          _ProfileTile(
+            icon: Icons.trending_up,
+            label: l10n.profileExperience,
+            value: profile.experienceLevel != null
+                ? _experienceLabel(profile.experienceLevel!, l10n)
+                : l10n.profileNotSet,
+          ),
+          _ProfileTile(
+            icon: Icons.calendar_today,
+            label: l10n.profileFrequency,
+            value: profile.trainingFrequency != null
+                ? '${profile.trainingFrequency}x ${l10n.perWeek}'
+                : l10n.profileNotSet,
+          ),
+          _ProfileTile(
+            icon: Icons.store,
+            label: l10n.profileGym,
+            value: profile.trainsAtGym != null
+                ? (profile.trainsAtGym! ? l10n.yes : l10n.no)
+                : l10n.profileNotSet,
+          ),
+          _ProfileTile(
+            icon: Icons.healing,
+            label: l10n.profileInjuries,
+            value: profile.injuries ?? l10n.profileNotSet,
+          ),
+          _ProfileTile(
+            icon: Icons.auto_stories,
+            label: l10n.profileBio,
+            value: profile.bio ?? l10n.profileNotSet,
           ),
           const Gap(AthlosSpacing.lg),
 
@@ -243,6 +288,55 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               onSelected: (style) =>
                   setState(() => _selectedStyle = style),
             ),
+            const Gap(AthlosSpacing.md),
+            ExperienceSelector(
+              selected: _selectedExperience,
+              onSelected: (level) =>
+                  setState(() => _selectedExperience = level),
+            ),
+            const Gap(AthlosSpacing.lg),
+            Text(l10n.trainingFrequencyLabel,
+                style: Theme.of(context).textTheme.titleMedium),
+            Slider(
+              value: (_trainingFrequency ?? 3).toDouble(),
+              min: 1,
+              max: 7,
+              divisions: 6,
+              label: '${_trainingFrequency ?? 3}x',
+              onChanged: (v) =>
+                  setState(() => _trainingFrequency = v.round()),
+            ),
+            Center(
+              child: Text('${_trainingFrequency ?? 3} ${l10n.daysPerWeek}'),
+            ),
+            const Gap(AthlosSpacing.md),
+            SwitchListTile(
+              title: Text(l10n.trainsAtGymLabel),
+              value: _trainsAtGym ?? false,
+              onChanged: (v) => setState(() => _trainsAtGym = v),
+            ),
+            const Gap(AthlosSpacing.md),
+            TextFormField(
+              controller: _injuriesController,
+              decoration: InputDecoration(
+                labelText: l10n.injuriesLabel,
+                hintText: l10n.injuriesHint,
+                alignLabelWithHint: true,
+              ),
+              maxLines: 3,
+              textCapitalization: TextCapitalization.sentences,
+            ),
+            const Gap(AthlosSpacing.md),
+            TextFormField(
+              controller: _bioController,
+              decoration: InputDecoration(
+                labelText: l10n.bioLabel,
+                hintText: l10n.bioHint,
+                alignLabelWithHint: true,
+              ),
+              maxLines: 4,
+              textCapitalization: TextCapitalization.sentences,
+            ),
             const Gap(AthlosSpacing.lg),
             Row(
               children: [
@@ -271,6 +365,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     final name = _nameController.text.trim();
+    final injuries = _injuriesController.text.trim();
+    final bio = _bioController.text.trim();
     final updated = UserProfile(
       id: profile.id,
       name: name.isEmpty ? null : name,
@@ -280,6 +376,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       goal: _selectedGoal,
       bodyAesthetic: _selectedAesthetic,
       trainingStyle: _selectedStyle,
+      experienceLevel: _selectedExperience,
+      trainingFrequency: _trainingFrequency,
+      trainsAtGym: _trainsAtGym,
+      injuries: injuries.isEmpty ? null : injuries,
+      bio: bio.isEmpty ? null : bio,
       lastActiveModule: profile.lastActiveModule,
     );
 
@@ -320,6 +421,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         TrainingStyle.calisthenics => l10n.styleCalisthenics,
         TrainingStyle.functional => l10n.styleFunctional,
         TrainingStyle.hybrid => l10n.styleHybrid,
+      };
+
+  String _experienceLabel(ExperienceLevel level, AppLocalizations l10n) =>
+      switch (level) {
+        ExperienceLevel.beginner => l10n.experienceBeginner,
+        ExperienceLevel.intermediate => l10n.experienceIntermediate,
+        ExperienceLevel.advanced => l10n.experienceAdvanced,
       };
 }
 

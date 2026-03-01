@@ -4,6 +4,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/errors/result.dart';
 import '../../domain/entities/equipment.dart' as domain;
+import '../../domain/enums/equipment_category.dart';
 import '../../domain/repositories/equipment_repository.dart';
 import '../datasources/daos/equipment_dao.dart';
 
@@ -103,6 +104,43 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
     } on Exception catch (e) {
       return Failure(
           DatabaseException('Failed to toggle equipment $equipmentId: $e'));
+    }
+  }
+
+  @override
+  Future<Result<void>> addByName(String name) async {
+    try {
+      var row = await _dao.findByName(name);
+      if (row == null) {
+        final id = await _dao.create(
+          EquipmentsCompanion.insert(
+            name: name,
+            category: EquipmentCategory.freeWeights,
+          ),
+        );
+        row = await _dao.getById(id);
+      }
+      if (row != null) {
+        await _dao.addUserEquipment(row.id);
+      }
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(
+          DatabaseException('Failed to add equipment by name: $e'));
+    }
+  }
+
+  @override
+  Future<Result<void>> removeByName(String name) async {
+    try {
+      final row = await _dao.findByName(name);
+      if (row != null) {
+        await _dao.removeUserEquipment(row.id);
+      }
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(
+          DatabaseException('Failed to remove equipment by name: $e'));
     }
   }
 

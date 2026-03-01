@@ -1323,5 +1323,46 @@
   "chironClearChat": "Limpar conversa",
   "@chironClearChat": {
     "description": "Button to clear Chiron chat history"
-  }
+  },
+
+  "stepExperience": "Experiência",
+  "@stepExperience": {
+    "description": "Setup wizard step label for experience"
+  },
+  "stepHealth": "Saúde e histórico",
+  "@stepHealth": {
+    "description": "Setup wizard step label for health and background"
+  },
+
+  "experienceSelectTitle": "Qual seu nível de experiência?",
+  "experienceBeginner": "Iniciante",
+  "experienceBeginnerDesc": "Menos de 1 ano treinando consistentemente",
+  "experienceBeginnerImpact": "Foco em aprender técnica, volume baixo-moderado, treinos full body ou upper/lower simples.",
+  "experienceIntermediate": "Intermediário",
+  "experienceIntermediateDesc": "1 a 3 anos treinando consistentemente",
+  "experienceIntermediateImpact": "Volume e intensidade moderados, periodização linear, divisões mais específicas por grupo muscular.",
+  "experienceAdvanced": "Avançado",
+  "experienceAdvancedDesc": "Mais de 3 anos treinando consistentemente",
+  "experienceAdvancedImpact": "Volume e intensidade altos, técnicas avançadas (drop sets, rest-pause), periodização ondulada.",
+
+  "trainingFrequencyLabel": "Frequência de treino",
+  "trainingFrequencyHint": "Quantos dias por semana você treina?",
+  "daysPerWeek": "dias por semana",
+  "perWeek": "por semana",
+
+  "trainsAtGymLabel": "Treina em academia?",
+  "trainsAtGymHint": "Acesso a equipamentos completos (máquinas, cabos, etc.)",
+
+  "injuriesLabel": "Lesões ou limitações",
+  "injuriesHint": "Ex: dor no ombro esquerdo, hérnia discal L4-L5",
+  "bioLabel": "Seu histórico",
+  "bioHint": "Conte um pouco: há quanto tempo treina, esportes anteriores, etc.",
+
+  "profileExperience": "Experiência",
+  "profileFrequency": "Frequência",
+  "profileGym": "Academia",
+  "profileInjuries": "Lesões",
+  "profileBio": "Histórico",
+  "yes": "Sim",
+  "no": "Não"
 }

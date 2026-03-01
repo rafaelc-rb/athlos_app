@@ -44,4 +44,10 @@ class EquipmentDao extends DatabaseAccessor<AppDatabase>
       (delete(userEquipments)
             ..where((e) => e.equipmentId.equals(equipmentId)))
           .go();
+
+  /// Case-insensitive search for equipment by name.
+  Future<Equipment?> findByName(String name) => (select(equipments)
+        ..where(
+            (e) => e.name.lower().like('%${name.toLowerCase()}%')))
+      .getSingleOrNull();
 }

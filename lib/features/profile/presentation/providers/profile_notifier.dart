@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/errors/result.dart';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/enums/body_aesthetic.dart';
+import '../../domain/enums/experience_level.dart';
 import '../../domain/enums/training_goal.dart';
 import '../../domain/enums/training_style.dart';
 import '../../data/repositories/profile_providers.dart';
@@ -31,6 +32,11 @@ class ProfileNotifier extends _$ProfileNotifier {
     TrainingGoal? goal,
     BodyAesthetic? bodyAesthetic,
     TrainingStyle? trainingStyle,
+    ExperienceLevel? experienceLevel,
+    int? trainingFrequency,
+    bool? trainsAtGym,
+    String? injuries,
+    String? bio,
   }) async {
     final repo = ref.read(userProfileRepositoryProvider);
     final profile = UserProfile(
@@ -42,19 +48,15 @@ class ProfileNotifier extends _$ProfileNotifier {
       goal: goal,
       bodyAesthetic: bodyAesthetic,
       trainingStyle: trainingStyle,
+      experienceLevel: experienceLevel,
+      trainingFrequency: trainingFrequency,
+      trainsAtGym: trainsAtGym,
+      injuries: injuries,
+      bio: bio,
     );
     final result = await repo.create(profile);
     final id = result.getOrThrow();
-    state = AsyncData(UserProfile(
-      id: id,
-      name: name,
-      weight: weight,
-      height: height,
-      age: age,
-      goal: goal,
-      bodyAesthetic: bodyAesthetic,
-      trainingStyle: trainingStyle,
-    ));
+    state = AsyncData(profile.copyWith(id: id));
   }
 
   /// Updates an existing user profile and refreshes the state.

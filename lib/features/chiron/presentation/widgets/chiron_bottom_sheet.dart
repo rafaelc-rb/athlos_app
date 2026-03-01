@@ -9,7 +9,10 @@ import '../providers/chiron_notifier.dart';
 import 'chiron_message_bubble.dart';
 
 /// Opens the Chiron AI chat as a modal bottom sheet.
-void showChironSheet(BuildContext context) {
+///
+/// If [initialMessage] is set, that message is sent automatically when the
+/// sheet opens (e.g. "Monte meu treino" as a shortcut from the workout list).
+void showChironSheet(BuildContext context, {String? initialMessage}) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -18,12 +21,14 @@ void showChironSheet(BuildContext context) {
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(AthlosRadius.lg)),
     ),
-    builder: (_) => const _ChironSheet(),
+    builder: (_) => _ChironSheet(initialMessage: initialMessage),
   );
 }
 
 class _ChironSheet extends ConsumerStatefulWidget {
-  const _ChironSheet();
+  const _ChironSheet({this.initialMessage});
+
+  final String? initialMessage;
 
   @override
   ConsumerState<_ChironSheet> createState() => _ChironSheetState();
@@ -32,6 +37,19 @@ class _ChironSheet extends ConsumerStatefulWidget {
 class _ChironSheetState extends ConsumerState<_ChironSheet> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    final msg = widget.initialMessage?.trim();
+    if (msg != null && msg.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(chironProvider.notifier).send(msg);
+        _scrollToBottom();
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -51,8 +69,9 @@ class _ChironSheetState extends ConsumerState<_ChironSheet> {
   void _scrollToBottom() {
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
+        // Reversed list: 0 is the bottom (newest messages)
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          0,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -90,17 +109,19 @@ class _ChironSheetState extends ConsumerState<_ChironSheet> {
                   ? _buildEmptyState(l10n, colorScheme, textTheme)
                   : ListView.separated(
                       controller: _scrollController,
+                      reverse: true,
                       padding: const EdgeInsets.all(AthlosSpacing.md),
                       itemCount: chatState.messages.length,
-                      separatorBuilder: (_, _) => const Gap(AthlosSpacing.sm),
+                      separatorBuilder: (_, __) => const Gap(AthlosSpacing.sm),
                       itemBuilder: (context, index) {
-                        final message = chatState.messages[index];
-                        final isLast =
-                            index == chatState.messages.length - 1;
+                        final reverseIndex =
+                            chatState.messages.length - 1 - index;
+                        final message = chatState.messages[reverseIndex];
+                        final isNewest = index == 0;
                         return ChironMessageBubble(
-                          key: ValueKey(index),
+                          key: ValueKey(reverseIndex),
                           message: message,
-                          isStreaming: isLast && chatState.isStreaming,
+                          isStreaming: isNewest && chatState.isStreaming,
                         );
                       },
                     ),

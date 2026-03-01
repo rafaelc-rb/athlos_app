@@ -1324,6 +1324,14 @@
   "@chironClearChat": {
     "description": "Button to clear Chiron chat history"
   },
+  "chironAskToCreateWorkout": "Monte meu treino",
+  "@chironAskToCreateWorkout": {
+    "description": "Pre-filled message to ask Chiron to create a workout (shortcut)"
+  },
+  "chironCreateWorkoutShortcut": "Pedir ao Quíron para montar",
+  "@chironCreateWorkoutShortcut": {
+    "description": "Button/link in workout list to open Chiron with create-workout shortcut"
+  },
 
   "stepExperience": "Experiência",
   "@stepExperience": {

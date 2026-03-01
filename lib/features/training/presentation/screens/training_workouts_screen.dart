@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
+import '../../../chiron/presentation/widgets/chiron_bottom_sheet.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
@@ -153,7 +154,7 @@ class _WorkoutListBodyState extends ConsumerState<_WorkoutListBody> {
 
     return CustomScrollView(
       slivers: [
-        // New workout button
+        // New workout: manual create + Chiron shortcut
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(
@@ -162,10 +163,24 @@ class _WorkoutListBodyState extends ConsumerState<_WorkoutListBody> {
               AthlosSpacing.md,
               AthlosSpacing.xs,
             ),
-            child: OutlinedButton.icon(
-              onPressed: () => context.push(RoutePaths.trainingWorkoutNew),
-              icon: const Icon(Icons.add),
-              label: Text(l10n.createWorkout),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => context.push(RoutePaths.trainingWorkoutNew),
+                  icon: const Icon(Icons.add),
+                  label: Text(l10n.createWorkout),
+                ),
+                const SizedBox(height: AthlosSpacing.sm),
+                TextButton.icon(
+                  onPressed: () => showChironSheet(
+                    context,
+                    initialMessage: l10n.chironAskToCreateWorkout,
+                  ),
+                  icon: Icon(Icons.auto_awesome, size: 20, color: colorScheme.primary),
+                  label: Text(l10n.chironCreateWorkoutShortcut),
+                ),
+              ],
             ),
           ),
         ),

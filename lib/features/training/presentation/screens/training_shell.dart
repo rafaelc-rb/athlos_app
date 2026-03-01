@@ -3,11 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_paths.dart';
-import '../../../../core/services/gemini_config.dart';
 import '../../../../core/theme/athlos_radius.dart';
-import '../../../chiron/presentation/widgets/chiron_bottom_sheet.dart';
 import '../../../../core/theme/athlos_spacing.dart';
-import '../../../../core/theme/theme_mode_provider.dart';
+import '../../../../core/widgets/app_bar_menu.dart';
 import '../../../../l10n/app_localizations.dart';
 import 'equipment_screen.dart';
 import 'training_exercises_screen.dart';
@@ -81,28 +79,7 @@ class _TrainingShell extends ConsumerWidget {
             : null,
         automaticallyImplyLeading: false,
         title: Text(l10n.trainingModule),
-        actions: [
-          if (isGeminiConfigured)
-            IconButton(
-              icon: const Icon(Icons.auto_awesome_outlined),
-              tooltip: l10n.chironTitle,
-              onPressed: () => showChironSheet(context),
-            ),
-          IconButton(
-            icon: Icon(ref.watch(themeModeProvider.notifier).icon),
-            onPressed: () {
-              try {
-                ref.read(themeModeProvider.notifier).toggle();
-              } on Exception catch (_) {}
-            },
-          ),
-          if (!isSubPage)
-            IconButton(
-              icon: const Icon(Icons.home_outlined),
-              tooltip: l10n.backToHub,
-              onPressed: () => context.go(RoutePaths.hub),
-            ),
-        ],
+        actions: const [AppBarMenu()],
       ),
       body: child,
       bottomNavigationBar: SafeArea(

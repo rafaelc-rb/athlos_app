@@ -122,7 +122,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         // List is reversed: position 0 = newest messages (bottom of chat)
         _scrollController.animateTo(
           0,
-          duration: AthlosDurations.normal,
+                  duration: AthlosDurations.normal,
           curve: Curves.easeOut,
         );
       }

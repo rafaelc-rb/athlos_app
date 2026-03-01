@@ -5,10 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/providers/last_module_provider.dart';
 import '../../../../core/router/route_paths.dart';
-import '../../../../core/services/gemini_config.dart';
 import '../../../../core/theme/athlos_spacing.dart';
-import '../../../chiron/presentation/widgets/chiron_bottom_sheet.dart';
-import '../../../../core/theme/theme_mode_provider.dart';
+import '../../../../core/widgets/app_bar_menu.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../widgets/module_card.dart';
 
@@ -52,47 +50,7 @@ class HubScreen extends ConsumerWidget {
       // --- App bar with profile action ---
       appBar: AppBar(
         title: Text(l10n.appTitle),
-        actions: [
-          if (isGeminiConfigured)
-            IconButton(
-              icon: const Icon(Icons.auto_awesome_outlined),
-              tooltip: l10n.chironTitle,
-              onPressed: () => showChironSheet(context),
-            ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.menu),
-            onSelected: (value) {
-              switch (value) {
-                case 'profile':
-                  context.push(RoutePaths.profile);
-                case 'theme':
-                  try {
-                    ref.read(themeModeProvider.notifier).toggle();
-                  } on Exception catch (_) {}
-              }
-            },
-            itemBuilder: (_) => [
-              PopupMenuItem(
-                value: 'profile',
-                child: ListTile(
-                  leading: const Icon(Icons.person_outline),
-                  title: Text(l10n.profile),
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              PopupMenuItem(
-                value: 'theme',
-                child: ListTile(
-                  leading: Icon(ref.watch(themeModeProvider.notifier).icon),
-                  title: Text(l10n.toggleTheme),
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-            ],
-          ),
-        ],
+        actions: [const AppBarMenu()],
       ),
 
       body: SafeArea(

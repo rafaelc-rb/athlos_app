@@ -53,6 +53,18 @@ class _ChatEntry {
     required this.isUser,
     this.inputStep,
   });
+
+  _ChatEntry copyWith({
+    String? text,
+    bool? isUser,
+    _StepType? inputStep,
+  }) {
+    return _ChatEntry(
+      text: text ?? this.text,
+      isUser: isUser ?? this.isUser,
+      inputStep: inputStep ?? this.inputStep,
+    );
+  }
 }
 
 class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
@@ -62,6 +74,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   bool _isSaving = false;
   bool _waitingInput = false;
+  int? _editingIndex;
+  _StepType? _editingStep;
 
   // Collected data
   String? _name;
@@ -108,9 +122,15 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     _scrollToBottom();
   }
 
-  void _addUserMessage(String text) {
+  void _addUserMessage(String text, {_StepType? answeredStep}) {
     setState(() {
-      _entries.add(_ChatEntry(text: text, isUser: true));
+      _entries.add(
+        _ChatEntry(
+          text: text,
+          isUser: true,
+          inputStep: answeredStep,
+        ),
+      );
       _waitingInput = false;
     });
     _scrollToBottom();
@@ -135,11 +155,70 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     return _entries.last.inputStep;
   }
 
+  _StepType? get _activeInputStep => _editingStep ?? _currentInputStep;
+
+  bool _tryApplyEditedAnswer({
+    required _StepType step,
+    required String text,
+    required VoidCallback applyValue,
+  }) {
+    final editingIndex = _editingIndex;
+    if (editingIndex == null || _editingStep != step) return false;
+
+    setState(() {
+      applyValue();
+      _entries[editingIndex] = _entries[editingIndex].copyWith(text: text);
+      if (step == _StepType.name) {
+        _updateNameGreetingAfterEdit(editingIndex);
+      }
+      _editingIndex = null;
+      _editingStep = null;
+    });
+    _scrollToBottom();
+    return true;
+  }
+
+  void _updateNameGreetingAfterEdit(int nameAnswerIndex) {
+    final l10n = AppLocalizations.of(context)!;
+    final greeting = _name != null
+        ? l10n.setupChatGreetName(_name!)
+        : l10n.setupChatGreetNoName;
+    final greetingIndex = nameAnswerIndex + 1;
+    if (greetingIndex >= _entries.length) return;
+    final greetingEntry = _entries[greetingIndex];
+    if (greetingEntry.isUser) return;
+    _entries[greetingIndex] = greetingEntry.copyWith(text: greeting);
+  }
+
+  void _startEditing(int entryIndex) {
+    if (_isSaving || entryIndex < 0 || entryIndex >= _entries.length) return;
+    final entry = _entries[entryIndex];
+    if (!entry.isUser || entry.inputStep == null) return;
+
+    setState(() {
+      _editingIndex = entryIndex;
+      _editingStep = entry.inputStep;
+      _waitingInput = true;
+      if (_editingStep == _StepType.name) {
+        _textController.text = _name ?? '';
+      }
+    });
+    _scrollToBottom();
+  }
+
   void _onNameSubmitted(String value) {
     final l10n = AppLocalizations.of(context)!;
     final name = value.trim();
+    final userText = name.isEmpty ? l10n.setupChatSkipped : name;
+    if (_tryApplyEditedAnswer(
+      step: _StepType.name,
+      text: userText,
+      applyValue: () => _name = name.isEmpty ? null : name,
+    )) {
+      return;
+    }
     _name = name.isEmpty ? null : name;
-    _addUserMessage(name.isEmpty ? l10n.setupChatSkipped : name);
+    _addUserMessage(userText, answeredStep: _StepType.name);
 
     Future.delayed(const Duration(milliseconds: 400), () {
       if (!mounted) return;
@@ -160,7 +239,15 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     if (_weight != null) parts.add('${_weight}kg');
     if (_height != null) parts.add('${_height}cm');
     if (_age != null) parts.add('$_age ${l10n.yearsUnit}');
-    _addUserMessage(parts.isEmpty ? l10n.setupChatSkipped : parts.join(', '));
+    final userText = parts.isEmpty ? l10n.setupChatSkipped : parts.join(', ');
+    if (_tryApplyEditedAnswer(
+      step: _StepType.body,
+      text: userText,
+      applyValue: () {},
+    )) {
+      return;
+    }
+    _addUserMessage(userText, answeredStep: _StepType.body);
 
     Future.delayed(const Duration(milliseconds: 400), () {
       if (!mounted) return;
@@ -170,12 +257,20 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   void _onGenderSelected(Gender? value) {
     final l10n = AppLocalizations.of(context)!;
-    _gender = value;
-    _addUserMessage(value == null
+    final userText = value == null
         ? l10n.setupChatPreferNotToSay
         : value == Gender.male
             ? l10n.genderMale
-            : l10n.genderFemale);
+            : l10n.genderFemale;
+    if (_tryApplyEditedAnswer(
+      step: _StepType.gender,
+      text: userText,
+      applyValue: () => _gender = value,
+    )) {
+      return;
+    }
+    _gender = value;
+    _addUserMessage(userText, answeredStep: _StepType.gender);
 
     Future.delayed(const Duration(milliseconds: 400), () {
       if (!mounted) return;
@@ -185,8 +280,16 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   void _onGoalSelected(TrainingGoal goal) {
     final l10n = AppLocalizations.of(context)!;
+    final userText = _goalLabel(goal, l10n);
+    if (_tryApplyEditedAnswer(
+      step: _StepType.goal,
+      text: userText,
+      applyValue: () => _selectedGoal = goal,
+    )) {
+      return;
+    }
     _selectedGoal = goal;
-    _addUserMessage(_goalLabel(goal, l10n));
+    _addUserMessage(userText, answeredStep: _StepType.goal);
 
     Future.delayed(const Duration(milliseconds: 400), () {
       if (!mounted) return;
@@ -199,8 +302,16 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   void _onAestheticSelected(BodyAesthetic aesthetic) {
     final l10n = AppLocalizations.of(context)!;
+    final userText = _aestheticLabel(aesthetic, l10n);
+    if (_tryApplyEditedAnswer(
+      step: _StepType.aesthetic,
+      text: userText,
+      applyValue: () => _selectedAesthetic = aesthetic,
+    )) {
+      return;
+    }
     _selectedAesthetic = aesthetic;
-    _addUserMessage(_aestheticLabel(aesthetic, l10n));
+    _addUserMessage(userText, answeredStep: _StepType.aesthetic);
 
     Future.delayed(const Duration(milliseconds: 400), () {
       if (!mounted) return;
@@ -213,8 +324,16 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   void _onStyleSelected(TrainingStyle style) {
     final l10n = AppLocalizations.of(context)!;
+    final userText = _styleLabel(style, l10n);
+    if (_tryApplyEditedAnswer(
+      step: _StepType.style,
+      text: userText,
+      applyValue: () => _selectedStyle = style,
+    )) {
+      return;
+    }
     _selectedStyle = style;
-    _addUserMessage(_styleLabel(style, l10n));
+    _addUserMessage(userText, answeredStep: _StepType.style);
 
     Future.delayed(const Duration(milliseconds: 400), () {
       if (!mounted) return;
@@ -227,8 +346,16 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   void _onExperienceSelected(ExperienceLevel level) {
     final l10n = AppLocalizations.of(context)!;
+    final userText = _experienceLabel(level, l10n);
+    if (_tryApplyEditedAnswer(
+      step: _StepType.experience,
+      text: userText,
+      applyValue: () => _selectedExperience = level,
+    )) {
+      return;
+    }
     _selectedExperience = level;
-    _addUserMessage(_experienceLabel(level, l10n));
+    _addUserMessage(userText, answeredStep: _StepType.experience);
 
     Future.delayed(const Duration(milliseconds: 400), () {
       if (!mounted) return;
@@ -241,7 +368,15 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   void _onFrequencyConfirmed() {
     final l10n = AppLocalizations.of(context)!;
-    _addUserMessage('${_trainingFrequency}x ${l10n.perWeek}');
+    final userText = '${_trainingFrequency}x ${l10n.perWeek}';
+    if (_tryApplyEditedAnswer(
+      step: _StepType.frequency,
+      text: userText,
+      applyValue: () {},
+    )) {
+      return;
+    }
+    _addUserMessage(userText, answeredStep: _StepType.frequency);
 
     Future.delayed(const Duration(milliseconds: 400), () {
       if (!mounted) return;
@@ -251,8 +386,16 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   void _onGymSelected(bool value) {
     final l10n = AppLocalizations.of(context)!;
+    final userText = value ? l10n.yes : l10n.no;
+    if (_tryApplyEditedAnswer(
+      step: _StepType.gym,
+      text: userText,
+      applyValue: () => _trainsAtGym = value,
+    )) {
+      return;
+    }
     _trainsAtGym = value;
-    _addUserMessage(value ? l10n.yes : l10n.no);
+    _addUserMessage(userText, answeredStep: _StepType.gym);
 
     Future.delayed(const Duration(milliseconds: 400), () {
       if (!mounted) return;
@@ -266,8 +409,16 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   void _onInjuriesSubmitted(String value) {
     final l10n = AppLocalizations.of(context)!;
     final text = value.trim();
+    final userText = text.isEmpty ? l10n.setupChatNone : text;
+    if (_tryApplyEditedAnswer(
+      step: _StepType.injuries,
+      text: userText,
+      applyValue: () => _injuries = text.isEmpty ? null : text,
+    )) {
+      return;
+    }
     _injuries = text.isEmpty ? null : text;
-    _addUserMessage(text.isEmpty ? l10n.setupChatNone : text);
+    _addUserMessage(userText, answeredStep: _StepType.injuries);
 
     Future.delayed(const Duration(milliseconds: 400), () {
       if (!mounted) return;
@@ -278,8 +429,16 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   void _onBioSubmitted(String value) {
     final l10n = AppLocalizations.of(context)!;
     final text = value.trim();
+    final userText = text.isEmpty ? l10n.setupChatSkipped : text;
+    if (_tryApplyEditedAnswer(
+      step: _StepType.bio,
+      text: userText,
+      applyValue: () => _bio = text.isEmpty ? null : text,
+    )) {
+      return;
+    }
     _bio = text.isEmpty ? null : text;
-    _addUserMessage(text.isEmpty ? l10n.setupChatSkipped : text);
+    _addUserMessage(userText, answeredStep: _StepType.bio);
 
     Future.delayed(const Duration(milliseconds: 400), () {
       if (!mounted) return;
@@ -386,16 +545,24 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 ),
                 itemCount: _entries.length,
                 itemBuilder: (context, index) {
-                  final entry = _entries[_entries.length - 1 - index];
+                  final entryIndex = _entries.length - 1 - index;
+                  final entry = _entries[entryIndex];
                   return _ChatBubbleItem(
-                    key: ValueKey(_entries.length - 1 - index),
+                    key: ValueKey(entryIndex),
                     entry: entry,
+                    isEditing: _editingIndex == entryIndex,
+                    onTap: entry.isUser &&
+                            entry.inputStep != null &&
+                            !_isSaving &&
+                            (_editingIndex == null || _editingIndex == entryIndex)
+                        ? () => _startEditing(entryIndex)
+                        : null,
                   );
                 },
               ),
             ),
             _SetupInputBar(
-              step: _currentInputStep,
+              step: _activeInputStep,
               state: this,
             ),
           ],
@@ -470,10 +637,14 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 /// Renders a single chat bubble (WhatsApp/Telegram style).
 class _ChatBubbleItem extends StatelessWidget {
   final _ChatEntry entry;
+  final VoidCallback? onTap;
+  final bool isEditing;
 
   const _ChatBubbleItem({
     super.key,
     required this.entry,
+    this.onTap,
+    this.isEditing = false,
   });
 
   static const _bubbleRadius = 18.0;
@@ -482,6 +653,33 @@ class _ChatBubbleItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final borderColor = isEditing ? colorScheme.primary : Colors.transparent;
+    final bubble = Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AthlosSpacing.md,
+        vertical: AthlosSpacing.smd,
+      ),
+      decoration: BoxDecoration(
+        color: entry.isUser
+            ? colorScheme.primaryContainer
+            : colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.only(
+          topLeft: const Radius.circular(_bubbleRadius),
+          topRight: const Radius.circular(_bubbleRadius),
+          bottomLeft: Radius.circular(entry.isUser ? _bubbleRadius : 4),
+          bottomRight: Radius.circular(entry.isUser ? 4 : _bubbleRadius),
+        ),
+        border: Border.all(color: borderColor),
+      ),
+      child: Text(
+        entry.text,
+        style: textTheme.bodyMedium?.copyWith(
+          color: entry.isUser
+              ? colorScheme.onPrimaryContainer
+              : colorScheme.onSurface,
+        ),
+      ),
+    );
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AthlosSpacing.sm),
@@ -493,32 +691,16 @@ class _ChatBubbleItem extends StatelessWidget {
           if (!entry.isUser) _buildAvatar(context),
           if (!entry.isUser) const Gap(AthlosSpacing.xs),
           Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AthlosSpacing.md,
-                vertical: AthlosSpacing.smd,
-              ),
-              decoration: BoxDecoration(
-                color: entry.isUser
-                    ? colorScheme.primaryContainer
-                    : colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(_bubbleRadius),
-                  topRight: const Radius.circular(_bubbleRadius),
-                  bottomLeft: Radius.circular(entry.isUser ? _bubbleRadius : 4),
-                  bottomRight:
-                      Radius.circular(entry.isUser ? 4 : _bubbleRadius),
-                ),
-              ),
-              child: Text(
-                entry.text,
-                style: textTheme.bodyMedium?.copyWith(
-                  color: entry.isUser
-                      ? colorScheme.onPrimaryContainer
-                      : colorScheme.onSurface,
-                ),
-              ),
-            ),
+            child: onTap == null
+                ? bubble
+                : Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(_bubbleRadius),
+                      onTap: onTap,
+                      child: bubble,
+                    ),
+                  ),
           ),
           if (entry.isUser) const Gap(AthlosSpacing.xs),
         ],
@@ -600,12 +782,14 @@ class _SetupInputBar extends StatelessWidget {
           onSubmitted: state._onInjuriesSubmitted,
           allowSkip: true,
           skipLabel: AppLocalizations.of(context)!.setupChatNone,
+          initialValue: state._injuries ?? '',
         ),
       _StepType.bio => _TextInput(
           hint: AppLocalizations.of(context)!.bioHint,
           onSubmitted: state._onBioSubmitted,
           allowSkip: true,
           skipLabel: AppLocalizations.of(context)!.skip,
+          initialValue: state._bio ?? '',
         ),
       _StepType.done => _DoneInput(state: state),
     };
@@ -669,6 +853,14 @@ class _BodyInputState extends State<_BodyInput> {
   final _weightCtrl = TextEditingController();
   final _heightCtrl = TextEditingController();
   final _ageCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _weightCtrl.text = widget.state._weight?.toString() ?? '';
+    _heightCtrl.text = widget.state._height?.toString() ?? '';
+    _ageCtrl.text = widget.state._age?.toString() ?? '';
+  }
 
   @override
   void dispose() {
@@ -1037,12 +1229,14 @@ class _TextInput extends StatefulWidget {
   final void Function(String) onSubmitted;
   final bool allowSkip;
   final String? skipLabel;
+  final String initialValue;
 
   const _TextInput({
     required this.hint,
     required this.onSubmitted,
     this.allowSkip = false,
     this.skipLabel,
+    this.initialValue = '',
   });
 
   @override
@@ -1051,6 +1245,12 @@ class _TextInput extends StatefulWidget {
 
 class _TextInputState extends State<_TextInput> {
   final _ctrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl.text = widget.initialValue;
+  }
 
   @override
   void dispose() {

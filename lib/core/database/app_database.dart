@@ -75,7 +75,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(driftDatabase(name: 'athlos'));
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -86,7 +86,7 @@ class AppDatabase extends _$AppDatabase {
           if (_shouldSeedDevData) await seedDevData(this);
         },
         onUpgrade: (m, from, to) async {
-          if (_shouldSeedDevData && from >= 3 && from <= 11) {
+          if (_shouldSeedDevData && from >= 3 && from <= 12) {
             for (final table in allTables) {
               await m.deleteTable(table.actualTableName);
             }
@@ -232,6 +232,14 @@ class AppDatabase extends _$AppDatabase {
             await customStatement(
               'ALTER TABLE user_profiles ADD COLUMN available_workout_minutes INTEGER',
             );
+          }
+
+          if (from < 8) {
+            await customStatement(
+              'ALTER TABLE workout_exercises ADD COLUMN notes TEXT',
+            );
+            await seedEquipmentsV4(this);
+            await seedExercisesV4(this);
           }
         },
       );

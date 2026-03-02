@@ -79,6 +79,7 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase>
           rest: Value(ex.rest),
           duration: Value(ex.duration),
           groupId: Value(ex.groupId),
+          notes: Value(ex.notes),
         ),
       );
     }

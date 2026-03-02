@@ -23,6 +23,12 @@ class WorkoutExercises extends Table {
   /// non-null groupId are executed back-to-back before rest.
   IntColumn get groupId => integer().nullable()();
 
+  /// Free-text execution notes for this exercise within the workout.
+  /// Used for postural cues, technique reminders, or variation hints
+  /// (e.g. "deitado no banco", "costas na parede").
+  /// Can be set manually or by Chiron when building workouts.
+  TextColumn get notes => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {workoutId, exerciseId};
 }

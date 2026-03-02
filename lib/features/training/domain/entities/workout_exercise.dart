@@ -18,6 +18,9 @@ class WorkoutExercise {
   /// are executed back-to-back before rest.
   final int? groupId;
 
+  /// Free-text execution notes (postural cues, technique reminders, etc.).
+  final String? notes;
+
   const WorkoutExercise({
     required this.workoutId,
     required this.exerciseId,
@@ -27,5 +30,6 @@ class WorkoutExercise {
     required this.rest,
     this.duration,
     this.groupId,
+    this.notes,
   });
 }

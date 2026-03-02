@@ -20,6 +20,7 @@ class WorkoutExerciseEntry {
   int rest;
   int? duration;
   int? groupId;
+  String? notes;
 
   WorkoutExerciseEntry({
     required this.exercise,
@@ -28,6 +29,7 @@ class WorkoutExerciseEntry {
     this.rest = 60,
     this.duration,
     this.groupId,
+    this.notes,
   });
 
   bool get isCardio => exercise.isCardio;

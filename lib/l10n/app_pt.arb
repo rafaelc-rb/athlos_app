@@ -1295,6 +1295,14 @@
   "@equipmentAbductorMachine": {
     "description": "Equipment: abductor machine"
   },
+  "equipmentBicepsCurlMachine": "Máquina de Bíceps",
+  "@equipmentBicepsCurlMachine": {
+    "description": "Equipment: biceps curl machine"
+  },
+  "equipmentPreacherBench": "Banco Scott",
+  "@equipmentPreacherBench": {
+    "description": "Equipment: preacher bench"
+  },
   "exerciseAdductorMachine": "Cadeira Adutora",
   "@exerciseAdductorMachine": {
     "description": "Exercise name: adductor machine"
@@ -1303,6 +1311,32 @@
   "@exerciseAbductorMachine": {
     "description": "Exercise name: abductor machine"
   },
+  "exerciseEzBarCurl": "Rosca com Barra W",
+  "@exerciseEzBarCurl": { "description": "Exercise name: EZ bar curl" },
+  "exerciseDumbbellPreacherCurl": "Rosca Scott com Halteres",
+  "@exerciseDumbbellPreacherCurl": { "description": "Exercise name: dumbbell preacher curl" },
+  "exerciseInclineDumbbellCurl": "Rosca Inclinada com Halteres",
+  "@exerciseInclineDumbbellCurl": { "description": "Exercise name: incline dumbbell curl" },
+  "exerciseConcentrationCurl": "Rosca Concentrada",
+  "@exerciseConcentrationCurl": { "description": "Exercise name: concentration curl" },
+  "exerciseMachinePreacherCurl": "Rosca Scott na Máquina",
+  "@exerciseMachinePreacherCurl": { "description": "Exercise name: machine preacher curl" },
+  "exerciseWaiterCurl": "Rosca Garçom",
+  "@exerciseWaiterCurl": { "description": "Exercise name: waiter curl" },
+  "exerciseDragCurl": "Drag Curl",
+  "@exerciseDragCurl": { "description": "Exercise name: drag curl" },
+  "exerciseSpiderCurl": "Rosca Spider",
+  "@exerciseSpiderCurl": { "description": "Exercise name: spider curl" },
+  "exerciseCableCurl": "Rosca na Polia",
+  "@exerciseCableCurl": { "description": "Exercise name: cable curl" },
+  "exerciseBehindBackCableCurl": "Rosca de Costas no Cabo",
+  "@exerciseBehindBackCableCurl": { "description": "Exercise name: behind back cable curl" },
+  "exerciseBayesianCableCurl": "Bayesian Curl no Cabo",
+  "@exerciseBayesianCableCurl": { "description": "Exercise name: bayesian cable curl" },
+  "exercisePreacherHammerCurl": "Rosca Martelo Scott",
+  "@exercisePreacherHammerCurl": { "description": "Exercise name: preacher hammer curl" },
+  "exerciseReverseZottmanCurl": "Rosca Zottman Inversa",
+  "@exerciseReverseZottmanCurl": { "description": "Exercise name: reverse zottman curl" },
   "musclePrimary": "Primário",
   "@musclePrimary": {
     "description": "Muscle role: primary"

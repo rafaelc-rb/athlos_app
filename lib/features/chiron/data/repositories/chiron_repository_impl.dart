@@ -289,6 +289,7 @@ Uso de funções: createWorkout e archiveWorkout conforme acima; setCycle após 
           : 90;
       final durationSeconds =
           map['durationSeconds'] != null ? _parseInt(map['durationSeconds'], 0) : null;
+      final notes = map['notes']?.toString().trim();
 
       final exResult = await _exerciseRepo.findByName(exerciseName);
       if (!exResult.isSuccess) {
@@ -316,6 +317,7 @@ Uso de funções: createWorkout e archiveWorkout conforme acima; setCycle após 
           rest: restSeconds,
           duration: durationSeconds,
           groupId: null,
+          notes: (notes != null && notes.isNotEmpty) ? notes : null,
         ),
       );
     }

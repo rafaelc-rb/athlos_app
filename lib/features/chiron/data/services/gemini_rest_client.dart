@@ -297,6 +297,10 @@ List<Map<String, dynamic>> getChironToolDeclarations() {
                   'Duração por série em segundos (só para cardio)',
                   nullable: true,
                 ),
+                'notes': _propString(
+                  'Instruções de execução, dicas posturais ou variações técnicas (ex: "deitado no banco", "costas na parede")',
+                  nullable: true,
+                ),
               },
               required: ['exerciseName', 'sets'],
             ),

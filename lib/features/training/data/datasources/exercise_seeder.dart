@@ -300,12 +300,92 @@ final _seedItems = [
         _s(TargetMuscle.brachialis),
       ],
       equipmentKeys: ['barbell']),
+  _SeedExercise('ezBarCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii),
+        _s(TargetMuscle.brachialis),
+        _s(TargetMuscle.brachioradialis),
+      ],
+      equipmentKeys: ['ezBar']),
   _SeedExercise('dumbbellCurl', MuscleGroup.biceps,
       movementPattern: MovementPattern.isolation,
       muscles: [
         _p(TargetMuscle.bicepsBrachii),
       ],
       equipmentKeys: ['dumbbell']),
+  _SeedExercise('dumbbellPreacherCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii, MuscleRegion.shortHead),
+        _s(TargetMuscle.brachialis),
+      ],
+      equipmentKeys: ['dumbbell', 'preacherBench']),
+  _SeedExercise('inclineDumbbellCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii, MuscleRegion.longHead),
+        _s(TargetMuscle.brachialis),
+      ],
+      equipmentKeys: ['dumbbell', 'adjustableBench']),
+  _SeedExercise('concentrationCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii, MuscleRegion.shortHead),
+        _s(TargetMuscle.brachialis),
+      ],
+      equipmentKeys: ['dumbbell']),
+  _SeedExercise('machinePreacherCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii, MuscleRegion.shortHead),
+        _s(TargetMuscle.brachialis),
+      ],
+      equipmentKeys: ['bicepsCurlMachine']),
+  _SeedExercise('waiterCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii, MuscleRegion.longHead),
+        _s(TargetMuscle.brachialis),
+      ],
+      equipmentKeys: ['weightPlates']),
+  _SeedExercise('dragCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii),
+        _s(TargetMuscle.brachialis),
+        _s(TargetMuscle.brachioradialis),
+      ],
+      equipmentKeys: ['barbell']),
+  _SeedExercise('spiderCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii, MuscleRegion.shortHead),
+        _s(TargetMuscle.brachialis),
+      ],
+      equipmentKeys: ['dumbbell', 'adjustableBench']),
+  _SeedExercise('cableCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii),
+        _s(TargetMuscle.brachialis),
+        _s(TargetMuscle.brachioradialis),
+      ],
+      equipmentKeys: ['cableMachine']),
+  _SeedExercise('behindBackCableCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii, MuscleRegion.longHead),
+        _s(TargetMuscle.brachialis),
+      ],
+      equipmentKeys: ['cableMachine']),
+  _SeedExercise('bayesianCableCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii, MuscleRegion.longHead),
+        _s(TargetMuscle.brachialis),
+      ],
+      equipmentKeys: ['cableMachine']),
   _SeedExercise('hammerCurl', MuscleGroup.biceps,
       movementPattern: MovementPattern.isolation,
       muscles: [
@@ -318,7 +398,24 @@ final _seedItems = [
       muscles: [
         _p(TargetMuscle.bicepsBrachii, MuscleRegion.shortHead),
       ],
-      equipmentKeys: ['ezBar']),
+      equipmentKeys: ['ezBar', 'preacherBench']),
+  _SeedExercise('preacherHammerCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.brachialis),
+        _p(TargetMuscle.brachioradialis),
+        _s(TargetMuscle.bicepsBrachii),
+      ],
+      equipmentKeys: ['dumbbell', 'preacherBench']),
+  _SeedExercise('reverseZottmanCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.brachioradialis),
+        _p(TargetMuscle.brachialis),
+        _s(TargetMuscle.bicepsBrachii),
+        _s(TargetMuscle.wristExtensors),
+      ],
+      equipmentKeys: ['dumbbell']),
 
   // ── Triceps ──
   _SeedExercise('tricepsPushdown', MuscleGroup.triceps,
@@ -659,6 +756,247 @@ Future<void> seedExercisesV3(AppDatabase db) async {
   }
 }
 
+/// Seeds the biceps exercises added in schema version 8.
+/// Called from migration onUpgrade when upgrading from v7.
+Future<void> seedExercisesV4(AppDatabase db) async {
+  final equipmentIds = await _resolveEquipmentIds(db);
+  final exerciseIds = <String, int>{};
+
+  // Resolve existing exercise IDs for variation linking
+  final existingRows = await db.select(db.exercises).get();
+  for (final row in existingRows) {
+    exerciseIds[row.name] = row.id;
+  }
+
+  for (final item in _v4SeedItems) {
+    final id = await db.into(db.exercises).insert(
+          ExercisesCompanion.insert(
+            name: item.name,
+            muscleGroup: item.muscleGroup,
+            type: Value(item.type),
+            movementPattern: Value(item.movementPattern),
+            isVerified: const Value(true),
+            description: const Value.absent(),
+          ),
+        );
+    exerciseIds[item.name] = id;
+
+    for (final focus in item.muscles) {
+      await db.into(db.exerciseTargetMuscles).insert(
+            ExerciseTargetMusclesCompanion(
+              exerciseId: Value(id),
+              targetMuscle: Value(focus.muscle),
+              muscleRegion: Value(focus.region),
+              role: Value(focus.role),
+            ),
+          );
+    }
+
+    for (final eqName in item.equipmentKeys) {
+      final eqId = equipmentIds[eqName];
+      if (eqId != null) {
+        await db.into(db.exerciseEquipments).insert(
+              ExerciseEquipmentsCompanion(
+                exerciseId: Value(id),
+                equipmentId: Value(eqId),
+              ),
+            );
+      }
+    }
+  }
+
+  // Update preacherCurl to also link to preacherBench
+  final preacherBenchId = equipmentIds['preacherBench'];
+  final preacherCurlId = exerciseIds['preacherCurl'];
+  if (preacherBenchId != null && preacherCurlId != null) {
+    await db.into(db.exerciseEquipments).insertOnConflictUpdate(
+          ExerciseEquipmentsCompanion(
+            exerciseId: Value(preacherCurlId),
+            equipmentId: Value(preacherBenchId),
+          ),
+        );
+  }
+
+  // Add new variations (insertOrIgnore to skip links that already exist)
+  for (final link in _v4Variations) {
+    final fromId = exerciseIds[link.from];
+    final toId = exerciseIds[link.to];
+    if (fromId != null && toId != null) {
+      await db.into(db.exerciseVariations).insert(
+            ExerciseVariationsCompanion(
+              exerciseId: Value(fromId),
+              variationId: Value(toId),
+            ),
+            mode: InsertMode.insertOrIgnore,
+          );
+      await db.into(db.exerciseVariations).insert(
+            ExerciseVariationsCompanion(
+              exerciseId: Value(toId),
+              variationId: Value(fromId),
+            ),
+            mode: InsertMode.insertOrIgnore,
+          );
+    }
+  }
+}
+
+final _v4SeedItems = [
+  _SeedExercise('ezBarCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii),
+        _s(TargetMuscle.brachialis),
+        _s(TargetMuscle.brachioradialis),
+      ],
+      equipmentKeys: ['ezBar']),
+  _SeedExercise('dumbbellPreacherCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii, MuscleRegion.shortHead),
+        _s(TargetMuscle.brachialis),
+      ],
+      equipmentKeys: ['dumbbell', 'preacherBench']),
+  _SeedExercise('inclineDumbbellCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii, MuscleRegion.longHead),
+        _s(TargetMuscle.brachialis),
+      ],
+      equipmentKeys: ['dumbbell', 'adjustableBench']),
+  _SeedExercise('concentrationCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii, MuscleRegion.shortHead),
+        _s(TargetMuscle.brachialis),
+      ],
+      equipmentKeys: ['dumbbell']),
+  _SeedExercise('machinePreacherCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii, MuscleRegion.shortHead),
+        _s(TargetMuscle.brachialis),
+      ],
+      equipmentKeys: ['bicepsCurlMachine']),
+  _SeedExercise('waiterCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii, MuscleRegion.longHead),
+        _s(TargetMuscle.brachialis),
+      ],
+      equipmentKeys: ['weightPlates']),
+  _SeedExercise('dragCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii),
+        _s(TargetMuscle.brachialis),
+        _s(TargetMuscle.brachioradialis),
+      ],
+      equipmentKeys: ['barbell']),
+  _SeedExercise('spiderCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii, MuscleRegion.shortHead),
+        _s(TargetMuscle.brachialis),
+      ],
+      equipmentKeys: ['dumbbell', 'adjustableBench']),
+  _SeedExercise('cableCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii),
+        _s(TargetMuscle.brachialis),
+        _s(TargetMuscle.brachioradialis),
+      ],
+      equipmentKeys: ['cableMachine']),
+  _SeedExercise('behindBackCableCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii, MuscleRegion.longHead),
+        _s(TargetMuscle.brachialis),
+      ],
+      equipmentKeys: ['cableMachine']),
+  _SeedExercise('bayesianCableCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsBrachii, MuscleRegion.longHead),
+        _s(TargetMuscle.brachialis),
+      ],
+      equipmentKeys: ['cableMachine']),
+  _SeedExercise('preacherHammerCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.brachialis),
+        _p(TargetMuscle.brachioradialis),
+        _s(TargetMuscle.bicepsBrachii),
+      ],
+      equipmentKeys: ['dumbbell', 'preacherBench']),
+  _SeedExercise('reverseZottmanCurl', MuscleGroup.biceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.brachioradialis),
+        _p(TargetMuscle.brachialis),
+        _s(TargetMuscle.bicepsBrachii),
+        _s(TargetMuscle.wristExtensors),
+      ],
+      equipmentKeys: ['dumbbell']),
+];
+
+const _v4Variations = [
+  // ── Biceps — general curls (new intra-cluster links) ──
+  _Variation('barbellCurl', 'ezBarCurl'),
+  _Variation('barbellCurl', 'dragCurl'),
+  _Variation('barbellCurl', 'cableCurl'),
+  _Variation('barbellCurl', 'waiterCurl'),
+  _Variation('ezBarCurl', 'dumbbellCurl'),
+  _Variation('ezBarCurl', 'dragCurl'),
+  _Variation('ezBarCurl', 'cableCurl'),
+  _Variation('ezBarCurl', 'waiterCurl'),
+  _Variation('dumbbellCurl', 'dragCurl'),
+  _Variation('dumbbellCurl', 'cableCurl'),
+  _Variation('dumbbellCurl', 'waiterCurl'),
+  _Variation('dragCurl', 'cableCurl'),
+  _Variation('dragCurl', 'waiterCurl'),
+  _Variation('cableCurl', 'waiterCurl'),
+  // ── Biceps — short head (complete network) ──
+  _Variation('preacherCurl', 'dumbbellPreacherCurl'),
+  _Variation('preacherCurl', 'machinePreacherCurl'),
+  _Variation('preacherCurl', 'concentrationCurl'),
+  _Variation('preacherCurl', 'spiderCurl'),
+  _Variation('dumbbellPreacherCurl', 'machinePreacherCurl'),
+  _Variation('dumbbellPreacherCurl', 'concentrationCurl'),
+  _Variation('dumbbellPreacherCurl', 'spiderCurl'),
+  _Variation('machinePreacherCurl', 'concentrationCurl'),
+  _Variation('machinePreacherCurl', 'spiderCurl'),
+  _Variation('concentrationCurl', 'spiderCurl'),
+  // ── Biceps — long head (complete network) ──
+  _Variation('inclineDumbbellCurl', 'behindBackCableCurl'),
+  _Variation('inclineDumbbellCurl', 'bayesianCableCurl'),
+  _Variation('behindBackCableCurl', 'bayesianCableCurl'),
+  // ── Biceps — hammer / brachialis (complete network) ──
+  _Variation('hammerCurl', 'preacherHammerCurl'),
+  _Variation('hammerCurl', 'reverseZottmanCurl'),
+  _Variation('preacherHammerCurl', 'reverseZottmanCurl'),
+  // ── Biceps — cross-cluster bridges ──
+  _Variation('dumbbellCurl', 'preacherCurl'),
+  _Variation('dumbbellCurl', 'concentrationCurl'),
+  _Variation('dumbbellCurl', 'spiderCurl'),
+  _Variation('dumbbellCurl', 'inclineDumbbellCurl'),
+  _Variation('dumbbellCurl', 'hammerCurl'),
+  _Variation('barbellCurl', 'inclineDumbbellCurl'),
+  _Variation('barbellCurl', 'bayesianCableCurl'),
+  _Variation('waiterCurl', 'inclineDumbbellCurl'),
+  _Variation('waiterCurl', 'bayesianCableCurl'),
+  _Variation('waiterCurl', 'behindBackCableCurl'),
+  _Variation('cableCurl', 'behindBackCableCurl'),
+  _Variation('cableCurl', 'bayesianCableCurl'),
+  // ── Glutes — old↔old missing links ──
+  _Variation('hipThrust', 'cableKickback'),
+  _Variation('gluteBridge', 'cableKickback'),
+  // ── Abs — old↔old missing links ──
+  _Variation('crunch', 'abWheelRollout'),
+  _Variation('hangingLegRaise', 'abWheelRollout'),
+  _Variation('plank', 'abWheelRollout'),
+];
+
 final _v3SeedItems = [
   _SeedExercise('adductorMachine', MuscleGroup.adductors,
       movementPattern: MovementPattern.isolation,
@@ -771,57 +1109,107 @@ const _secondaryRoleBackfill = {
 };
 
 const _variations = [
-  // Chest — mid pressing
+  // ── Chest — mid pressing (pec major mid) ──
   _Variation('flatBarbellBenchPress', 'machineChestPress'),
   _Variation('flatBarbellBenchPress', 'pushUp'),
   _Variation('flatBarbellBenchPress', 'kneePushUp'),
   _Variation('machineChestPress', 'pushUp'),
   _Variation('machineChestPress', 'kneePushUp'),
   _Variation('pushUp', 'kneePushUp'),
-  // Chest — upper pressing
+  // ── Chest — upper pressing (pec major upper) ──
   _Variation('inclineBarbellBenchPress', 'inclineDumbbellPress'),
   _Variation('inclineBarbellBenchPress', 'declinePushUp'),
   _Variation('inclineDumbbellPress', 'declinePushUp'),
-  // Chest — fly / abertura
+  // ── Chest — fly / isolation (pec major mid) ──
   _Variation('dumbbellFly', 'cableCrossover'),
-  // Back — vertical pull
+  // ── Back — vertical pull (lats + biceps) ──
   _Variation('pullUp', 'latPulldown'),
   _Variation('pullUp', 'chinUp'),
   _Variation('chinUp', 'latPulldown'),
-  // Back — horizontal pull / rows
+  // ── Back — horizontal pull / rows (lats + rhomboids) ──
   _Variation('barbellRow', 'dumbbellRow'),
   _Variation('barbellRow', 'seatedCableRow'),
   _Variation('barbellRow', 'invertedRow'),
   _Variation('dumbbellRow', 'seatedCableRow'),
   _Variation('dumbbellRow', 'invertedRow'),
   _Variation('seatedCableRow', 'invertedRow'),
-  // Shoulders — vertical push
+  // ── Shoulders — vertical push (anterior + lateral deltoid) ──
   _Variation('overheadPress', 'arnoldPress'),
   _Variation('overheadPress', 'pikePushUp'),
   _Variation('arnoldPress', 'pikePushUp'),
-  // Shoulders — rear delt
+  // ── Shoulders — rear delt ──
   _Variation('facePull', 'rearDeltFly'),
-  // Biceps
+  // ── Biceps — general curls (bicepsBrachii, full activation) ──
+  _Variation('barbellCurl', 'ezBarCurl'),
   _Variation('barbellCurl', 'dumbbellCurl'),
-  _Variation('barbellCurl', 'preacherCurl'),
-  _Variation('dumbbellCurl', 'hammerCurl'),
+  _Variation('barbellCurl', 'dragCurl'),
+  _Variation('barbellCurl', 'cableCurl'),
+  _Variation('barbellCurl', 'waiterCurl'),
+  _Variation('ezBarCurl', 'dumbbellCurl'),
+  _Variation('ezBarCurl', 'dragCurl'),
+  _Variation('ezBarCurl', 'cableCurl'),
+  _Variation('ezBarCurl', 'waiterCurl'),
+  _Variation('dumbbellCurl', 'dragCurl'),
+  _Variation('dumbbellCurl', 'cableCurl'),
+  _Variation('dumbbellCurl', 'waiterCurl'),
+  _Variation('dragCurl', 'cableCurl'),
+  _Variation('dragCurl', 'waiterCurl'),
+  _Variation('cableCurl', 'waiterCurl'),
+  // ── Biceps — short head emphasis (complete network) ──
+  _Variation('preacherCurl', 'dumbbellPreacherCurl'),
+  _Variation('preacherCurl', 'machinePreacherCurl'),
+  _Variation('preacherCurl', 'concentrationCurl'),
+  _Variation('preacherCurl', 'spiderCurl'),
+  _Variation('dumbbellPreacherCurl', 'machinePreacherCurl'),
+  _Variation('dumbbellPreacherCurl', 'concentrationCurl'),
+  _Variation('dumbbellPreacherCurl', 'spiderCurl'),
+  _Variation('machinePreacherCurl', 'concentrationCurl'),
+  _Variation('machinePreacherCurl', 'spiderCurl'),
+  _Variation('concentrationCurl', 'spiderCurl'),
+  // ── Biceps — long head emphasis (complete network) ──
+  _Variation('inclineDumbbellCurl', 'behindBackCableCurl'),
+  _Variation('inclineDumbbellCurl', 'bayesianCableCurl'),
+  _Variation('behindBackCableCurl', 'bayesianCableCurl'),
+  // ── Biceps — hammer / brachialis (complete network) ──
+  _Variation('hammerCurl', 'preacherHammerCurl'),
+  _Variation('hammerCurl', 'reverseZottmanCurl'),
+  _Variation('preacherHammerCurl', 'reverseZottmanCurl'),
+  // ── Biceps — cross-cluster bridges ──
   _Variation('dumbbellCurl', 'preacherCurl'),
-  // Triceps
-  _Variation('diamondPushUp', 'tricepsPushdown'),
+  _Variation('dumbbellCurl', 'concentrationCurl'),
+  _Variation('dumbbellCurl', 'spiderCurl'),
+  _Variation('dumbbellCurl', 'inclineDumbbellCurl'),
+  _Variation('dumbbellCurl', 'hammerCurl'),
+  _Variation('barbellCurl', 'inclineDumbbellCurl'),
+  _Variation('barbellCurl', 'bayesianCableCurl'),
+  _Variation('waiterCurl', 'inclineDumbbellCurl'),
+  _Variation('waiterCurl', 'bayesianCableCurl'),
+  _Variation('waiterCurl', 'behindBackCableCurl'),
+  _Variation('cableCurl', 'behindBackCableCurl'),
+  _Variation('cableCurl', 'bayesianCableCurl'),
+  // ── Triceps — compound push (triceps + pec) ──
   _Variation('diamondPushUp', 'dip'),
+  _Variation('diamondPushUp', 'tricepsPushdown'),
   _Variation('dip', 'tricepsPushdown'),
+  // ── Triceps — long head isolation ──
   _Variation('skullCrusher', 'overheadTricepsExtension'),
-  // Quadriceps
+  // ── Quadriceps — squat pattern ──
   _Variation('barbellSquat', 'legPress'),
   _Variation('barbellSquat', 'hackSquat'),
   _Variation('legPress', 'hackSquat'),
+  // ── Quadriceps — lunge pattern ──
   _Variation('lunge', 'bulgarianSplitSquat'),
-  // Hamstrings
+  // ── Hamstrings (biceps femoris + semitendinosus) ──
   _Variation('romanianDeadlift', 'nordicCurl'),
   _Variation('romanianDeadlift', 'legCurl'),
   _Variation('nordicCurl', 'legCurl'),
-  // Glutes
+  // ── Glutes (gluteus maximus) ──
   _Variation('hipThrust', 'gluteBridge'),
-  // Abs
+  _Variation('hipThrust', 'cableKickback'),
+  _Variation('gluteBridge', 'cableKickback'),
+  // ── Abs (rectus abdominis) ──
   _Variation('crunch', 'hangingLegRaise'),
+  _Variation('crunch', 'abWheelRollout'),
+  _Variation('hangingLegRaise', 'abWheelRollout'),
+  _Variation('plank', 'abWheelRollout'),
 ];

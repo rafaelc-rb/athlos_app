@@ -15,7 +15,7 @@
 | Navigation | go_router               | go_router                            | go_router                            |
 | Backend    | —                       | Supabase (PostgREST + Edge Functions) | Supabase + Go API (custom logic)    |
 | Auth       | —                       | Supabase Auth                        | Supabase Auth                        |
-| AI         | —                       | —                                    | LLM API via Go (Quíron)             |
+| AI         | Gemini free tier (Chiron) | Gemini free tier (Chiron)           | LLM API via Go + multi-provider (Chiron) |
 | IaC        | —                       | Terraform                            | Terraform                            |
 | Design     | Material 3 (custom)     | Material 3 (custom)                  | Material 3 (custom)                  |
 | i18n       | PT-BR (i18n ready)      | Multilingual via ARB                 | Multilingual via ARB                 |
@@ -459,29 +459,40 @@ Hub-based architecture using go_router:
 
 ## Evolution Plan
 
+Development follows a **depth-first** strategy: each module is fully polished before the next begins. The decision to go premium or add more free modules is deferred until the free tier is solid.
+
 ### 1.0.0 — Training (First Public Release)
 
 - Flutter app with local SQLite
-- Training module feature-complete (exercises, equipment, workouts, execution, history)
+- Training module fully polished — exercises, equipment, workouts, execution (strength + cardio), history, training cycles, supersets, drop sets, execution feedback, rest timer, cardio timer
+- Chiron AI assistant via Gemini free tier (Q&A chat, context-aware responses)
 - Hub, profile, onboarding
 - Manual data export/import for backup (JSON)
 - Zero infrastructure cost — everything runs on-device
 - Published to stores (Google Play / App Store) to build a user base
 
-### 1.x — Diet Module (Incremental)
+### 1.x — Diet Module
 
-Diet is added across three minor releases while Training continues to receive patches:
+After Training is fully polished, Diet is built with the same depth-first approach:
 
-- **1.1.0** — Food registration (catalog + custom foods + macros)
-- **1.2.0** — Meal builder (combine foods, nutritional totals)
-- **1.3.0** — Caloric control (daily log, expenditure, balance)
-- **1.4.0+** — Additional features (load progression charts, UX improvements)
+- Food registration (catalog + custom foods + macros)
+- Meal builder (combine foods, nutritional totals)
+- Caloric control (daily log, expenditure, balance)
 
-By 1.3.0 the free tier is feature-complete: Training + Diet, fully local.
+By the end of 1.x the free tier is feature-complete: Training + Diet + Chiron, fully local.
 
-### 2.x — Supabase & Premium
+### Decision Point — After Diet
 
-No custom API. Supabase provides everything 2.x needs:
+Once the free modules are solid, evaluate:
+- Add more free modules (Assessments, Progress)?
+- Start building premium features (sync, gamification)?
+- Both in parallel?
+
+The decision is informed by the state of the app and user feedback.
+
+### Future — Supabase & Premium
+
+No custom API. Supabase provides everything the premium tier needs:
 
 - **Supabase Auth** — email/password + OAuth (Google, Apple)
 - **PostgREST** — auto-generated REST API from PostgreSQL schema (no endpoints to write)
@@ -500,11 +511,11 @@ Premium features unlocked:
 - Multi-device support
 - Advanced progression charts
 
-### 3.x — Go API, AI & Integrations
+### Future — Go API, Extended AI & Integrations
 
 Custom **Go API** for logic that exceeds Supabase's capabilities:
 
-- **Quíron** — AI orchestration (LLM context management, prompt engineering, response streaming)
+- **Chiron extended** — multi-provider AI (Gemini + Groq + Mistral + others), server-side orchestration, LLM context management, prompt engineering, response streaming
 - **Health integrations** — Apple Health / Google Fit (server-side OAuth + data processing)
 - **Async jobs** — trend analysis, report generation, heavy computations
 - **Kleos** — gamification system (achievements, streaks, challenges)

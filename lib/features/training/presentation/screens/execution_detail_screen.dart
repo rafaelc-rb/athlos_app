@@ -9,6 +9,7 @@ import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/exercise.dart';
 import '../../domain/entities/execution_set.dart';
+import '../../domain/entities/workout_exercise.dart';
 import '../../domain/entities/workout_execution.dart';
 import '../helpers/duration_format.dart';
 import '../helpers/exercise_l10n.dart';
@@ -76,6 +77,16 @@ class ExecutionDetailScreen extends ConsumerWidget {
     final workoutName =
         workoutAsync?.value?.name ?? l10n.unknownWorkout;
 
+    final workoutExercisesAsync = execution != null
+        ? ref.watch(workoutExercisesProvider(execution.workoutId))
+        : null;
+    final unilateralMap = <int, bool>{};
+    if (workoutExercisesAsync?.value case final List<WorkoutExercise> wes) {
+      for (final we in wes) {
+        unilateralMap[we.exerciseId] = we.isUnilateral;
+      }
+    }
+
     if (setsAsync.hasError) {
       return Scaffold(
         appBar: AppBar(title: Text(workoutName)),
@@ -95,6 +106,7 @@ class ExecutionDetailScreen extends ConsumerWidget {
           execution: execution ?? _placeholderExecution,
           sets: sets,
           exercisesAsync: exercisesAsync,
+          unilateralMap: unilateralMap,
           colorScheme: colorScheme,
           textTheme: textTheme,
           l10n: l10n,
@@ -108,6 +120,7 @@ class _ExecutionDetailBody extends StatelessWidget {
   final WorkoutExecution execution;
   final List<ExecutionSet> sets;
   final AsyncValue<List<Exercise>> exercisesAsync;
+  final Map<int, bool> unilateralMap;
   final ColorScheme colorScheme;
   final TextTheme textTheme;
   final AppLocalizations l10n;
@@ -116,6 +129,7 @@ class _ExecutionDetailBody extends StatelessWidget {
     required this.execution,
     required this.sets,
     required this.exercisesAsync,
+    required this.unilateralMap,
     required this.colorScheme,
     required this.textTheme,
     required this.l10n,
@@ -239,6 +253,7 @@ class _ExecutionDetailBody extends StatelessWidget {
               child: _ExerciseBreakdown(
                 exerciseName: name,
                 muscleGroup: group,
+                isUnilateral: unilateralMap[exId] ?? false,
                 sets: exerciseSets,
                 colorScheme: colorScheme,
                 textTheme: textTheme,
@@ -299,6 +314,7 @@ class _SummaryCard extends StatelessWidget {
 class _ExerciseBreakdown extends StatelessWidget {
   final String exerciseName;
   final String muscleGroup;
+  final bool isUnilateral;
   final List<ExecutionSet> sets;
   final ColorScheme colorScheme;
   final TextTheme textTheme;
@@ -307,6 +323,7 @@ class _ExerciseBreakdown extends StatelessWidget {
   const _ExerciseBreakdown({
     required this.exerciseName,
     required this.muscleGroup,
+    this.isUnilateral = false,
     required this.sets,
     required this.colorScheme,
     required this.textTheme,
@@ -323,10 +340,48 @@ class _ExerciseBreakdown extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(exerciseName, style: textTheme.titleSmall),
-            if (muscleGroup.isNotEmpty)
-              Text(muscleGroup,
-                  style: textTheme.bodySmall
-                      ?.copyWith(color: colorScheme.onSurfaceVariant)),
+            if (muscleGroup.isNotEmpty || isUnilateral)
+              Row(
+                children: [
+                  if (muscleGroup.isNotEmpty)
+                    Flexible(
+                      child: Text(muscleGroup,
+                          style: textTheme.bodySmall
+                              ?.copyWith(color: colorScheme.onSurfaceVariant)),
+                    ),
+                  if (isUnilateral) ...[
+                    if (muscleGroup.isNotEmpty)
+                      const SizedBox(width: AthlosSpacing.xs),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AthlosSpacing.xs,
+                        vertical: AthlosSpacing.xxs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.secondaryContainer
+                            .withValues(alpha: 0.5),
+                        borderRadius: AthlosRadius.fullAll,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.swap_horiz,
+                              size: 10,
+                              color: colorScheme.onSecondaryContainer),
+                          const SizedBox(width: 2),
+                          Text(
+                            l10n.unilateralLabel,
+                            style: textTheme.labelSmall?.copyWith(
+                              fontSize: 9,
+                              color: colorScheme.onSecondaryContainer,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             const SizedBox(height: AthlosSpacing.sm),
 
             // Header

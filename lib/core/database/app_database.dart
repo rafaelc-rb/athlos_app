@@ -75,7 +75,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(driftDatabase(name: 'athlos'));
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -240,6 +240,12 @@ class AppDatabase extends _$AppDatabase {
             );
             await seedEquipmentsV4(this);
             await seedExercisesV4(this);
+          }
+
+          if (from < 9) {
+            await customStatement(
+              'ALTER TABLE workout_exercises ADD COLUMN is_unilateral INTEGER NOT NULL DEFAULT 0',
+            );
           }
         },
       );

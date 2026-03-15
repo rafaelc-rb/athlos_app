@@ -62,6 +62,7 @@ class _WorkoutFormScreenState extends ConsumerState<WorkoutFormScreen> {
           rest: we.rest,
           duration: we.duration,
           groupId: we.groupId,
+          isUnilateral: we.isUnilateral,
           notes: we.notes,
         ));
         if (we.groupId != null && we.groupId! >= _nextGroupId) {
@@ -173,6 +174,7 @@ class _WorkoutFormScreenState extends ConsumerState<WorkoutFormScreen> {
                 rest: e.value.rest,
                 duration: e.value.duration,
                 groupId: e.value.groupId,
+                isUnilateral: e.value.isUnilateral,
                 notes: e.value.notes,
               ))
           .toList();

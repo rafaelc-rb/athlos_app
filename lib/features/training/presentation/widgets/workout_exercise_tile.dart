@@ -20,6 +20,7 @@ class WorkoutExerciseEntry {
   int rest;
   int? duration;
   int? groupId;
+  bool isUnilateral;
   String? notes;
 
   WorkoutExerciseEntry({
@@ -29,6 +30,7 @@ class WorkoutExerciseEntry {
     this.rest = 60,
     this.duration,
     this.groupId,
+    this.isUnilateral = false,
     this.notes,
   });
 
@@ -161,11 +163,66 @@ class WorkoutExerciseTile extends StatelessWidget {
                         ),
                       ],
                     ),
-                    Text(
-                      groupName,
-                      style: textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            groupName,
+                            style: textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            entry.isUnilateral = !entry.isUnilateral;
+                            onChanged(entry);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AthlosSpacing.sm,
+                              vertical: AthlosSpacing.xxs,
+                            ),
+                            decoration: BoxDecoration(
+                              color: entry.isUnilateral
+                                  ? colorScheme.secondaryContainer
+                                  : colorScheme.surfaceContainerHighest,
+                              borderRadius: AthlosRadius.fullAll,
+                              border: Border.all(
+                                color: entry.isUnilateral
+                                    ? colorScheme.secondary
+                                        .withValues(alpha: 0.5)
+                                    : colorScheme.outline
+                                        .withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.swap_horiz,
+                                  size: 12,
+                                  color: entry.isUnilateral
+                                      ? colorScheme.onSecondaryContainer
+                                      : colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: AthlosSpacing.xs),
+                                Text(
+                                  l10n.unilateralLabel,
+                                  style: textTheme.labelSmall?.copyWith(
+                                    color: entry.isUnilateral
+                                        ? colorScheme.onSecondaryContainer
+                                        : colorScheme.onSurfaceVariant,
+                                    fontWeight: entry.isUnilateral
+                                        ? FontWeight.w600
+                                        : null,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: AthlosSpacing.sm),
                     Row(

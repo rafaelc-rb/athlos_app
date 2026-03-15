@@ -399,6 +399,7 @@ class _WorkoutExecutionScreenState
                     totalSets: totalSets,
                     isAllDone: isAllDone,
                     isActive: isActive,
+                    isUnilateral: exercise.isUnilateral,
                     isGroupedWithPrevious: isGroupedWithPrev,
                     isGroupedWithNext: isGroupedWithNext,
                     groupColorIndex: gid != null
@@ -515,12 +516,47 @@ class _WorkoutExecutionScreenState
         child: Column(
           children: [
             const SizedBox(height: AthlosSpacing.lg),
-            if (group.isNotEmpty)
-              Text(
-                group,
-                style: textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+            if (group.isNotEmpty || exercise.isUnilateral)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (group.isNotEmpty)
+                    Text(
+                      group,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  if (exercise.isUnilateral) ...[
+                    if (group.isNotEmpty)
+                      const SizedBox(width: AthlosSpacing.sm),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AthlosSpacing.sm,
+                        vertical: AthlosSpacing.xxs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.secondaryContainer,
+                        borderRadius: AthlosRadius.fullAll,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.swap_horiz,
+                              size: 14,
+                              color: colorScheme.onSecondaryContainer),
+                          const SizedBox(width: AthlosSpacing.xs),
+                          Text(
+                            l10n.unilateralLabel,
+                            style: textTheme.labelMedium?.copyWith(
+                              color: colorScheme.onSecondaryContainer,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               ),
             const Spacer(),
 
@@ -1637,6 +1673,7 @@ class _OverviewExerciseCard extends StatelessWidget {
   final int totalSets;
   final bool isAllDone;
   final bool isActive;
+  final bool isUnilateral;
   final bool isGroupedWithPrevious;
   final bool isGroupedWithNext;
   final int? groupColorIndex;
@@ -1649,6 +1686,7 @@ class _OverviewExerciseCard extends StatelessWidget {
     required this.totalSets,
     required this.isAllDone,
     required this.isActive,
+    this.isUnilateral = false,
     this.isGroupedWithPrevious = false,
     this.isGroupedWithNext = false,
     this.groupColorIndex,
@@ -1746,12 +1784,52 @@ class _OverviewExerciseCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (muscleGroup.isNotEmpty)
-                  Text(
-                    muscleGroup,
-                    style: textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                if (muscleGroup.isNotEmpty || isUnilateral)
+                  Row(
+                    children: [
+                      if (muscleGroup.isNotEmpty)
+                        Flexible(
+                          child: Text(
+                            muscleGroup,
+                            style: textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      if (isUnilateral) ...[
+                        if (muscleGroup.isNotEmpty)
+                          const SizedBox(width: AthlosSpacing.xs),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AthlosSpacing.xs,
+                            vertical: AthlosSpacing.xxs,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colorScheme.secondaryContainer
+                                .withValues(alpha: 0.5),
+                            borderRadius: AthlosRadius.fullAll,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.swap_horiz,
+                                  size: 10,
+                                  color:
+                                      colorScheme.onSecondaryContainer),
+                              const SizedBox(width: 2),
+                              Text(
+                                l10n.unilateralLabel,
+                                style: textTheme.labelSmall?.copyWith(
+                                  fontSize: 9,
+                                  color:
+                                      colorScheme.onSecondaryContainer,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
               ],
             ),

@@ -23,6 +23,9 @@ class WorkoutExercises extends Table {
   /// non-null groupId are executed back-to-back before rest.
   IntColumn get groupId => integer().nullable()();
 
+  /// Whether this exercise is performed unilaterally (one side at a time).
+  BoolColumn get isUnilateral => boolean().withDefault(const Constant(false))();
+
   /// Free-text execution notes for this exercise within the workout.
   /// Used for postural cues, technique reminders, or variation hints
   /// (e.g. "deitado no banco", "costas na parede").

@@ -448,21 +448,55 @@ class _ExerciseDetailTile extends ConsumerWidget {
           title: Row(
             children: [
               Expanded(child: Text(displayName)),
+              if (exercise.isUnilateral)
+                Padding(
+                  padding: const EdgeInsets.only(left: AthlosSpacing.xs),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AthlosSpacing.sm,
+                      vertical: AthlosSpacing.xxs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.secondaryContainer
+                          .withValues(alpha: 0.5),
+                      borderRadius: AthlosRadius.fullAll,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.swap_horiz,
+                            size: 10,
+                            color: colorScheme.onSecondaryContainer),
+                        const SizedBox(width: 2),
+                        Text(
+                          l10n.unilateralLabel,
+                          style: textTheme.labelSmall?.copyWith(
+                            fontSize: 9,
+                            color: colorScheme.onSecondaryContainer,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               if (isInGroup && !isGroupedWithPrev)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AthlosSpacing.sm,
-                    vertical: AthlosSpacing.xxs,
-                  ),
-                  decoration: BoxDecoration(
-                    color: groupColor?.withValues(alpha: 0.12),
-                    borderRadius: AthlosRadius.smAll,
-                  ),
-                  child: Text(
-                    l10n.supersetLabel,
-                    style: textTheme.labelSmall?.copyWith(
-                      color: groupColor,
-                      fontWeight: FontWeight.w600,
+                Padding(
+                  padding: const EdgeInsets.only(left: AthlosSpacing.xs),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AthlosSpacing.sm,
+                      vertical: AthlosSpacing.xxs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: groupColor?.withValues(alpha: 0.12),
+                      borderRadius: AthlosRadius.smAll,
+                    ),
+                    child: Text(
+                      l10n.supersetLabel,
+                      style: textTheme.labelSmall?.copyWith(
+                        color: groupColor,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),

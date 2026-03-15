@@ -18,6 +18,9 @@ class WorkoutExercise {
   /// are executed back-to-back before rest.
   final int? groupId;
 
+  /// Whether this exercise is performed unilaterally (one side at a time).
+  final bool isUnilateral;
+
   /// Free-text execution notes (postural cues, technique reminders, etc.).
   final String? notes;
 
@@ -30,6 +33,7 @@ class WorkoutExercise {
     required this.rest,
     this.duration,
     this.groupId,
+    this.isUnilateral = false,
     this.notes,
   });
 }

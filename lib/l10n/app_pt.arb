@@ -1188,6 +1188,8 @@
 
   "supersetLabel": "Superset",
   "@supersetLabel": { "description": "Label for superset group indicator" },
+  "unilateralLabel": "Unilateral",
+  "@unilateralLabel": { "description": "Label for unilateral exercise indicator" },
   "linkSuperset": "Vincular superset",
   "@linkSuperset": { "description": "Tooltip to link exercise with next as superset" },
   "unlinkSuperset": "Desvincular superset",

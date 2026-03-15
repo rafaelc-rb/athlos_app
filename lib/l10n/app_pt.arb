@@ -441,9 +441,9 @@
   "@categoryMachines": {
     "description": "Categoria: máquinas"
   },
-  "categoryStructures": "Estruturas",
+  "categoryStructures": "Barras e Suportes",
   "@categoryStructures": {
-    "description": "Categoria: barras e estruturas"
+    "description": "Categoria: barras fixas, paralelas, argolas, suspension trainer"
   },
   "categoryAccessories": "Acessórios",
   "@categoryAccessories": {
@@ -453,6 +453,16 @@
   "@categoryCardio": {
     "description": "Categoria: cardio"
   },
+  "categoryFreeWeightsDesc": "Barras, halteres, kettlebells e anilhas",
+  "@categoryFreeWeightsDesc": { "description": "Tooltip for freeWeights category" },
+  "categoryMachinesDesc": "Polias, Smith, leg press e outras máquinas guiadas",
+  "@categoryMachinesDesc": { "description": "Tooltip for machines category" },
+  "categoryStructuresDesc": "Barra fixa, paralelas, argolas e suspension trainer",
+  "@categoryStructuresDesc": { "description": "Tooltip for structures category" },
+  "categoryAccessoriesDesc": "Bancos, racks, elásticos, medicine ball e outros",
+  "@categoryAccessoriesDesc": { "description": "Tooltip for accessories category" },
+  "categoryCardioDesc": "Esteira, bicicleta ergométrica, remo e elíptico",
+  "@categoryCardioDesc": { "description": "Tooltip for cardio category" },
 
   "equipmentBarbell": "Barra Reta",
   "@equipmentBarbell": { "description": "Equipamento: barbell" },

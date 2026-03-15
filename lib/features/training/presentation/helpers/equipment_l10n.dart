@@ -63,3 +63,16 @@ String localizedCategoryName(
       EquipmentCategory.accessories => l10n.categoryAccessories,
       EquipmentCategory.cardio => l10n.categoryCardio,
     };
+
+/// Returns a short description of what belongs in an [EquipmentCategory].
+String localizedCategoryDescription(
+  EquipmentCategory category,
+  AppLocalizations l10n,
+) =>
+    switch (category) {
+      EquipmentCategory.freeWeights => l10n.categoryFreeWeightsDesc,
+      EquipmentCategory.machines => l10n.categoryMachinesDesc,
+      EquipmentCategory.structures => l10n.categoryStructuresDesc,
+      EquipmentCategory.accessories => l10n.categoryAccessoriesDesc,
+      EquipmentCategory.cardio => l10n.categoryCardioDesc,
+    };

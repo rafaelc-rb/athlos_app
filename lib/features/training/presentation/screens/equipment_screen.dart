@@ -214,6 +214,8 @@ class _EquipmentScreenState extends ConsumerState<EquipmentScreen> {
               l10n: l10n,
             ),
             category: localizedCategoryName(equipment.category, l10n),
+            categoryDescription:
+                localizedCategoryDescription(equipment.category, l10n),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -379,6 +381,8 @@ class _EquipmentScreenState extends ConsumerState<EquipmentScreen> {
             l10n: l10n,
           ),
           category: localizedCategoryName(equipment.category, l10n),
+          categoryDescription:
+              localizedCategoryDescription(equipment.category, l10n),
           trailing: IconButton(
             icon: Icon(Icons.add_circle_outline, color: colorScheme.primary),
             onPressed: isLoading ? null : () => _toggleEquipment(equipment.id),
@@ -449,6 +453,28 @@ class _AddEquipmentDialogState extends ConsumerState<_AddEquipmentDialog> {
                 setState(() => _selectedCategory = value);
               }
             },
+          ),
+          const Gap(AthlosSpacing.sm),
+          Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                size: 14,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurfaceVariant
+                    .withValues(alpha: 0.6),
+              ),
+              const SizedBox(width: AthlosSpacing.xs),
+              Expanded(
+                child: Text(
+                  localizedCategoryDescription(_selectedCategory, l10n),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -554,6 +580,28 @@ class _EditEquipmentDialogState extends ConsumerState<_EditEquipmentDialog> {
                 setState(() => _selectedCategory = value);
               }
             },
+          ),
+          const Gap(AthlosSpacing.sm),
+          Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                size: 14,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurfaceVariant
+                    .withValues(alpha: 0.6),
+              ),
+              const SizedBox(width: AthlosSpacing.xs),
+              Expanded(
+                child: Text(
+                  localizedCategoryDescription(_selectedCategory, l10n),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

@@ -104,7 +104,7 @@ class TrainingHomeScreen extends ConsumerWidget {
           const Gap(AthlosSpacing.sm),
 
           _CatalogCard(
-            icon: Icons.fitness_center,
+            icon: Icons.handyman,
             title: l10n.myEquipment,
             subtitle: selectedEquipmentCount > 0
                 ? l10n.equipmentSelected(selectedEquipmentCount)

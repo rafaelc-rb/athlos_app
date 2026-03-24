@@ -135,8 +135,8 @@ class _EvolutionCard extends ConsumerWidget {
         return Card(
           clipBehavior: Clip.antiAlias,
           child: InkWell(
-            onTap: () => context.push(
-              '${RoutePaths.trainingWorkouts}/${c.last.workoutId}',
+            onTap: () => context.go(
+              '${RoutePaths.trainingHistory}?workoutId=${c.last.workoutId}',
             ),
             child: Padding(
               padding: const EdgeInsets.all(AthlosSpacing.md),

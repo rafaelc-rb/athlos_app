@@ -27,11 +27,31 @@ final _placeholderExecutions = List.generate(
 ///
 /// Shows finished workout executions sorted by date (most recent first),
 /// with workout name and duration. Supports deleting entries.
-class TrainingHistoryScreen extends ConsumerWidget {
+class TrainingHistoryScreen extends ConsumerStatefulWidget {
   const TrainingHistoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TrainingHistoryScreen> createState() =>
+      _TrainingHistoryScreenState();
+}
+
+class _TrainingHistoryScreenState extends ConsumerState<TrainingHistoryScreen> {
+  int? _selectedWorkoutId;
+  String? _lastWorkoutIdParam;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final workoutIdParam =
+        GoRouterState.of(context).uri.queryParameters['workoutId'];
+    if (workoutIdParam == _lastWorkoutIdParam) return;
+
+    _lastWorkoutIdParam = workoutIdParam;
+    _selectedWorkoutId = int.tryParse(workoutIdParam ?? '');
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -51,9 +71,72 @@ class TrainingHistoryScreen extends ConsumerWidget {
 
     final isLoading = executionsAsync.isLoading;
     final executions = executionsAsync.value;
+    final filteredExecutions = switch (executions) {
+      null => null,
+      _ when _selectedWorkoutId == null => executions,
+      _ => executions
+          .where((execution) => execution.workoutId == _selectedWorkoutId)
+          .toList(),
+    };
 
-    if (!isLoading && (executions?.isEmpty ?? true)) {
-      return Center(
+    final hasNoItems = !isLoading && (filteredExecutions?.isEmpty ?? true);
+    final resolvedExecutions = filteredExecutions ?? _placeholderExecutions;
+
+    return Skeletonizer(
+      enabled: isLoading,
+      child: Column(
+        children: [
+          if (allWorkouts.isNotEmpty)
+            _HistoryWorkoutFilterBar(
+              selectedWorkoutId: _selectedWorkoutId,
+              workouts: allWorkouts,
+              onSelectedWorkout: (workoutId) {
+                setState(() => _selectedWorkoutId = workoutId);
+              },
+              allLabel: l10n.filterAll,
+            ),
+          Expanded(
+            child: hasNoItems
+                ? _HistoryEmptyState(
+                    title: l10n.emptyHistory,
+                    hint: l10n.emptyHistoryHint,
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AthlosSpacing.sm,
+                      vertical: AthlosSpacing.sm,
+                    ),
+                    itemCount: resolvedExecutions.length,
+                    itemBuilder: (context, index) => _ExecutionCard(
+                      key: ValueKey(resolvedExecutions[index].id),
+                      execution: resolvedExecutions[index],
+                      workout: workoutById[resolvedExecutions[index].workoutId],
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HistoryEmptyState extends StatelessWidget {
+  final String title;
+  final String hint;
+
+  const _HistoryEmptyState({
+    required this.title,
+    required this.hint,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AthlosSpacing.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -64,38 +147,72 @@ class TrainingHistoryScreen extends ConsumerWidget {
             ),
             const SizedBox(height: AthlosSpacing.md),
             Text(
-              l10n.emptyHistory,
+              title,
               style: textTheme.titleMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: AthlosSpacing.sm),
             Text(
-              l10n.emptyHistoryHint,
+              hint,
               style: textTheme.bodyMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
-      );
-    }
+      ),
+    );
+  }
+}
 
-    final resolvedExecutions = executions ?? _placeholderExecutions;
+class _HistoryWorkoutFilterBar extends StatelessWidget {
+  final int? selectedWorkoutId;
+  final List<Workout> workouts;
+  final ValueChanged<int?> onSelectedWorkout;
+  final String allLabel;
 
-    return Skeletonizer(
-      enabled: isLoading,
-      child: ListView.builder(
+  const _HistoryWorkoutFilterBar({
+    required this.selectedWorkoutId,
+    required this.workouts,
+    required this.onSelectedWorkout,
+    required this.allLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final sortedWorkouts = workouts.toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+
+    return SizedBox(
+      height: 52,
+      child: ListView(
         padding: const EdgeInsets.symmetric(
-          horizontal: AthlosSpacing.sm,
-          vertical: AthlosSpacing.sm,
+          horizontal: AthlosSpacing.md,
+          vertical: AthlosSpacing.xs,
         ),
-        itemCount: resolvedExecutions.length,
-        itemBuilder: (context, index) => _ExecutionCard(
-          key: ValueKey(resolvedExecutions[index].id),
-          execution: resolvedExecutions[index],
-          workout: workoutById[resolvedExecutions[index].workoutId],
-        ),
+        scrollDirection: Axis.horizontal,
+        children: [
+          FilterChip(
+            label: Text(allLabel),
+            selected: selectedWorkoutId == null,
+            onSelected: (_) => onSelectedWorkout(null),
+          ),
+          const SizedBox(width: AthlosSpacing.xs),
+          ...sortedWorkouts.map(
+            (workout) => Padding(
+              padding: const EdgeInsets.only(right: AthlosSpacing.xs),
+              child: FilterChip(
+                key: ValueKey(workout.id),
+                label: Text(workout.name),
+                selected: selectedWorkoutId == workout.id,
+                onSelected: (_) => onSelectedWorkout(workout.id),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -127,8 +244,7 @@ class _ExecutionCard extends ConsumerWidget {
         vertical: AthlosSpacing.xs,
       ),
       child: InkWell(
-        onTap: () => context.push(
-            '${RoutePaths.trainingHistory}/${execution.id}'),
+        onTap: () => context.push('${RoutePaths.trainingHistory}/${execution.id}'),
         borderRadius: AthlosRadius.mdAll,
         child: Padding(
           padding: const EdgeInsets.symmetric(
@@ -136,61 +252,61 @@ class _ExecutionCard extends ConsumerWidget {
             vertical: AthlosSpacing.sm,
           ),
           child: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: colorScheme.primaryContainer,
-              child: Text(
-                workoutName.isNotEmpty ? workoutName[0].toUpperCase() : '?',
-                style: textTheme.titleSmall?.copyWith(
-                  color: colorScheme.onPrimaryContainer,
+            children: [
+              CircleAvatar(
+                backgroundColor: colorScheme.primaryContainer,
+                child: Text(
+                  workoutName.isNotEmpty ? workoutName[0].toUpperCase() : '?',
+                  style: textTheme.titleSmall?.copyWith(
+                    color: colorScheme.onPrimaryContainer,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: AthlosSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    workoutName,
-                    style: textTheme.titleSmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: AthlosSpacing.xs),
-                  Text(
-                    durationStr != null ? '$dateStr  •  $durationStr' : dateStr,
-                    style: textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
+              const SizedBox(width: AthlosSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      workoutName,
+                      style: textTheme.titleSmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: AthlosSpacing.xs),
+                    Text(
+                      durationStr != null ? '$dateStr  •  $durationStr' : dateStr,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'delete') {
+                    _confirmDelete(context, ref);
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: ListTile(
+                      leading:
+                          Icon(Icons.delete_outline, color: colorScheme.error),
+                      title: Text(
+                        l10n.delete,
+                        style: TextStyle(color: colorScheme.error),
+                      ),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
                     ),
                   ),
                 ],
               ),
-            ),
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'delete') {
-                  _confirmDelete(context, ref);
-                }
-              },
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'delete',
-                  child: ListTile(
-                    leading:
-                        Icon(Icons.delete_outline, color: colorScheme.error),
-                    title: Text(
-                      l10n.delete,
-                      style: TextStyle(color: colorScheme.error),
-                    ),
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+            ],
+          ),
         ),
       ),
     );

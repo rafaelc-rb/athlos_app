@@ -35,15 +35,21 @@ ShellRoute trainingShellRoute() {
       ),
       GoRoute(
         path: RoutePaths.trainingHome,
-        builder: (context, state) => const TrainingHomeScreen(),
+        builder: (context, state) => const _TrainingRootTabBackGuard(
+          child: TrainingHomeScreen(),
+        ),
       ),
       GoRoute(
         path: RoutePaths.trainingWorkouts,
-        builder: (context, state) => const TrainingWorkoutsScreen(),
+        builder: (context, state) => const _TrainingRootTabBackGuard(
+          child: TrainingWorkoutsScreen(),
+        ),
       ),
       GoRoute(
         path: RoutePaths.trainingHistory,
-        builder: (context, state) => const TrainingHistoryScreen(),
+        builder: (context, state) => const _TrainingRootTabBackGuard(
+          child: TrainingHistoryScreen(),
+        ),
       ),
       GoRoute(
         path: RoutePaths.trainingExercises,
@@ -74,60 +80,71 @@ class _TrainingShell extends ConsumerWidget {
 
     final isSubPage = _isSubPage(currentPath);
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: isSubPage
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => context.go(RoutePaths.trainingHome),
-              )
-            : null,
-        automaticallyImplyLeading: false,
-        title: Text(l10n.trainingModule),
-        actions: const [AppBarMenu()],
-      ),
-      body: child,
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(
-            AthlosSpacing.md,
-            0,
-            AthlosSpacing.md,
-            AthlosSpacing.sm,
-          ),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainer,
-            borderRadius: AthlosRadius.lgAll,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: AthlosSpacing.sm,
-                offset: const Offset(0, -AthlosSpacing.xxs),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: AthlosRadius.lgAll,
-            child: NavigationBar(
-              selectedIndex: _indexFromPath(currentPath),
-              onDestinationSelected: (index) => _onTabTap(context, index),
-              destinations: [
-                NavigationDestination(
-                  icon: const Icon(Icons.dashboard_outlined),
-                  selectedIcon: const Icon(Icons.dashboard),
-                  label: l10n.tabHome,
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.fitness_center_outlined),
-                  selectedIcon: const Icon(Icons.fitness_center),
-                  label: l10n.tabWorkouts,
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.timeline_outlined),
-                  selectedIcon: const Icon(Icons.timeline),
-                  label: l10n.tabHistory,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (isSubPage) {
+          context.go(RoutePaths.trainingHome);
+          return;
+        }
+        context.go(RoutePaths.hub);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: isSubPage
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => context.go(RoutePaths.trainingHome),
+                )
+              : null,
+          automaticallyImplyLeading: false,
+          title: Text(l10n.trainingModule),
+          actions: const [AppBarMenu()],
+        ),
+        body: child,
+        bottomNavigationBar: SafeArea(
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(
+              AthlosSpacing.md,
+              0,
+              AthlosSpacing.md,
+              AthlosSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainer,
+              borderRadius: AthlosRadius.lgAll,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  blurRadius: AthlosSpacing.sm,
+                  offset: const Offset(0, -AthlosSpacing.xxs),
                 ),
               ],
+            ),
+            child: ClipRRect(
+              borderRadius: AthlosRadius.lgAll,
+              child: NavigationBar(
+                selectedIndex: _indexFromPath(currentPath),
+                onDestinationSelected: (index) => _onTabTap(context, index),
+                destinations: [
+                  NavigationDestination(
+                    icon: const Icon(Icons.dashboard_outlined),
+                    selectedIcon: const Icon(Icons.dashboard),
+                    label: l10n.tabHome,
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(Icons.fitness_center_outlined),
+                    selectedIcon: const Icon(Icons.fitness_center),
+                    label: l10n.tabWorkouts,
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(Icons.timeline_outlined),
+                    selectedIcon: const Icon(Icons.timeline),
+                    label: l10n.tabHistory,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -158,5 +175,23 @@ class _TrainingShell extends ConsumerWidget {
       case 2:
         context.go(RoutePaths.trainingHistory);
     }
+  }
+}
+
+class _TrainingRootTabBackGuard extends StatelessWidget {
+  final Widget child;
+
+  const _TrainingRootTabBackGuard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        context.go(RoutePaths.hub);
+      },
+      child: child,
+    );
   }
 }

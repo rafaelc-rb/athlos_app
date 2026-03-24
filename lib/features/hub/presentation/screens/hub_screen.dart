@@ -46,61 +46,64 @@ class HubScreen extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return Scaffold(
-      // --- App bar with profile action ---
-      appBar: AppBar(
-        title: Text(l10n.appTitle),
-        actions: [const AppBarMenu()],
-      ),
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        // --- App bar with profile action ---
+        appBar: AppBar(
+          title: Text(l10n.appTitle),
+          actions: [const AppBarMenu()],
+        ),
 
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AthlosSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Gap(AthlosSpacing.lg),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AthlosSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Gap(AthlosSpacing.lg),
 
-              // --- Header ---
-              Text(
-                l10n.hubGreeting,
-                style: textTheme.headlineMedium?.copyWith(
-                  color: colorScheme.primary,
+                // --- Header ---
+                Text(
+                  l10n.hubGreeting,
+                  style: textTheme.headlineMedium?.copyWith(
+                    color: colorScheme.primary,
+                  ),
                 ),
-              ),
-              const Gap(AthlosSpacing.xs),
-              Text(
-                l10n.hubSubtitle,
-                style: textTheme.bodyLarge?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+                const Gap(AthlosSpacing.xs),
+                Text(
+                  l10n.hubSubtitle,
+                  style: textTheme.bodyLarge?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              ),
-              const Gap(AthlosSpacing.xl),
+                const Gap(AthlosSpacing.xl),
 
-              // --- Module cards ---
-              // Training — enabled, navigates to training shell
-              ModuleCard(
-                title: l10n.trainingModule,
-                description: l10n.trainingModuleDescription,
-                icon: Icons.fitness_center,
-                onTap: () {
-                  ref
-                      .read(lastModuleProvider.notifier)
-                      .save(RoutePaths.training);
-                  context.go(RoutePaths.training);
-                },
-              ),
-              const Gap(AthlosSpacing.smd),
+                // --- Module cards ---
+                // Training — enabled, navigates to training shell
+                ModuleCard(
+                  title: l10n.trainingModule,
+                  description: l10n.trainingModuleDescription,
+                  icon: Icons.fitness_center,
+                  onTap: () {
+                    ref
+                        .read(lastModuleProvider.notifier)
+                        .save(RoutePaths.training);
+                    context.go(RoutePaths.training);
+                  },
+                ),
+                const Gap(AthlosSpacing.smd),
 
-              // Diet — disabled for V1, shows "coming soon"
-              ModuleCard(
-                title: l10n.dietModule,
-                description: l10n.dietModuleDescription,
-                icon: Icons.restaurant,
-                isEnabled: false,
-                disabledLabel: l10n.comingSoon,
-              ),
-            ],
+                // Diet — disabled for V1, shows "coming soon"
+                ModuleCard(
+                  title: l10n.dietModule,
+                  description: l10n.dietModuleDescription,
+                  icon: Icons.restaurant,
+                  isEnabled: false,
+                  disabledLabel: l10n.comingSoon,
+                ),
+              ],
+            ),
           ),
         ),
       ),

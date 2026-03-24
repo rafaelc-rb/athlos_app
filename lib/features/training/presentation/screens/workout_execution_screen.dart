@@ -78,6 +78,7 @@ class _WorkoutExecutionScreenState
     final wasInBackground = _isInBackground;
     _isInBackground = switch (state) {
       AppLifecycleState.resumed => false,
+      AppLifecycleState.inactive => false,
       _ => true,
     };
 
@@ -172,18 +173,48 @@ class _WorkoutExecutionScreenState
     final hasJustFinished =
         (previous?.remainingSeconds ?? 0) > 0 && next.remainingSeconds == 0;
     if (hasJustFinished) {
-      await _restTimerNotificationService.showRestFinished(
-        title: l10n.restTimerDone,
-        body: l10n.restComplete,
-      );
+      if (_restTimerNotificationService.usesScheduledFinishAlert) {
+        await _restTimerNotificationService.cancelScheduledRestFinished();
+      } else {
+        await _restTimerNotificationService.showRestFinished(
+          title: l10n.restTimerDone,
+          body: l10n.restComplete,
+        );
+      }
       return;
     }
 
     if (next.isRunning && next.remainingSeconds > 0) {
-      await _restTimerNotificationService.showOngoingRest(
-        title: l10n.restTimerLabel(next.remainingSeconds),
-        body: l10n.nextSetLabel,
-      );
+      if (_restTimerNotificationService.supportsFrequentOngoingUpdates) {
+        await _restTimerNotificationService.showOngoingRest(
+          title: l10n.restTimerLabel(next.remainingSeconds),
+          body: l10n.nextSetLabel,
+        );
+      } else {
+        final previousRemaining = previous?.remainingSeconds ?? 0;
+        final wasRunning = previous?.isRunning ?? false;
+        final hasRemaining = previousRemaining > 0;
+        final startedOrResumed = !wasRunning || !hasRemaining;
+        final wasExtended = next.remainingSeconds > (previousRemaining + 1);
+        if (startedOrResumed || wasExtended) {
+          await _restTimerNotificationService.showOngoingRest(
+            title: l10n.restTimerLabel(next.remainingSeconds),
+            body: l10n.nextSetLabel,
+          );
+          await _restTimerNotificationService.scheduleRestFinished(
+            title: l10n.restTimerDone,
+            body: l10n.restComplete,
+            afterSeconds: next.remainingSeconds,
+          );
+        }
+      }
+      return;
+    }
+
+    if (_restTimerNotificationService.usesScheduledFinishAlert &&
+        !next.isRunning &&
+        next.remainingSeconds > 0) {
+      await _restTimerNotificationService.cancelScheduledRestFinished();
       return;
     }
 

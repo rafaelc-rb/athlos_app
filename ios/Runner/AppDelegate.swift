@@ -53,13 +53,36 @@ import UIKit
       guard
         let args = call.arguments as? [String: Any],
         let title = args["title"] as? String,
-        let subtitle = args["subtitle"] as? String,
-        let endAtEpochMs = args["endAtEpochMs"] as? Int64
+        let subtitle = args["subtitle"] as? String
       else {
         result(
           FlutterError(
             code: "bad_arguments",
             message: "Missing upsert arguments",
+            details: nil
+          )
+        )
+        return
+      }
+
+      let endAtEpochMs: Int64?
+      if let value = args["endAtEpochMs"] as? Int64 {
+        endAtEpochMs = value
+      } else if let value = args["endAtEpochMs"] as? Int {
+        endAtEpochMs = Int64(value)
+      } else if let value = args["endAtEpochMs"] as? NSNumber {
+        endAtEpochMs = value.int64Value
+      } else if let value = args["endAtEpochMs"] as? Double {
+        endAtEpochMs = Int64(value)
+      } else {
+        endAtEpochMs = nil
+      }
+
+      guard let endAtEpochMs else {
+        result(
+          FlutterError(
+            code: "bad_arguments",
+            message: "Invalid endAtEpochMs argument",
             details: nil
           )
         )

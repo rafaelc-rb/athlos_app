@@ -16,6 +16,10 @@ import UIKit
       didFinishLaunchingWithOptions: launchOptions
     )
 
+    if let controller = window?.rootViewController as? FlutterViewController {
+      setupRestTimerLiveActivityChannel(binaryMessenger: controller.binaryMessenger)
+    }
+
     return didFinish
   }
 
@@ -29,9 +33,18 @@ import UIKit
     else {
       return
     }
+    setupRestTimerLiveActivityChannel(binaryMessenger: registrar.messenger())
+  }
+
+  private func setupRestTimerLiveActivityChannel(
+    binaryMessenger: FlutterBinaryMessenger
+  ) {
+    if restTimerLiveActivityChannel != nil {
+      return
+    }
     let channel = FlutterMethodChannel(
       name: restTimerLiveActivityChannelName,
-      binaryMessenger: registrar.messenger()
+      binaryMessenger: binaryMessenger
     )
     channel.setMethodCallHandler { [weak self] call, result in
       self?.handleRestTimerLiveActivity(call: call, result: result)

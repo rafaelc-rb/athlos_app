@@ -76,6 +76,9 @@ class _WorkoutExecutionScreenState
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final wasInBackground = _isInBackground;
+    if (state == AppLifecycleState.resumed) {
+      ref.read(restTimerProvider.notifier).syncWithClock();
+    }
     _isInBackground = switch (state) {
       AppLifecycleState.resumed => false,
       AppLifecycleState.inactive => false,

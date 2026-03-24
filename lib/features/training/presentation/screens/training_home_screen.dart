@@ -25,8 +25,8 @@ class TrainingHomeScreen extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    final userIdsAsync = ref.watch(userEquipmentIdsProvider);
-    final selectedEquipmentCount = userIdsAsync.value?.length ?? 0;
+    final equipmentAsync = ref.watch(equipmentListProvider);
+    final equipmentCount = equipmentAsync.value?.length ?? 0;
 
     final exercisesAsync = ref.watch(exerciseListProvider);
     final exerciseCount = exercisesAsync.value?.length ?? 0;
@@ -106,10 +106,10 @@ class TrainingHomeScreen extends ConsumerWidget {
 
           _CatalogCard(
             icon: Icons.handyman,
-            title: l10n.myEquipment,
-            subtitle: selectedEquipmentCount > 0
-                ? l10n.equipmentSelected(selectedEquipmentCount)
-                : l10n.myEquipmentDesc,
+            title: l10n.equipmentCatalogTitle,
+            subtitle: equipmentCount > 0
+                ? l10n.equipmentCatalogCount(equipmentCount)
+                : l10n.equipmentCatalogDesc,
             onTap: () => context.go(RoutePaths.trainingEquipment),
           ),
         ],

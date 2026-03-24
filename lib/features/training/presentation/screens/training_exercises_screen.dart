@@ -62,11 +62,6 @@ class _TrainingExercisesScreenState
     final exercisesAsync = ref.watch(exerciseListProvider);
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddSheet(context),
-        tooltip: l10n.addExercise,
-        child: const Icon(Icons.add),
-      ),
       body: Column(
         children: [
           Padding(
@@ -132,7 +127,27 @@ class _TrainingExercisesScreenState
                           style: textTheme.titleMedium?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                           ),
+                          textAlign: TextAlign.center,
                         ),
+                        const Gap(AthlosSpacing.xs),
+                        Text(
+                          l10n.emptyExercisesHint,
+                          style: textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        if (_searchQuery.trim().isNotEmpty) ...[
+                          const Gap(AthlosSpacing.md),
+                          OutlinedButton.icon(
+                            onPressed: () => _showAddSheet(
+                              context,
+                              initialName: _searchQuery.trim(),
+                            ),
+                            icon: const Icon(Icons.add),
+                            label: Text(l10n.addExercise),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -182,12 +197,15 @@ class _TrainingExercisesScreenState
     );
   }
 
-  void _showAddSheet(BuildContext context) {
+  void _showAddSheet(
+    BuildContext context, {
+    String initialName = '',
+  }) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (context) => const _AddExerciseSheet(),
+      builder: (context) => _AddExerciseSheet(initialName: initialName),
     );
   }
 
@@ -239,7 +257,9 @@ class _TrainingExercisesScreenState
 /// Collapsible "Advanced details": primary/secondary muscles, regions,
 /// movement pattern, equipment, description.
 class _AddExerciseSheet extends ConsumerStatefulWidget {
-  const _AddExerciseSheet();
+  final String initialName;
+
+  const _AddExerciseSheet({this.initialName = ''});
 
   @override
   ConsumerState<_AddExerciseSheet> createState() => _AddExerciseSheetState();
@@ -257,7 +277,17 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
       [];
   final List<({TargetMuscle muscle, MuscleRegion? region})> _secondaryMuscles =
       [];
+  String _primaryMuscleQuery = '';
+  String _secondaryMuscleQuery = '';
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialName.isNotEmpty) {
+      _nameController.text = widget.initialName;
+    }
+  }
 
   @override
   void dispose() {
@@ -432,6 +462,8 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
           label: l10n.primaryMusclesLabel,
           muscles: _primaryMuscles,
           excludedMuscles: _secondaryMuscles.map((m) => m.muscle).toSet(),
+          query: _primaryMuscleQuery,
+          onQueryChanged: (value) => setState(() => _primaryMuscleQuery = value),
           l10n: l10n,
           textTheme: textTheme,
           colorScheme: colorScheme,
@@ -441,6 +473,9 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
           label: l10n.secondaryMusclesLabel,
           muscles: _secondaryMuscles,
           excludedMuscles: _primaryMuscles.map((m) => m.muscle).toSet(),
+          query: _secondaryMuscleQuery,
+          onQueryChanged: (value) =>
+              setState(() => _secondaryMuscleQuery = value),
           l10n: l10n,
           textTheme: textTheme,
           colorScheme: colorScheme,
@@ -499,18 +534,31 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
     required String label,
     required List<({TargetMuscle muscle, MuscleRegion? region})> muscles,
     required Set<TargetMuscle> excludedMuscles,
+    required String query,
+    required ValueChanged<String> onQueryChanged,
     required AppLocalizations l10n,
     required TextTheme textTheme,
     required ColorScheme colorScheme,
   }) {
-    final grouped = <MuscleGroup, List<TargetMuscle>>{};
-    for (final m in TargetMuscle.values) {
+    final selectedSet = muscles.map((m) => m.muscle).toSet();
+    final normalizedQuery = query.trim().toLowerCase();
+    final available = TargetMuscle.values.where((m) {
       if (m.muscleGroup == MuscleGroup.cardio ||
           m.muscleGroup == MuscleGroup.fullBody) {
-        continue;
+        return false;
       }
-      grouped.putIfAbsent(m.muscleGroup, () => []).add(m);
-    }
+      if (excludedMuscles.contains(m) || selectedSet.contains(m)) return false;
+      return true;
+    }).toList()
+      ..sort((a, b) => localizedTargetMuscle(a, l10n)
+          .compareTo(localizedTargetMuscle(b, l10n)));
+
+    final filtered = normalizedQuery.isEmpty
+        ? const <TargetMuscle>[]
+        : available.where((m) {
+            final name = localizedTargetMuscle(m, l10n).toLowerCase();
+            return name.contains(normalizedQuery);
+          }).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -522,39 +570,64 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
           ),
         ),
         const Gap(AthlosSpacing.xs),
-        ...grouped.entries.map((entry) {
-          final groupMuscles = entry.value
-              .where((m) => !excludedMuscles.contains(m))
-              .toList();
-          if (groupMuscles.isEmpty) return const SizedBox.shrink();
-          return Padding(
-            padding: const EdgeInsets.only(bottom: AthlosSpacing.xs),
-            child: Wrap(
-              spacing: AthlosSpacing.xs,
-              runSpacing: 0,
-              children: groupMuscles.map((muscle) {
-                final isSelected = muscles.any((f) => f.muscle == muscle);
-                return FilterChip(
-                  label: Text(
-                    localizedTargetMuscle(muscle, l10n),
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  selected: isSelected,
+        if (muscles.isNotEmpty) ...[
+          Wrap(
+            spacing: AthlosSpacing.xs,
+            runSpacing: AthlosSpacing.xs,
+            children: muscles.map((focus) {
+              return InputChip(
+                label: Text(localizedTargetMuscle(focus.muscle, l10n)),
+                onDeleted: () => setState(() {
+                  muscles.removeWhere((f) => f.muscle == focus.muscle);
+                }),
+              );
+            }).toList(),
+          ),
+          const Gap(AthlosSpacing.sm),
+        ],
+        TextField(
+          decoration: InputDecoration(
+            hintText: l10n.searchMuscles,
+            prefixIcon: const Icon(Icons.search, size: 20),
+            suffixIcon: query.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, size: 20),
+                    onPressed: () => onQueryChanged(''),
+                  )
+                : null,
+            isDense: true,
+            border: const OutlineInputBorder(),
+          ),
+          onChanged: onQueryChanged,
+        ),
+        if (query.trim().isNotEmpty && filtered.isNotEmpty) ...[
+          const Gap(AthlosSpacing.xs),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 160),
+            child: ListView.builder(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              itemCount: filtered.length,
+              itemBuilder: (context, index) {
+                final muscle = filtered[index];
+                return ListTile(
+                  dense: true,
                   visualDensity: VisualDensity.compact,
-                  onSelected: (selected) {
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AthlosSpacing.sm,
+                  ),
+                  title: Text(localizedTargetMuscle(muscle, l10n)),
+                  onTap: () {
                     setState(() {
-                      if (selected) {
-                        muscles.add((muscle: muscle, region: null));
-                      } else {
-                        muscles.removeWhere((f) => f.muscle == muscle);
-                      }
+                      muscles.add((muscle: muscle, region: null));
                     });
+                    onQueryChanged('');
                   },
                 );
-              }).toList(),
+              },
             ),
-          );
-        }),
+          ),
+        ],
       ],
     );
   }

@@ -8,6 +8,7 @@ import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/equipment.dart';
 import '../helpers/equipment_l10n.dart';
 import '../providers/equipment_notifier.dart';
+import 'add_equipment_dialog.dart';
 
 /// Search-based equipment picker with removable badges for selected items.
 ///
@@ -33,6 +34,7 @@ class _EquipmentSearchPickerState extends ConsumerState<EquipmentSearchPicker> {
   final _focusNode = FocusNode();
   String _query = '';
   bool _hasFocus = false;
+  bool _isCreatingEquipment = false;
 
   @override
   void initState() {
@@ -201,6 +203,39 @@ class _EquipmentSearchPickerState extends ConsumerState<EquipmentSearchPicker> {
               },
             ),
           ),
+        ] else if (showResults) ...[
+          const Gap(AthlosSpacing.xs),
+          ListTile(
+            dense: true,
+            visualDensity: VisualDensity.compact,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AthlosSpacing.sm,
+            ),
+            leading: _isCreatingEquipment
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    Icons.add_circle_outline,
+                    size: 18,
+                    color: colorScheme.primary,
+                  ),
+            title: Text(
+              l10n.addEquipment,
+              style: textTheme.bodyMedium,
+            ),
+            subtitle: Text(
+              _query.trim().isEmpty
+                  ? l10n.equipmentNameLabel
+                  : _query.trim(),
+              style: textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            onTap: _isCreatingEquipment ? null : _createEquipmentInline,
+          ),
         ],
       ],
     );
@@ -216,5 +251,21 @@ class _EquipmentSearchPickerState extends ConsumerState<EquipmentSearchPicker> {
   void _remove(int id) {
     final updated = {...widget.selectedIds}..remove(id);
     widget.onChanged(updated);
+  }
+
+  Future<void> _createEquipmentInline() async {
+    setState(() => _isCreatingEquipment = true);
+    final createdId = await showAddEquipmentDialog(
+      context,
+      initialName: _query.trim(),
+    );
+    if (!mounted) return;
+    setState(() => _isCreatingEquipment = false);
+    if (createdId == null) return;
+
+    final updated = {...widget.selectedIds, createdId};
+    widget.onChanged(updated);
+    _searchController.clear();
+    setState(() => _query = '');
   }
 }

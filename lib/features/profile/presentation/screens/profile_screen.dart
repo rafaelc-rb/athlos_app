@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
+import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../core/widgets/app_bar_menu.dart';
 import '../../../../l10n/app_localizations.dart';
@@ -18,6 +20,7 @@ import '../widgets/aesthetic_selector.dart';
 import '../widgets/experience_selector.dart';
 import '../widgets/goal_selector.dart';
 import '../widgets/style_selector.dart';
+import '../../../training/presentation/widgets/equipment_management_body.dart';
 
 /// Profile view/edit screen (P-04).
 ///
@@ -82,26 +85,53 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final profileAsync = ref.watch(profileProvider);
-    final resolved =
-        profileAsync.value ?? const UserProfile(id: 0);
+    final resolved = profileAsync.value ?? const UserProfile(id: 0);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.profile),
-        actions: [const AppBarMenu()],
+    return DefaultTabController(
+      length: _isEditing ? 1 : 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(l10n.profile),
+          actions: [const AppBarMenu()],
+          bottom: _isEditing
+              ? null
+              : TabBar(
+                  isScrollable: true,
+                  tabs: [
+                    Tab(text: l10n.profileOverviewTab),
+                    Tab(text: l10n.profileTrainingPreferencesTab),
+                    Tab(text: l10n.profileEquipmentTab),
+                  ],
+                ),
+        ),
+        body: profileAsync.hasError
+            ? Center(child: Text(l10n.genericError))
+            : _isEditing
+                ? _buildEditView(resolved, l10n)
+                : TabBarView(
+                    children: [
+                      Skeletonizer(
+                        enabled: profileAsync.isLoading,
+                        child: _buildOverviewCategory(resolved, l10n),
+                      ),
+                      Skeletonizer(
+                        enabled: profileAsync.isLoading,
+                        child: _buildTrainingPreferencesCategory(resolved, l10n),
+                      ),
+                      EquipmentManagementBody(
+                        onEquipmentTap: (equipment) {
+                          context.push(
+                            RoutePaths.trainingEquipmentDetail(equipment.id),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
       ),
-      body: profileAsync.hasError
-          ? Center(child: Text(l10n.genericError))
-          : Skeletonizer(
-              enabled: profileAsync.isLoading,
-              child: _isEditing
-                  ? _buildEditView(resolved, l10n)
-                  : _buildReadView(resolved, l10n),
-            ),
     );
   }
 
-  Widget _buildReadView(UserProfile profile, AppLocalizations l10n) {
+  Widget _buildOverviewCategory(UserProfile profile, AppLocalizations l10n) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return SingleChildScrollView(
@@ -173,7 +203,50 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           const Gap(AthlosSpacing.md),
 
-          // Objetivos e treino
+          // Saúde e histórico
+          _SectionHeader(title: l10n.profileSectionHealth),
+          const Gap(AthlosSpacing.xs),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: AthlosSpacing.sm,
+                horizontal: AthlosSpacing.md,
+              ),
+              child: Column(
+                children: [
+                  _ProfileTile(
+                    icon: Icons.healing,
+                    label: l10n.profileInjuries,
+                    value: profile.injuries ?? l10n.profileNotSet,
+                  ),
+                  _ProfileTile(
+                    icon: Icons.auto_stories,
+                    label: l10n.profileBio,
+                    value: profile.bio ?? l10n.profileNotSet,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Gap(AthlosSpacing.lg),
+
+          FilledButton.icon(
+            onPressed: () => _startEditing(profile),
+            icon: const Icon(Icons.edit),
+            label: Text(l10n.edit),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrainingPreferencesCategory(
+      UserProfile profile, AppLocalizations l10n) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AthlosSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
           _SectionHeader(title: l10n.profileSectionTraining),
           const Gap(AthlosSpacing.xs),
           Card(
@@ -238,35 +311,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ),
           ),
-          const Gap(AthlosSpacing.md),
-
-          // Saúde e histórico
-          _SectionHeader(title: l10n.profileSectionHealth),
-          const Gap(AthlosSpacing.xs),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                vertical: AthlosSpacing.sm,
-                horizontal: AthlosSpacing.md,
-              ),
-              child: Column(
-                children: [
-                  _ProfileTile(
-                    icon: Icons.healing,
-                    label: l10n.profileInjuries,
-                    value: profile.injuries ?? l10n.profileNotSet,
-                  ),
-                  _ProfileTile(
-                    icon: Icons.auto_stories,
-                    label: l10n.profileBio,
-                    value: profile.bio ?? l10n.profileNotSet,
-                  ),
-                ],
-              ),
-            ),
-          ),
           const Gap(AthlosSpacing.lg),
-
           FilledButton.icon(
             onPressed: () => _startEditing(profile),
             icon: const Icon(Icons.edit),

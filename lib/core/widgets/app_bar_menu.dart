@@ -19,9 +19,10 @@ class AppBarMenu extends ConsumerWidget {
 
   static const _itemPadding = EdgeInsets.symmetric(
     horizontal: AthlosSpacing.sm,
-    vertical: AthlosSpacing.xs,
+    vertical: AthlosSpacing.xxs,
   );
-  static const double _minLeadingWidth = 28;
+  static const double _menuItemHeight = 34;
+  static const double _menuIconSize = 18;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -63,37 +64,73 @@ class AppBarMenu extends ConsumerWidget {
           itemBuilder: (_) => [
             PopupMenuItem(
               value: 'home',
-              child: ListTile(
-                leading: Icon(Icons.home_outlined, color: colorScheme.onSurface),
-                title: Text(l10n.backToHub),
-                contentPadding: _itemPadding,
-                minLeadingWidth: _minLeadingWidth,
-                dense: true,
+              height: _menuItemHeight,
+              padding: EdgeInsets.zero,
+              child: Padding(
+                padding: _itemPadding,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.home_outlined,
+                      size: _menuIconSize,
+                      color: colorScheme.onSurface,
+                    ),
+                    const SizedBox(width: AthlosSpacing.xs),
+                    Text(
+                      l10n.backToHub,
+                      style: theme.textTheme.labelMedium,
+                    ),
+                  ],
+                ),
               ),
             ),
-            const PopupMenuDivider(),
+            const PopupMenuDivider(height: 1),
             PopupMenuItem(
               value: 'profile',
-              child: ListTile(
-                leading: Icon(Icons.person_outline, color: colorScheme.onSurface),
-                title: Text(l10n.profile),
-                contentPadding: _itemPadding,
-                minLeadingWidth: _minLeadingWidth,
-                dense: true,
+              height: _menuItemHeight,
+              padding: EdgeInsets.zero,
+              child: Padding(
+                padding: _itemPadding,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.person_outline,
+                      size: _menuIconSize,
+                      color: colorScheme.onSurface,
+                    ),
+                    const SizedBox(width: AthlosSpacing.xs),
+                    Text(
+                      l10n.profile,
+                      style: theme.textTheme.labelMedium,
+                    ),
+                  ],
+                ),
               ),
             ),
-            const PopupMenuDivider(),
+            const PopupMenuDivider(height: 1),
             PopupMenuItem(
               value: 'theme',
-              child: ListTile(
-                leading: Icon(
-                  ref.watch(themeModeProvider.notifier).icon,
-                  color: colorScheme.onSurface,
+              height: _menuItemHeight,
+              padding: EdgeInsets.zero,
+              child: Padding(
+                padding: _itemPadding,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      ref.watch(themeModeProvider.notifier).icon,
+                      size: _menuIconSize,
+                      color: colorScheme.onSurface,
+                    ),
+                    const SizedBox(width: AthlosSpacing.xs),
+                    Text(
+                      l10n.toggleTheme,
+                      style: theme.textTheme.labelMedium,
+                    ),
+                  ],
                 ),
-                title: Text(l10n.toggleTheme),
-                contentPadding: _itemPadding,
-                minLeadingWidth: _minLeadingWidth,
-                dense: true,
               ),
             ),
           ],

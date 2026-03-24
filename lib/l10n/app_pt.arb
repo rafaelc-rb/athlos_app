@@ -39,6 +39,18 @@
   "@profileSectionTraining": { "description": "Profile section: goals and training" },
   "profileSectionHealth": "Saúde e histórico",
   "@profileSectionHealth": { "description": "Profile section: health and bio" },
+  "profileOverviewTab": "Visão geral",
+  "@profileOverviewTab": {
+    "description": "Profile tab label for overview category"
+  },
+  "profileTrainingPreferencesTab": "Treino",
+  "@profileTrainingPreferencesTab": {
+    "description": "Profile tab label for training preferences category"
+  },
+  "profileEquipmentTab": "Equipamentos",
+  "@profileEquipmentTab": {
+    "description": "Profile tab label for equipment category"
+  },
   "@profile": {
     "description": "Label do perfil"
   },
@@ -384,6 +396,21 @@
   "@myEquipmentDesc": {
     "description": "Descrição do card meus equipamentos"
   },
+  "equipmentCatalogTitle": "Equipamentos",
+  "@equipmentCatalogTitle": {
+    "description": "Card title for equipment catalog"
+  },
+  "equipmentCatalogDesc": "Explore e marque os equipamentos disponíveis para você",
+  "@equipmentCatalogDesc": {
+    "description": "Card description for equipment catalog"
+  },
+  "equipmentCatalogCount": "{count} equipamentos no catálogo",
+  "@equipmentCatalogCount": {
+    "description": "Equipment catalog count label",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "equipmentSelected": "{count} selecionados",
   "@equipmentSelected": {
     "description": "Contador de equipamentos selecionados",
@@ -414,6 +441,18 @@
   "emptyEquipmentHint": "Use a busca acima para encontrar e adicionar",
   "@emptyEquipmentHint": {
     "description": "Dica no estado vazio"
+  },
+  "equipmentCatalogEmpty": "Nenhum equipamento encontrado no catálogo",
+  "@equipmentCatalogEmpty": {
+    "description": "Empty state title when catalog search has no matches"
+  },
+  "equipmentCatalogEmptyHint": "Tente outro termo ou cadastre um equipamento novo.",
+  "@equipmentCatalogEmptyHint": {
+    "description": "Empty state hint when catalog search has no matches"
+  },
+  "registerNewEquipment": "Registrar novo equipamento",
+  "@registerNewEquipment": {
+    "description": "Action to register a new equipment from catalog empty search result"
   },
   "removeEquipment": "Remover",
   "@removeEquipment": {
@@ -537,7 +576,7 @@
   "@exercisesCatalog": { "description": "Card title for exercises catalog" },
   "exercisesCatalogDesc": "Explore o catálogo de exercícios",
   "@exercisesCatalogDesc": { "description": "Card description for exercises catalog" },
-  "exercisesCount": "{count} exercícios",
+  "exercisesCount": "{count} exercícios no catálogo",
   "@exercisesCount": {
     "description": "Exercise count label",
     "placeholders": {
@@ -634,8 +673,14 @@
   "@exerciseDescriptionHint": { "description": "Hint for exercise description" },
   "searchExercises": "Buscar exercício...",
   "@searchExercises": { "description": "Placeholder do campo de busca de exercícios" },
-  "emptyExercises": "Nenhum exercício encontrado",
+  "searchMuscles": "Buscar músculo...",
+  "@searchMuscles": { "description": "Placeholder do campo de busca de músculos" },
+  "emptyExercises": "Nenhum exercício encontrado no catálogo",
   "@emptyExercises": { "description": "Estado vazio da lista de exercícios" },
+  "emptyExercisesHint": "Tente outro termo ou registre um novo exercício.",
+  "@emptyExercisesHint": {
+    "description": "Hint shown when exercise catalog search returns no results"
+  },
   "exerciseNotFound": "Exercício não encontrado",
   "@exerciseNotFound": { "description": "Exercício não existe" },
   "exerciseDetailMuscleGroup": "Grupo muscular",
@@ -1092,6 +1137,18 @@
   "@distanceMetersSuffix": { "description": "Suffix for distance in meters" },
   "durationLabel": "Duração",
   "@durationLabel": { "description": "Column header for duration in history" },
+  "iOwnEquipment": "Tenho este equipamento",
+  "@iOwnEquipment": {
+    "description": "Label for equipment ownership toggle"
+  },
+  "equipmentMarkedAsOwned": "Marcado como disponível no seu perfil.",
+  "@equipmentMarkedAsOwned": {
+    "description": "Subtitle shown when equipment is marked as owned"
+  },
+  "equipmentNotOwned": "Não está marcado como disponível no seu perfil.",
+  "@equipmentNotOwned": {
+    "description": "Subtitle shown when equipment is not owned"
+  },
   "distanceLabel": "Distância",
   "@distanceLabel": { "description": "Column header for distance in history" },
   "cardioGoalLabel": "Meta: {time}",

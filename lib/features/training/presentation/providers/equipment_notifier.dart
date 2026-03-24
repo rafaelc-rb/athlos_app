@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:riverpod/riverpod.dart';
 
 import '../../../../core/errors/result.dart';
 import '../../data/repositories/training_providers.dart';
@@ -22,6 +23,17 @@ class EquipmentList extends _$EquipmentList {
     required String name,
     required EquipmentCategory category,
   }) async {
+    await addUserEquipmentAndReturnId(
+      name: name,
+      category: category,
+    );
+  }
+
+  /// Adds a user-created equipment, marks it as owned, and returns its ID.
+  Future<int> addUserEquipmentAndReturnId({
+    required String name,
+    required EquipmentCategory category,
+  }) async {
     final repo = ref.read(equipmentRepositoryProvider);
     final equipment = Equipment(
       id: 0,
@@ -35,6 +47,8 @@ class EquipmentList extends _$EquipmentList {
     toggleResult.getOrThrow();
 
     ref.invalidateSelf();
+    ref.invalidate(userEquipmentIdsProvider);
+    return id;
   }
 
   /// Updates a user-created equipment.
@@ -100,3 +114,13 @@ class UserEquipmentIds extends _$UserEquipmentIds {
     state = AsyncData({...current, ...toAdd});
   }
 }
+
+final equipmentByIdProvider = FutureProvider.family<Equipment?, int>(
+  (ref, equipmentId) async {
+    final equipments = await ref.watch(equipmentListProvider.future);
+    for (final equipment in equipments) {
+      if (equipment.id == equipmentId) return equipment;
+    }
+    return null;
+  },
+);

@@ -12,6 +12,7 @@ class EquipmentTile extends StatelessWidget {
   final String category;
   final String? categoryDescription;
   final Widget? trailing;
+  final VoidCallback? onTap;
 
   const EquipmentTile({
     super.key,
@@ -19,6 +20,7 @@ class EquipmentTile extends StatelessWidget {
     required this.category,
     this.categoryDescription,
     this.trailing,
+    this.onTap,
   });
 
   @override
@@ -68,6 +70,7 @@ class EquipmentTile extends StatelessWidget {
       title: Text(displayName, style: textTheme.bodyMedium),
       subtitle: categoryWidget,
       trailing: trailing,
+      onTap: onTap,
     );
   }
 }

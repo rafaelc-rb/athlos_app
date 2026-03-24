@@ -22,6 +22,8 @@ abstract final class RoutePaths {
   static const trainingEquipment = '/training/equipment';
   static const trainingWorkoutNew = '/training/workouts/new';
   static const trainingCycleEdit = '/training/cycle';
+  static String trainingEquipmentDetail(int equipmentId) =>
+      '$trainingEquipment/$equipmentId';
   // :executionId used via string interpolation
   // e.g. '${trainingHistory}/$id'
   // :workoutId used via string interpolation

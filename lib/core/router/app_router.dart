@@ -7,6 +7,7 @@ import '../../features/profile/presentation/providers/profile_notifier.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/profile/presentation/screens/profile_setup_screen.dart';
 import '../../features/training/presentation/screens/execution_detail_screen.dart';
+import '../../features/training/presentation/screens/equipment_detail_screen.dart';
 import '../../features/training/presentation/screens/exercise_detail_screen.dart';
 import '../../features/training/presentation/screens/training_shell.dart';
 import '../../features/training/presentation/screens/workout_detail_screen.dart';
@@ -91,6 +92,15 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) {
           final id = int.parse(state.pathParameters['exerciseId']!);
           return ExerciseDetailScreen(exerciseId: id);
+        },
+      ),
+
+      // Equipment detail (pushed on top of training shell)
+      GoRoute(
+        path: '${RoutePaths.trainingEquipment}/:equipmentId',
+        builder: (context, state) {
+          final id = int.parse(state.pathParameters['equipmentId']!);
+          return EquipmentDetailScreen(equipmentId: id);
         },
       ),
 

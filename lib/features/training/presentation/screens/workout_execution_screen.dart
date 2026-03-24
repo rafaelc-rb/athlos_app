@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/services/rest_timer_notification_service.dart';
 import '../../../../core/theme/athlos_custom_colors.dart';
 import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
@@ -43,9 +44,12 @@ class WorkoutExecutionScreen extends ConsumerStatefulWidget {
 }
 
 class _WorkoutExecutionScreenState
-    extends ConsumerState<WorkoutExecutionScreen> {
+    extends ConsumerState<WorkoutExecutionScreen> with WidgetsBindingObserver {
   bool _isInitialized = false;
   _ViewMode _viewMode = _ViewMode.overview;
+  bool _isInBackground = false;
+
+  final _restTimerNotificationService = RestTimerNotificationService.instance;
 
   int _focusedExerciseIndex = 0;
   int _focusedSetNumber = 1;
@@ -56,6 +60,32 @@ class _WorkoutExecutionScreenState
   List<_DropSegmentInput> _dropSegments = [];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _restTimerNotificationService.init();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _restTimerNotificationService.cancelAllForRestTimer();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final wasInBackground = _isInBackground;
+    _isInBackground = switch (state) {
+      AppLifecycleState.resumed => false,
+      _ => true,
+    };
+
+    if (_isInBackground == wasInBackground) return;
+    _syncRestTimerNotification(next: ref.read(restTimerProvider));
+  }
+
+  @override
   Widget build(BuildContext context) {
     final exercisesAsync =
         ref.watch(workoutExercisesProvider(widget.workoutId));
@@ -63,6 +93,9 @@ class _WorkoutExecutionScreenState
     final timerState = ref.watch(restTimerProvider);
     final cardioState = ref.watch(cardioTimerProvider);
     ref.watch(exerciseListProvider);
+    ref.listen<RestTimerState>(restTimerProvider, (previous, next) {
+      _syncRestTimerNotification(previous: previous, next: next);
+    });
 
     if (!_isInitialized &&
         exercisesAsync is AsyncData<List<WorkoutExercise>> &&
@@ -116,6 +149,43 @@ class _WorkoutExecutionScreenState
                 _buildExerciseCompleteTransition(context, execState),
             },
     );
+  }
+
+  Future<void> _syncRestTimerNotification({
+    RestTimerState? previous,
+    required RestTimerState next,
+  }) async {
+    if (!_isInBackground) {
+      if ((previous?.isActive ?? false) || next.isActive) {
+        await _restTimerNotificationService.cancelAllForRestTimer();
+      }
+      return;
+    }
+
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return;
+
+    final hasJustFinished =
+        (previous?.remainingSeconds ?? 0) > 0 && next.remainingSeconds == 0;
+    if (hasJustFinished) {
+      await _restTimerNotificationService.showRestFinished(
+        title: l10n.restTimerDone,
+        body: l10n.restComplete,
+      );
+      return;
+    }
+
+    if (next.isRunning && next.remainingSeconds > 0) {
+      await _restTimerNotificationService.showOngoingRest(
+        title: l10n.restTimerLabel(next.remainingSeconds),
+        body: l10n.nextSetLabel,
+      );
+      return;
+    }
+
+    if (!next.isActive) {
+      await _restTimerNotificationService.cancelAllForRestTimer();
+    }
   }
 
   // ---------------------------------------------------------------------------

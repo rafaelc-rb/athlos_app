@@ -8,6 +8,7 @@ import 'package:skeletonizer/skeletonizer.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../domain/entities/execution_comparison.dart';
 import '../helpers/duration_format.dart';
 import '../providers/equipment_notifier.dart';
 import '../providers/exercise_notifier.dart';
@@ -176,20 +177,35 @@ class _EvolutionCard extends ConsumerWidget {
                   ),
                   if (c.volumeDelta != 0 || c.volumePercentChange != null) ...[
                     const Gap(AthlosSpacing.sm),
-                    Text(
-                      c.volumeDelta >= 0
-                          ? (c.volumePercentChange != null
-                              ? l10n.trainingVolumePercent(
-                                  c.volumePercentChange!.toStringAsFixed(0))
-                              : l10n.trainingVolumeDelta(
-                                  c.volumeDelta.toStringAsFixed(1)))
-                          : l10n.trainingVolumeDelta(
-                              c.volumeDelta.toStringAsFixed(1)),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .primary,
-                          ),
+                    Row(
+                      children: [
+                        Icon(
+                          c.volumeDelta > 0
+                              ? Icons.trending_up
+                              : c.volumeDelta < 0
+                                  ? Icons.trending_down
+                                  : Icons.trending_flat,
+                          size: 16,
+                          color: c.volumeDelta > 0
+                              ? Theme.of(context).colorScheme.primary
+                              : c.volumeDelta < 0
+                                  ? Theme.of(context).colorScheme.error
+                                  : Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        const Gap(AthlosSpacing.xs),
+                        Text(
+                          _deltaText(c),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: c.volumeDelta > 0
+                                    ? Theme.of(context).colorScheme.primary
+                                    : c.volumeDelta < 0
+                                        ? Theme.of(context).colorScheme.error
+                                        : Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                              ),
+                        ),
+                      ],
                     ),
                   ],
                 ],
@@ -231,6 +247,24 @@ class _EvolutionCard extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  String _deltaText(ExecutionComparison comparison) {
+    final delta = comparison.volumeDelta;
+    final sign = delta > 0
+        ? '+'
+        : delta < 0
+            ? '-'
+            : '';
+    final percent = comparison.volumePercentChange;
+
+    if (percent != null) {
+      final formattedPercent = '${sign}${percent.abs().toStringAsFixed(0)}';
+      return l10n.trainingVolumePercent(formattedPercent);
+    }
+
+    final formattedDelta = '${sign}${delta.abs().toStringAsFixed(1)}';
+    return l10n.trainingVolumeDelta(formattedDelta);
   }
 }
 

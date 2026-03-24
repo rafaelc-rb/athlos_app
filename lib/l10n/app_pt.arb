@@ -562,16 +562,16 @@
     }
   },
 
-  "trainingEvolutionRecent": "Evolução recente",
+  "trainingEvolutionRecent": "Comparativo recente",
   "trainingLastSession": "Última sessão",
   "trainingPreviousSession": "Sessão anterior",
   "trainingVolumeTotal": "Volume total",
   "trainingDuration": "Duração",
-  "trainingVolumeDelta": "+{delta} kg volume",
+  "trainingVolumeDelta": "{delta} kg de volume",
   "@trainingVolumeDelta": {
     "placeholders": { "delta": { "type": "String" } }
   },
-  "trainingVolumePercent": "+{percent}%",
+  "trainingVolumePercent": "{percent}%",
   "@trainingVolumePercent": {
     "placeholders": { "percent": { "type": "String" } }
   },

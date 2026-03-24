@@ -5,6 +5,7 @@ import UIKit
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private let restTimerLiveActivityChannelName =
     "athlos/rest_timer_live_activity"
+  private var restTimerLiveActivityChannel: FlutterMethodChannel?
 
   override func application(
     _ application: UIApplication,
@@ -15,21 +16,27 @@ import UIKit
       didFinishLaunchingWithOptions: launchOptions
     )
 
-    if let controller = window?.rootViewController as? FlutterViewController {
-      let channel = FlutterMethodChannel(
-        name: restTimerLiveActivityChannelName,
-        binaryMessenger: controller.binaryMessenger
-      )
-      channel.setMethodCallHandler { [weak self] call, result in
-        self?.handleRestTimerLiveActivity(call: call, result: result)
-      }
-    }
-
     return didFinish
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+
+    guard
+      let registrar = engineBridge.pluginRegistry.registrar(
+        forPlugin: "RestTimerLiveActivityChannel"
+      )
+    else {
+      return
+    }
+    let channel = FlutterMethodChannel(
+      name: restTimerLiveActivityChannelName,
+      binaryMessenger: registrar.messenger()
+    )
+    channel.setMethodCallHandler { [weak self] call, result in
+      self?.handleRestTimerLiveActivity(call: call, result: result)
+    }
+    restTimerLiveActivityChannel = channel
   }
 
   private func handleRestTimerLiveActivity(

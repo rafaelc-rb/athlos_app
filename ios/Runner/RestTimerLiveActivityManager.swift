@@ -1,16 +1,5 @@
-import Foundation
 import ActivityKit
-
-@available(iOS 16.1, *)
-struct AthlosRestTimerAttributes: ActivityAttributes {
-  public struct ContentState: Codable, Hashable {
-    var title: String
-    var subtitle: String
-    var endAt: Date
-  }
-
-  var id: String
-}
+import Foundation
 
 @available(iOS 16.1, *)
 final class RestTimerLiveActivityManager {
@@ -21,48 +10,40 @@ final class RestTimerLiveActivityManager {
   private init() {}
 
   func upsert(title: String, subtitle: String, endAt: Date) async throws {
-    let state = AthlosRestTimerAttributes.ContentState(
+    let newState = AthlosRestTimerAttributes.ContentState(
       title: title,
       subtitle: subtitle,
       endAt: endAt
     )
 
-    if let activity = currentActivity {
-      if #available(iOS 16.2, *) {
-        let content = ActivityContent(state: state, staleDate: endAt)
-        await activity.update(content)
-      } else {
-        await activity.update(using: state)
-      }
+    if let activity = activeActivity() {
+      await activity.update(using: newState)
       return
     }
 
     let attributes = AthlosRestTimerAttributes(id: UUID().uuidString)
-    if #available(iOS 16.2, *) {
-      let content = ActivityContent(state: state, staleDate: endAt)
-      currentActivity = try Activity.request(
-        attributes: attributes,
-        content: content,
-        pushType: nil
-      )
-    } else {
-      currentActivity = try Activity.request(
-        attributes: attributes,
-        contentState: state,
-        pushType: nil
-      )
-    }
+    currentActivity = try Activity.request(
+      attributes: attributes,
+      contentState: newState,
+      pushType: nil
+    )
   }
 
   func end(dismissImmediately: Bool) async {
-    guard let activity = currentActivity else { return }
-    if #available(iOS 16.2, *) {
-      let policy: ActivityUIDismissalPolicy =
-        dismissImmediately ? .immediate : .default
-      await activity.end(nil, dismissalPolicy: policy)
-    } else {
-      await activity.end(nil, dismissalPolicy: .immediate)
-    }
+    guard let activity = activeActivity() else { return }
+
+    let dismissalPolicy: ActivityUIDismissalPolicy =
+      dismissImmediately ? .immediate : .default
+    await activity.end(dismissalPolicy: dismissalPolicy)
     currentActivity = nil
+  }
+
+  private func activeActivity() -> Activity<AthlosRestTimerAttributes>? {
+    if let currentActivity, currentActivity.activityState != .dismissed {
+      return currentActivity
+    }
+
+    currentActivity = Activity<AthlosRestTimerAttributes>.activities.first
+    return currentActivity
   }
 }

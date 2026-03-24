@@ -125,6 +125,10 @@ class _WorkoutExecutionScreenState
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
+        if (_viewMode == _ViewMode.timer) {
+          _showSkipRestTimerDialog(context);
+          return;
+        }
         if (_viewMode == _ViewMode.focused ||
             _viewMode == _ViewMode.cardioTimer ||
             _viewMode == _ViewMode.exerciseTransition) {
@@ -1725,6 +1729,32 @@ class _WorkoutExecutionScreenState
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
             child: Text(l10n.cancelExecution),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSkipRestTimerDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.skipRestTimerTitle),
+        content: Text(l10n.skipRestTimerMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.continueRest),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ref.read(restTimerProvider.notifier).reset();
+              setState(() => _viewMode = _ViewMode.overview);
+            },
+            child: Text(l10n.skipTimer),
           ),
         ],
       ),

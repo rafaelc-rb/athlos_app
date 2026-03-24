@@ -1168,6 +1168,18 @@
   },
   "skipTimer": "Pular",
   "@skipTimer": { "description": "Button to skip rest timer" },
+  "skipRestTimerTitle": "Pular descanso?",
+  "@skipRestTimerTitle": {
+    "description": "Confirmation title before skipping active rest timer"
+  },
+  "skipRestTimerMessage": "Você ainda está no descanso. Deseja pular e voltar ao treino?",
+  "@skipRestTimerMessage": {
+    "description": "Confirmation message before skipping active rest timer"
+  },
+  "continueRest": "Continuar descanso",
+  "@continueRest": {
+    "description": "Action to keep resting and close skip confirmation"
+  },
   "addTimeButton": "+15s",
   "@addTimeButton": { "description": "Button to add 15s to rest timer" },
   "nextUpLabel": "Próxima: {exercise} - Série {set}",

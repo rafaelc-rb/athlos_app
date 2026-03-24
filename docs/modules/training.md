@@ -14,6 +14,8 @@ Detailed exercise records with:
 - **Muscle region** activated — the specific portion of the muscle the exercise emphasizes (e.g. upper chest on incline bench press vs. mid chest on flat bench press)
 - **Equipment** required or alternative options
 - **Variations** or substitute exercises — modeled as a self-relation between exercises, allowing navigation between alternatives
+- **Search-first selectors** for muscle and equipment fields to avoid dense chip walls in create/edit flows
+- **Inline equipment creation** while registering/editing exercises — when search returns no matches, users can create equipment in-context and auto-link it
 
 #### Cardio Exercises
 
@@ -21,8 +23,10 @@ Pre-loaded cardio exercises include treadmill running, stationary bike, rowing m
 
 ### Equipment Registration
 
-- Register equipment available in the app
-- Link equipment to user profile (indicate which equipment the user owns)
+- Equipment catalog is the primary view (same catalog-first concept as exercises)
+- Ownership is toggled directly in catalog rows and in equipment detail
+- New equipment registration is contextual: shown when a search has zero results
+- User-owned equipment management lives under the Profile categories (Equipment category)
 
 ### Workout Builder
 

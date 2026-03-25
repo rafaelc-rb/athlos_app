@@ -53,8 +53,6 @@ class _TrainingHistoryScreenState extends ConsumerState<TrainingHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
     final executionsAsync = ref.watch(workoutExecutionListProvider);
     final workoutsAsync = ref.watch(workoutListProvider);
     final archivedAsync = ref.watch(archivedWorkoutListProvider);

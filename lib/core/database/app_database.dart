@@ -44,7 +44,6 @@ import '../../features/training/data/datasources/tables/workouts_table.dart';
 part 'app_database.g.dart';
 
 const _skipDevSeed = bool.fromEnvironment('SKIP_DEV_SEED');
-bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed;
 
 @DriftDatabase(
   tables: [
@@ -76,7 +75,17 @@ bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed;
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(driftDatabase(name: 'athlos'));
+  final bool _enableDevSeed;
+
+  AppDatabase({bool enableDevSeed = true})
+      : _enableDevSeed = enableDevSeed,
+        super(driftDatabase(name: 'athlos'));
+
+  AppDatabase.forTesting(super.executor, {bool enableDevSeed = false})
+      : _enableDevSeed = enableDevSeed,
+        super();
+
+  bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed && _enableDevSeed;
 
   @override
   int get schemaVersion => 12;

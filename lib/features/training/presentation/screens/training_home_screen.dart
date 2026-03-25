@@ -259,11 +259,11 @@ class _EvolutionCard extends ConsumerWidget {
     final percent = comparison.volumePercentChange;
 
     if (percent != null) {
-      final formattedPercent = '${sign}${percent.abs().toStringAsFixed(0)}';
+      final formattedPercent = '$sign${percent.abs().toStringAsFixed(0)}';
       return l10n.trainingVolumePercent(formattedPercent);
     }
 
-    final formattedDelta = '${sign}${delta.abs().toStringAsFixed(1)}';
+    final formattedDelta = '$sign${delta.abs().toStringAsFixed(1)}';
     return l10n.trainingVolumeDelta(formattedDelta);
   }
 }

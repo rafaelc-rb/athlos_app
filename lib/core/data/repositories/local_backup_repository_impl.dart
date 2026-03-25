@@ -14,6 +14,22 @@ import '../../errors/result.dart';
 const _backupFormatVersion = 2;
 const _fuzzyThreshold = 0.84;
 const _strongMatchThreshold = 0.96;
+const _profileComparableKeys = <String>{
+  'name',
+  'weight',
+  'height',
+  'age',
+  'goal',
+  'body_aesthetic',
+  'training_style',
+  'experience_level',
+  'gender',
+  'training_frequency',
+  'available_workout_minutes',
+  'trains_at_gym',
+  'injuries',
+  'bio',
+};
 
 const _tableUserProfiles = 'user_profiles';
 const _tableEquipments = 'equipments';
@@ -209,6 +225,58 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       final exerciseIdMap = <int, int>{};
 
       await _db.transaction(() async {
+        final importedProfiles = payload.tables[_tableUserProfiles] ?? const [];
+        if (importedProfiles.isNotEmpty) {
+          final importedProfile = importedProfiles.first;
+          final existingProfiles = await _fetchTableRows(_tableUserProfiles);
+          if (existingProfiles.isEmpty) {
+            await _insertRow(
+              _tableUserProfiles,
+              importedProfile,
+              excludeKeys: const {'id'},
+            );
+            createdCount++;
+          } else {
+            final existingProfile = existingProfiles.first;
+            final existingProfileId = _asInt(existingProfile['id']);
+            if (existingProfileId != null) {
+              final mergedProfile = Map<String, dynamic>.from(existingProfile);
+              var hasFieldUpdate = false;
+              var hasFieldSkip = false;
+              for (final key in _profileComparableKeys) {
+                final importedValue = importedProfile[key];
+                final existingValue = existingProfile[key];
+                if (_areProfileFieldValuesEquivalent(
+                  key: key,
+                  importedValue: importedValue,
+                  existingValue: existingValue,
+                )) {
+                  continue;
+                }
+                final resolution = request.conflictResolutions['profile:$key'] ??
+                    BackupConflictResolution.keepExisting;
+                if (resolution == BackupConflictResolution.overwriteExisting) {
+                  mergedProfile[key] = importedValue;
+                  hasFieldUpdate = true;
+                } else {
+                  hasFieldSkip = true;
+                }
+              }
+              if (hasFieldUpdate) {
+                await _updateRowById(
+                  _tableUserProfiles,
+                  existingProfileId,
+                  mergedProfile,
+                  excludeKeys: const {'id', 'created_at', 'updated_at'},
+                );
+                updatedCount++;
+              } else if (hasFieldSkip) {
+                skippedCount++;
+              }
+            }
+          }
+        }
+
         final canonicalResult = await _resolveCanonicalReferences(
           payload: payload,
           request: request,
@@ -920,13 +988,22 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       if (existingProfiles.isNotEmpty) {
         final imported = importedProfiles.first;
         final existing = existingProfiles.first;
-        if (!_profilesAreEquivalent(imported: imported, existing: existing)) {
+        for (final key in _profileComparableKeys) {
+          final importedValue = imported[key];
+          final existingValue = existing[key];
+          if (_areProfileFieldValuesEquivalent(
+            key: key,
+            importedValue: importedValue,
+            existingValue: existingValue,
+          )) {
+            continue;
+          }
           conflicts.add(
             BackupImportConflict(
-              conflictId: 'profile:${_asInt(imported['id']) ?? 0}',
+              conflictId: 'profile:$key',
               type: BackupConflictType.profile,
-              existingLabel: (existing['name'] as String?) ?? 'Perfil atual',
-              importedLabel: (imported['name'] as String?) ?? 'Perfil importado',
+              existingLabel: '${_profileFieldLabel(key)}: ${_formatProfileConflictValue(existingValue)}',
+              importedLabel: '${_profileFieldLabel(key)}: ${_formatProfileConflictValue(importedValue)}',
               allowedResolutions: const [
                 BackupConflictResolution.keepExisting,
                 BackupConflictResolution.overwriteExisting,
@@ -949,33 +1026,30 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     return conflicts;
   }
 
-  bool _profilesAreEquivalent({
-    required Map<String, dynamic> imported,
-    required Map<String, dynamic> existing,
+  bool _areProfileFieldValuesEquivalent({
+    required String key,
+    required dynamic importedValue,
+    required dynamic existingValue,
   }) {
-    // Ignore volatile/system fields to prevent false-positive conflicts.
-    const comparableKeys = <String>{
-      'name',
-      'weight',
-      'height',
-      'age',
-      'goal',
-      'body_aesthetic',
-      'training_style',
-      'experience_level',
-      'gender',
-      'training_frequency',
-      'available_workout_minutes',
-      'trains_at_gym',
-      'injuries',
-      'bio',
-    };
-    for (final key in comparableKeys) {
-      final left = _normalizeProfileValue(imported[key]);
-      final right = _normalizeProfileValue(existing[key]);
-      if (left != right) return false;
+    final left = _normalizeProfileFieldValue(key, importedValue);
+    final right = _normalizeProfileFieldValue(key, existingValue);
+    return left == right;
+  }
+
+  Object? _normalizeProfileFieldValue(String key, dynamic value) {
+    if (key == 'trains_at_gym') {
+      // In practice, null and false both represent "not enabled" in profile flow.
+      if (value == null) return '0';
+      final asBool = _asBool(value);
+      return asBool ? '1' : '0';
     }
-    return true;
+    if (key == 'name' || key == 'injuries' || key == 'bio') {
+      if (value == null) return null;
+      final normalized = value.toString().trim();
+      if (normalized.isEmpty) return null;
+      return _normalizeName(normalized);
+    }
+    return _normalizeProfileValue(value);
   }
 
   Object? _normalizeProfileValue(dynamic value) {
@@ -990,6 +1064,51 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       if (value % 1 == 0) return value.toInt().toString();
       return value.toDouble().toString();
     }
+    return value.toString();
+  }
+
+  String _profileFieldLabel(String key) {
+    switch (key) {
+      case 'name':
+        return 'Nome';
+      case 'weight':
+        return 'Peso';
+      case 'height':
+        return 'Altura';
+      case 'age':
+        return 'Idade';
+      case 'goal':
+        return 'Objetivo';
+      case 'body_aesthetic':
+        return 'Estetica';
+      case 'training_style':
+        return 'Estilo de treino';
+      case 'experience_level':
+        return 'Nivel de experiencia';
+      case 'gender':
+        return 'Genero';
+      case 'training_frequency':
+        return 'Frequencia de treino';
+      case 'available_workout_minutes':
+        return 'Minutos disponiveis';
+      case 'trains_at_gym':
+        return 'Treina em academia';
+      case 'injuries':
+        return 'Lesoes';
+      case 'bio':
+        return 'Bio';
+      default:
+        return key;
+    }
+  }
+
+  String _formatProfileConflictValue(dynamic value) {
+    if (value == null) return '-';
+    if (value is String) {
+      final trimmed = value.trim();
+      return trimmed.isEmpty ? '-' : trimmed;
+    }
+    if (value is bool) return value ? 'true' : 'false';
     return value.toString();
   }
 

@@ -2,6 +2,8 @@ flutter_native_splash:
   # Athlos purple background
   color: "#6917B5"
   image: assets/splash_logo.png
+  android_gravity: center
+  ios_content_mode: center
 
   # Dark mode uses same purple
   color_dark: "#6917B5"

@@ -1,10 +1,19 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
+import '../../../../core/data/repositories/local_backup_providers.dart';
+import '../../../../core/domain/entities/local_backup_models.dart';
+import '../../../../core/errors/result.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../core/widgets/app_bar_menu.dart';
@@ -35,6 +44,8 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isEditing = false;
+  bool _isExporting = false;
+  bool _isImporting = false;
 
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
@@ -88,7 +99,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final resolved = profileAsync.value ?? const UserProfile(id: 0);
 
     return DefaultTabController(
-      length: _isEditing ? 1 : 3,
+      length: _isEditing ? 1 : 4,
       child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.profile),
@@ -101,6 +112,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     Tab(text: l10n.profileOverviewTab),
                     Tab(text: l10n.profileTrainingPreferencesTab),
                     Tab(text: l10n.profileEquipmentTab),
+                    Tab(text: l10n.profileDataTab),
                   ],
                 ),
         ),
@@ -125,6 +137,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           );
                         },
                       ),
+                      _buildDataCategory(l10n),
                     ],
                   ),
       ),
@@ -320,6 +333,331 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildDataCategory(AppLocalizations l10n) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AthlosSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SectionHeader(title: l10n.profileDataSectionTitle),
+          const Gap(AthlosSpacing.xs),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(AthlosSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.profileDataSectionDescription,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const Gap(AthlosSpacing.md),
+                  FilledButton.icon(
+                    onPressed:
+                        _isExporting || _isImporting ? null : () => _exportData(l10n),
+                    icon: _isExporting
+                        ? SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Theme.of(context).colorScheme.onPrimary,
+                            ),
+                          )
+                        : const Icon(Icons.upload_file),
+                    label: Text(l10n.profileDataExportAction),
+                  ),
+                  const Gap(AthlosSpacing.sm),
+                  OutlinedButton.icon(
+                    onPressed:
+                        _isExporting || _isImporting ? null : () => _importData(l10n),
+                    icon: _isImporting
+                        ? SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          )
+                        : const Icon(Icons.download),
+                    label: Text(l10n.profileDataImportAction),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _exportData(AppLocalizations l10n) async {
+    setState(() => _isExporting = true);
+    try {
+      final useCase = ref.read(exportLocalBackupUseCaseProvider);
+      final result = await useCase();
+      final exportData = result.getOrThrow();
+
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/${exportData.fileName}');
+      await file.writeAsString(exportData.jsonContent);
+
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: l10n.profileDataExportShareText,
+        ),
+      );
+    } on Exception catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.profileDataExportError)),
+      );
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  Future<void> _importData(AppLocalizations l10n) async {
+    setState(() => _isImporting = true);
+    try {
+      final fileResult = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['json'],
+        withData: true,
+      );
+      if (fileResult == null || fileResult.files.isEmpty) return;
+
+      final file = fileResult.files.single;
+      String? jsonContent;
+      if (file.bytes != null) {
+        jsonContent = utf8.decode(file.bytes!);
+      } else if (file.path != null) {
+        jsonContent = await File(file.path!).readAsString();
+      }
+      if (jsonContent == null) {
+        throw const FormatException('Selected file is empty.');
+      }
+
+      final previewUseCase = ref.read(previewLocalBackupImportUseCaseProvider);
+      final previewResult = await previewUseCase(jsonContent);
+      final preview = previewResult.getOrThrow();
+
+      final resolutions = <String, BackupConflictResolution>{};
+      for (final conflict in preview.conflicts) {
+        if (!mounted) return;
+        final selected = await _showConflictDialog(conflict, l10n);
+        if (selected == null) return;
+        resolutions[conflict.conflictId] = selected;
+      }
+
+      final pendingResolutions = <String, BackupPendingReviewResolution>{};
+      for (final review in preview.pendingReviews) {
+        if (!mounted) return;
+        final selected = await _showPendingReviewDialog(review, l10n);
+        if (selected == null) return;
+        pendingResolutions[review.reviewId] = selected;
+      }
+
+      if (!mounted) return;
+      final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text(l10n.profileDataImportConfirmTitle),
+              content: Text(
+                l10n.profileDataImportConfirmMessage(preview.totalRecords),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: Text(l10n.profileDataImportAction),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+      if (!confirmed) return;
+
+      final importUseCase = ref.read(importLocalBackupUseCaseProvider);
+      final importResult = await importUseCase(
+        BackupImportRequest(
+          jsonContent: jsonContent,
+          conflictResolutions: resolutions,
+          pendingReviewResolutions: pendingResolutions,
+        ),
+      );
+      final report = importResult.getOrThrow();
+
+      ref.invalidate(profileProvider);
+
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(l10n.profileDataImportResultTitle),
+          content: Text(
+            l10n.profileDataImportResultMessage(
+              report.createdCount,
+              report.updatedCount,
+              report.skippedCount,
+              report.failedCount,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(l10n.okButton),
+            ),
+          ],
+        ),
+      );
+    } on Exception catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.profileDataImportError)),
+      );
+    } finally {
+      if (mounted) setState(() => _isImporting = false);
+    }
+  }
+
+  Future<BackupConflictResolution?> _showConflictDialog(
+    BackupImportConflict conflict,
+    AppLocalizations l10n,
+  ) {
+    return showDialog<BackupConflictResolution>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(l10n.profileDataConflictTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.profileDataConflictType(_conflictTypeLabel(conflict, l10n))),
+              const Gap(AthlosSpacing.sm),
+              Text(l10n.profileDataConflictExisting(conflict.existingLabel)),
+              Text(l10n.profileDataConflictImported(conflict.importedLabel)),
+            ],
+          ),
+          actions: [
+            for (final resolution in conflict.allowedResolutions)
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(resolution),
+                child: Text(_resolutionLabel(resolution, l10n)),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<BackupPendingReviewResolution?> _showPendingReviewDialog(
+    BackupPendingReview review,
+    AppLocalizations l10n,
+  ) {
+    final suggestionText = review.suggestedLabel != null
+        ? l10n.profileDataPendingSuggested(
+            review.suggestedLabel!,
+            review.similarityScore?.toStringAsFixed(2) ?? '-',
+          )
+        : l10n.profileDataPendingNoSuggestion;
+
+    return showDialog<BackupPendingReviewResolution>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(l10n.profileDataPendingTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.profileDataPendingType(_pendingTypeLabel(review, l10n)),
+              ),
+              const Gap(AthlosSpacing.sm),
+              Text(
+                l10n.profileDataPendingImported(review.importedLabel),
+              ),
+              Text(suggestionText),
+            ],
+          ),
+          actions: [
+            if (review.suggestedLabel != null)
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(
+                  BackupPendingReviewResolution.linkSuggested,
+                ),
+                child: Text(l10n.profileDataPendingLinkSuggested),
+              ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(
+                BackupPendingReviewResolution.createCustom,
+              ),
+              child: Text(l10n.profileDataPendingCreateCustom),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(
+                BackupPendingReviewResolution.skip,
+              ),
+              child: Text(l10n.profileDataPendingSkip),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _pendingTypeLabel(
+    BackupPendingReview review,
+    AppLocalizations l10n,
+  ) {
+    final entityLabel = _conflictTypeFromEnum(review.entityType, l10n);
+
+    return switch (review.type) {
+      BackupPendingReviewType.missingCanonicalReference =>
+        l10n.profileDataPendingMissingCanonical(entityLabel),
+      BackupPendingReviewType.fuzzyMatchCandidate =>
+        l10n.profileDataPendingFuzzy(entityLabel),
+    };
+  }
+
+  String _conflictTypeLabel(
+    BackupImportConflict conflict,
+    AppLocalizations l10n,
+  ) {
+    return _conflictTypeFromEnum(conflict.type, l10n);
+  }
+
+  String _conflictTypeFromEnum(
+    BackupConflictType type,
+    AppLocalizations l10n,
+  ) {
+    return switch (type) {
+      BackupConflictType.profile => l10n.profile,
+      BackupConflictType.equipment => l10n.profileEquipmentTab,
+      BackupConflictType.exercise => l10n.tabExercises,
+      BackupConflictType.workout => l10n.tabWorkouts,
+    };
+  }
+
+  String _resolutionLabel(
+    BackupConflictResolution resolution,
+    AppLocalizations l10n,
+  ) {
+    return switch (resolution) {
+      BackupConflictResolution.keepExisting => l10n.profileDataConflictKeepExisting,
+      BackupConflictResolution.overwriteExisting =>
+        l10n.profileDataConflictOverwrite,
+      BackupConflictResolution.keepBoth => l10n.profileDataConflictKeepBoth,
+    };
   }
 
   Widget _buildEditView(UserProfile profile, AppLocalizations l10n) {

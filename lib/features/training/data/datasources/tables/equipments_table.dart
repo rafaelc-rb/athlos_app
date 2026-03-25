@@ -4,6 +4,7 @@ import '../../../domain/enums/equipment_category.dart';
 
 class Equipments extends Table {
   IntColumn get id => integer().autoIncrement()();
+  TextColumn get catalogRemoteId => text().nullable()();
   TextColumn get name => text().withLength(min: 1, max: 100)();
   TextColumn get description => text().nullable()();
   TextColumn get category => textEnum<EquipmentCategory>()();

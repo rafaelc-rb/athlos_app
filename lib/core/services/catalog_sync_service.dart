@@ -53,17 +53,32 @@ class CatalogSyncService {
 
   Future<void> _syncEquipments() async {
     final rows = await _supabase.from('equipments').select();
-    for (final row in rows) {
-      final name = row['name'] as String;
-      final existing = await ((_db.select(_db.equipments))
-            ..where((e) => e.name.equals(name)))
-          .getSingleOrNull();
+    final localEquipments = await _db.select(_db.equipments).get();
+    final byRemoteId = {
+      for (final item in localEquipments)
+        if (item.catalogRemoteId != null) item.catalogRemoteId!: item,
+    };
+    final byNormalizedName = {
+      for (final item in localEquipments) _normalizeName(item.name): item,
+    };
 
+    for (final row in rows) {
+      final remoteId = row['id'].toString();
+      final name = row['name'] as String;
+      final existingByRemote = byRemoteId[remoteId];
+      final existingByName = byNormalizedName[_normalizeName(name)];
+      final existing = existingByRemote ?? existingByName;
+
+      final category = row['category'] as String;
       if (existing == null) {
-        final category = row['category'] as String;
         await _db.customStatement(
-          "INSERT INTO equipments (name, category, is_verified) "
-          "VALUES ('${_esc(name)}', '$category', 1)",
+          "INSERT INTO equipments (catalog_remote_id, name, category, is_verified) "
+          "VALUES ('$remoteId', '${_esc(name)}', '$category', 1)",
+        );
+      } else if (existing.isVerified) {
+        await _db.customStatement(
+          "UPDATE equipments SET catalog_remote_id = '$remoteId', name = '${_esc(name)}', category = '$category', is_verified = 1 "
+          "WHERE id = ${existing.id}",
         );
       }
     }
@@ -71,11 +86,21 @@ class CatalogSyncService {
 
   Future<void> _syncExercises() async {
     final rows = await _supabase.from('exercises').select();
+    final localExercises = await _db.select(_db.exercises).get();
+    final byRemoteId = {
+      for (final item in localExercises)
+        if (item.catalogRemoteId != null) item.catalogRemoteId!: item,
+    };
+    final byNormalizedName = {
+      for (final item in localExercises) _normalizeName(item.name): item,
+    };
+
     for (final row in rows) {
+      final remoteId = row['id'].toString();
       final name = row['name'] as String;
-      final existing = await ((_db.select(_db.exercises))
-            ..where((e) => e.name.equals(name)))
-          .getSingleOrNull();
+      final existingByRemote = byRemoteId[remoteId];
+      final existingByName = byNormalizedName[_normalizeName(name)];
+      final existing = existingByRemote ?? existingByName;
 
       final muscleGroup = row['muscle_group'] as String;
       final type = row['type'] as String;
@@ -88,12 +113,12 @@ class CatalogSyncService {
 
       if (existing == null) {
         await _db.customStatement(
-          "INSERT INTO exercises (name, muscle_group, type, movement_pattern, description, is_verified) "
-          "VALUES ('${_esc(name)}', '$muscleGroup', '$type', $mpSql, $descSql, 1)",
+          "INSERT INTO exercises (catalog_remote_id, name, muscle_group, type, movement_pattern, description, is_verified) "
+          "VALUES ('$remoteId', '${_esc(name)}', '$muscleGroup', '$type', $mpSql, $descSql, 1)",
         );
       } else if (existing.isVerified) {
         await _db.customStatement(
-          "UPDATE exercises SET movement_pattern = $mpSql, description = $descSql "
+          "UPDATE exercises SET catalog_remote_id = '$remoteId', name = '${_esc(name)}', movement_pattern = $mpSql, description = $descSql "
           "WHERE id = ${existing.id}",
         );
       }
@@ -151,6 +176,8 @@ class CatalogSyncService {
   }
 
   String _esc(String s) => s.replaceAll("'", "''");
+  String _normalizeName(String value) =>
+      value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 }
 
 @Riverpod(keepAlive: true)

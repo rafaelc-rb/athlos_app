@@ -101,8 +101,8 @@ The first store release. Training module feature-complete, fully local, zero cos
 
 | ID | MoSCoW | User Story | Acceptance Criteria |
 |----|--------|------------|---------------------|
-| BK-01 | Should | As a user, I want to export all my data to a file so that I have a backup in case I lose my phone | Export generates a JSON file containing all user data (profile, workouts, executions); file can be saved/shared via OS share sheet |
-| BK-02 | Should | As a user, I want to import data from a backup file so that I can restore my data on a new device | Import reads a JSON file and restores all data; prompts confirmation before overwriting existing data |
+| BK-01 | Should | As a user, I want to export all my data to a file so that I have a backup in case I lose my phone | Export generates a human-readable JSON backup (user data + canonical catalog references), and file can be shared/saved via OS share sheet |
+| BK-02 | Should | As a user, I want to import data from a backup file so that I can restore my data on a new device | Import uses merge semantics (does not wipe local data), resolves conflicts item-by-item (and profile field-by-field), remaps relationships safely, and uses governance flow for unresolved verified catalog conflicts |
 
 ---
 

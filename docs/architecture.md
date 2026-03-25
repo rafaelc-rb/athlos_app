@@ -2,7 +2,7 @@
 
 ## Strategy
 
-**Local-first, built to scale.** The app launches fully functional and free with no server dependency. The architecture is structured so that adding a remote backend later requires no rewrites — only swapping data source implementations.
+**Local-first, built to scale.** The app launches fully functional and free with no mandatory server dependency for core user data. The architecture is structured so that adding a broader remote backend later requires no rewrites — only swapping data source implementations.
 
 ## Stack
 
@@ -13,7 +13,7 @@
 | DI         | Riverpod                | Riverpod                             | Riverpod                             |
 | Database   | SQLite via Drift        | PostgreSQL (Supabase) + SQLite (local cache) | PostgreSQL (Supabase) + SQLite |
 | Navigation | go_router               | go_router                            | go_router                            |
-| Backend    | —                       | Supabase (PostgREST + Edge Functions) | Supabase + Go API (custom logic)    |
+| Backend    | Supabase (catalog governance sync only) | Supabase (PostgREST + Edge Functions) | Supabase + Go API (custom logic)    |
 | Auth       | —                       | Supabase Auth                        | Supabase Auth                        |
 | AI         | Gemini free tier (Chiron) | Gemini free tier (Chiron)           | LLM API via Go + multi-provider (Chiron) |
 | IaC        | —                       | Terraform                            | Terraform                            |
@@ -30,6 +30,14 @@ Manages app state and dependency injection in a single package. Swapping `LocalD
 ### Drift (local database)
 
 Type-safe ORM for SQLite with code generation. Native support for relations (essential for Athlos entities), built-in migration system to update the schema without data loss, and generates reusable SQL for the future PostgreSQL migration.
+
+### Supabase (catalog governance in local-first phase)
+
+Even in the local-first phase, Supabase is used for verified catalog consistency workflows:
+
+- Receives critical governance events generated during import reconciliation.
+- Stores governance rules that can be applied idempotently across devices.
+- Does not replace local Drift as the source of truth for personal workout/profile history in 1.x.
 
 ### go_router (navigation)
 
@@ -467,7 +475,7 @@ Development follows a **depth-first** strategy: each module is fully polished be
 - Training module fully polished — exercises, equipment, workouts, execution (strength + cardio), history, training cycles, supersets, drop sets, execution feedback, rest timer, cardio timer
 - Chiron AI assistant via Gemini free tier (Q&A chat, context-aware responses)
 - Hub, profile, onboarding
-- Manual data export/import for backup (JSON)
+- Manual data export/import for backup (JSON, merge strategy with conflict resolution)
 - Zero infrastructure cost — everything runs on-device
 - Published to stores (Google Play / App Store) to build a user base
 
@@ -526,7 +534,7 @@ Supabase continues handling CRUD, auth, sync, and realtime. Go API handles premi
 
 SQLite will be structured with the same entities and relations the remote database will have. This eases future migration.
 
-> **Migration note:** The current schema version is **3**. Version 1 was the initial baseline; version 2 added cardio support (`type` on exercises, `duration`/`distance` on execution sets, nullable `reps`/`plannedReps`, and renamed `rest_seconds` → `rest` on workout exercises); version 3 added `role` on exercise target muscles, `movement_pattern` on exercises, and catalog seeds V3. Incremental versioned migrations are in place via `onUpgrade`. See [Release — Database Migrations](./release.md#database-migrations-drift) for details.
+> **Migration note:** The current schema version is **12**. Key milestones: V2 (cardio columns and rest rename), V3 (muscle role + movement pattern), V4–V9 (profile/training evolution), V10 (`catalog_remote_id` for verified catalog mapping), V11 (new catalog seeds including seated leg curl), V12 (local catalog governance tables). Incremental versioned migrations are in place via `onUpgrade`. See [Release — Database Migrations](./release.md#database-migrations-drift) for details.
 
 ### Main Entities
 

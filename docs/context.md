@@ -10,6 +10,15 @@ Athlos is a modular health and fitness app built around independent modules. Dev
 
 The app is designed as a **hub-based** system: a central screen (the Hub) provides access to each module. Each module is a self-contained experience with its own home dashboard and navigation. New modules can be added without restructuring the app.
 
+## Current Implementation Snapshot
+
+- Local-first remains the default runtime mode (Drift on-device), with optional Supabase catalog sync.
+- Backup is implemented as JSON **export/import with merge** (not destructive restore).
+- Import conflict handling is item-by-item for workouts/catalog and field-by-field for profile data.
+- Catalog reconciliation is implemented with governance workflow (`catalog_governance_events` / `catalog_governance_rules`) and idempotent multi-device rule application.
+- The local database currently runs with schema version **12**.
+- Automated tests are in place for core backup flows, training/profile repositories, use cases, provider wiring, and error/result contracts.
+
 ## Modules
 
 | Module       | Status        | Target Version | Description                                         |
@@ -63,6 +72,7 @@ Athlos follows a **freemium** model:
 - Chiron AI assistant via Gemini free tier (personalized suggestions, Q&A chat)
 - Diet module with all features (food registration, meal builder, caloric control)
 - Exercise and food catalogs (pre-loaded)
+- Verified catalog reconciliation via Supabase sync (catalog consistency/governance only)
 - Full local history
 - Manual data export/import (backup)
 

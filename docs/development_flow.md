@@ -119,6 +119,10 @@ Define **how** data is displayed and interacted with.
     ```bash
     flutter test
     ```
+19. **Regression tests for critical flows**:
+    - Add/adjust tests for repositories and use cases touched by the change
+    - For backup/import/export changes, include merge/conflict and relational integrity scenarios
+    - For provider wiring changes, validate container resolution paths
 
 ## Dependency Direction
 
@@ -193,4 +197,6 @@ i18n & Validation:
 - [ ] ARB strings
 - [ ] flutter gen-l10n
 - [ ] flutter analyze
+- [ ] flutter test
+- [ ] Critical regression tests updated (if affected)
 ```

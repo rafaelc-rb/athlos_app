@@ -1,46 +1,55 @@
 # Privacy Policy
 
-**Athlos** — Last updated: February 24, 2026
+**Athlos** — Last updated: March 25, 2026
 
 ## Overview
 
-Athlos is a health and fitness app that runs entirely on your device. Your data stays with you — we do not collect, transmit, or store any personal information on external servers.
+Athlos is a local-first health and fitness app. Your personal training data (profile, workouts, execution history) is stored on your device by default. The app also uses Supabase for verified catalog consistency workflows (catalog governance/sync).
 
 ## Data Collection
 
-Athlos does **not** collect any personal data. All information you enter into the app (profile, workouts, exercises, execution history) is stored locally on your device and is never sent to any server, third party, or analytics service.
+Athlos does not use advertising trackers or behavior analytics SDKs.  
+Personal user content such as profile details, workouts, and execution logs is not automatically uploaded as part of regular local usage.
 
 ## Data Storage
 
-All data is stored exclusively on your device using a local database. Athlos does not use cloud storage, remote databases, or any form of server-side data persistence.
+- **Local storage (default):** profile, workouts, exercises, equipment ownership, execution history, and app preferences.
+- **Supabase catalog sync:** used for official catalog reconciliation events/rules (e.g., verified catalog conflict governance).
 
 ## Third-Party Services
 
-Athlos does not integrate with any third-party services that collect user data. The app does not include:
+Athlos may use:
 
-- Analytics or tracking tools
+- **Supabase** for catalog/governance sync related to verified catalog consistency
+
+Athlos does not include:
+
 - Advertising SDKs
-- Crash reporting services that transmit personal data
-- Social media integrations
+- Social media SDKs
 
 ## Data Sharing
 
-We do not share, sell, or transfer your data to any third party, for any reason.
+Athlos does not sell personal data. Data sharing is limited to technical synchronization needs related to catalog governance and only when those flows are used.
+
+## Backup and Export
+
+Athlos supports manual JSON export/import for user backups. Backup files are created and controlled by the user (save/share destination chosen in the system share flow).
 
 ## Data Deletion
 
-Since all data is stored locally on your device, you can delete all your data at any time by uninstalling the app or clearing its data through your device settings.
+You can remove local app data by uninstalling the app or clearing app storage in system settings.  
+If catalog governance events were synced, related records may remain in Supabase logs according to backend retention policies.
 
 ## Children's Privacy
 
-Athlos does not knowingly collect data from children under 13. Since the app does not collect any data at all, no age-specific data handling is necessary.
+Athlos is not directed to children under 13. The app does not intentionally collect personal data from children.
 
 ## Changes to This Policy
 
-If this privacy policy is updated, the changes will be reflected on this page with an updated date. As the app evolves (e.g., optional cloud sync in future versions), this policy will be updated accordingly, and users will be notified within the app.
+If this privacy policy is updated, the date on this page is updated accordingly. Material changes should also be communicated in-app or in release notes.
 
 ## Contact
 
-If you have questions about this privacy policy, you can reach us at:
+If you have questions about this privacy policy:
 
 - GitHub: [github.com/rafaelc-rb/athlos_app](https://github.com/rafaelc-rb/athlos_app)

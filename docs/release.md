@@ -82,13 +82,16 @@ The database schema version is an integer in `app_database.dart`:
 
 ```dart
 @override
-int get schemaVersion => 3;  // increment when schema changes
+int get schemaVersion => 12;  // increment when schema changes
 ```
 
-- **Version 1** is the baseline for the first public release (1.0.0).
-- **Version 2** added cardio support (exercise type, duration/distance, nullable reps, rest rename).
-- **Version 3** added target muscle role, movement pattern, and catalog seeds V3.
-- Development used versions 1–10 before release; the migration strategy detects these and recreates the database automatically.
+- **Version 1** baseline.
+- **Version 2** cardio support (`type`, `duration`, `distance`, nullable reps, `rest_seconds` → `rest`).
+- **Version 3** target muscle role + movement pattern + catalog seeds V3.
+- **Versions 4–9** profile/training model evolution.
+- **Version 10** canonical mapping fields (`catalog_remote_id`) on catalog tables.
+- **Version 11** catalog seed expansion (including seated leg curl entries).
+- **Version 12** local governance tables (`catalog_governance_events`, `catalog_governance_applied_rules`).
 
 ### How Migrations Work
 
@@ -126,16 +129,16 @@ Catalog items (exercises, equipment) are seeded on first install via `onCreate`.
 ```dart
 // app_database.dart
 @override
-int get schemaVersion => 3;  // or next version when adding a new migration
+int get schemaVersion => 12;  // or next version when adding a new migration
 
 onUpgrade: (m, from, to) async {
   // ... dev wipe block ...
 
-  if (from < 2) {
-    await seedEquipmentsV2(this);
-    await seedExercisesV2(this);
+  if (from < 13) {
+    await seedEquipmentsV13(this);
+    await seedExercisesV13(this);
   }
-  // if (from < 3) { ... }
+  // if (from < 14) { ... }
 },
 ```
 
@@ -211,9 +214,13 @@ Signing:
 - [x] Keystore backed up securely
 
 Database:
-- [x] Schema version set to 3 (v1.1.0 — cardio, target muscle role, movement pattern, seeds V3)
+- [x] Schema version set to 12 (includes catalog mapping and governance tables)
 - [x] Incremental migration strategy in place
 - [x] Destructive dev fallback guarded with kDebugMode (runs only in debug, never in release)
+
+Quality:
+- [x] flutter analyze (no issues)
+- [x] flutter test (core/repository/usecase/provider coverage)
 
 Store:
 - [ ] Privacy policy URL

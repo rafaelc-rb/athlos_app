@@ -6,6 +6,7 @@ import '../../../domain/enums/muscle_group.dart';
 
 class Exercises extends Table {
   IntColumn get id => integer().autoIncrement()();
+  TextColumn get catalogRemoteId => text().nullable()();
   TextColumn get name => text().withLength(min: 1, max: 150)();
   TextColumn get muscleGroup => textEnum<MuscleGroup>()();
   TextColumn get type =>

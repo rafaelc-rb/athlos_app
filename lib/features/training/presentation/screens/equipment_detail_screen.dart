@@ -25,7 +25,7 @@ class EquipmentDetailScreen extends ConsumerWidget {
       ),
       body: equipmentAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => Center(child: Text(l10n.genericError)),
+        error: (_, _) => Center(child: Text(l10n.genericError)),
         data: (equipment) {
           if (equipment == null) {
             return Center(

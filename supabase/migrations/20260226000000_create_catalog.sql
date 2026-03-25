@@ -61,6 +61,7 @@ INSERT INTO equipments (name, category) VALUES
   ('pecDeckMachine', 'machines'),
   ('legExtensionMachine', 'machines'),
   ('legCurlMachine', 'machines'),
+  ('seatedLegCurlMachine', 'machines'),
   ('hackSquatMachine', 'machines'),
   ('adductorMachine', 'machines'),
   ('abductorMachine', 'machines'),
@@ -127,6 +128,7 @@ INSERT INTO exercises (name, muscle_group, type, movement_pattern) VALUES
   ('romanianDeadlift', 'hamstrings', 'strength', 'hinge'),
   ('nordicCurl', 'hamstrings', 'strength', 'isolation'),
   ('legCurl', 'hamstrings', 'strength', 'isolation'),
+  ('seatedLegCurl', 'hamstrings', 'strength', 'isolation'),
   ('hipThrust', 'glutes', 'strength', 'hinge'),
   ('gluteBridge', 'glutes', 'strength', 'hinge'),
   ('cableKickback', 'glutes', 'strength', 'isolation'),
@@ -384,6 +386,11 @@ BEGIN
   INSERT INTO exercise_target_muscles VALUES (eid, 'bicepsFemoris', NULL, 'primary');
   INSERT INTO exercise_target_muscles VALUES (eid, 'semitendinosus', NULL, 'primary');
 
+  -- seatedLegCurl
+  SELECT id INTO eid FROM exercises WHERE name = 'seatedLegCurl';
+  INSERT INTO exercise_target_muscles VALUES (eid, 'bicepsFemoris', NULL, 'primary');
+  INSERT INTO exercise_target_muscles VALUES (eid, 'semitendinosus', NULL, 'primary');
+
   -- hipThrust
   SELECT id INTO eid FROM exercises WHERE name = 'hipThrust';
   INSERT INTO exercise_target_muscles VALUES (eid, 'gluteusMaximus', NULL, 'primary');
@@ -578,6 +585,9 @@ BEGIN
 
   SELECT id INTO exid FROM exercises WHERE name = 'legCurl';
   SELECT id INTO eqid FROM equipments WHERE name = 'legCurlMachine'; INSERT INTO exercise_equipments VALUES (exid, eqid);
+
+  SELECT id INTO exid FROM exercises WHERE name = 'seatedLegCurl';
+  SELECT id INTO eqid FROM equipments WHERE name = 'seatedLegCurlMachine'; INSERT INTO exercise_equipments VALUES (exid, eqid);
 
   SELECT id INTO exid FROM exercises WHERE name = 'hipThrust';
   SELECT id INTO eqid FROM equipments WHERE name = 'barbell'; INSERT INTO exercise_equipments VALUES (exid, eqid);

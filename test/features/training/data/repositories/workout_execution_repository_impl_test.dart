@@ -1,0 +1,146 @@
+import 'package:athlos_app/core/database/app_database.dart';
+import 'package:athlos_app/core/errors/result.dart';
+import 'package:athlos_app/features/training/data/datasources/daos/workout_execution_dao.dart';
+import 'package:athlos_app/features/training/data/repositories/workout_execution_repository_impl.dart';
+import 'package:athlos_app/features/training/domain/entities/execution_set.dart'
+    as domain;
+import 'package:athlos_app/features/training/domain/entities/execution_set_segment.dart'
+    as domain;
+import 'package:drift/native.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  group('WorkoutExecutionRepositoryImpl', () {
+    late AppDatabase db;
+    late WorkoutExecutionRepositoryImpl repository;
+
+    setUp(() async {
+      db = AppDatabase.forTesting(NativeDatabase.memory());
+      repository = WorkoutExecutionRepositoryImpl(WorkoutExecutionDao(db));
+      await db.customSelect('SELECT 1').get();
+      await db.customInsert(
+        'INSERT INTO "workouts" ("name", "description", "sort_order", "is_archived", "created_at") VALUES (\'W\', NULL, 0, 0, 1)',
+      );
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test('start/logSet/getSets/saveSegments/getSegments/finish/delete', () async {
+      final executionId = (await repository.start(1)).getOrThrow();
+      expect(executionId, greaterThan(0));
+
+      final setId = (await repository.logSet(
+        domain.ExecutionSet(
+          id: 0,
+          executionId: executionId,
+          exerciseId: 1,
+          setNumber: 1,
+          reps: 10,
+          weight: 50,
+          isCompleted: true,
+        ),
+      ))
+          .getOrThrow();
+      expect(setId, greaterThan(0));
+
+      final sets = (await repository.getSets(executionId)).getOrThrow();
+      expect(sets, isNotEmpty);
+      expect(sets.first.reps, 10);
+
+      expect(
+        (await repository.saveSegments(
+          setId,
+          const [
+            domain.ExecutionSetSegment(
+              id: 0,
+              executionSetId: 0,
+              segmentOrder: 1,
+              reps: 10,
+              weight: 50,
+            ),
+            domain.ExecutionSetSegment(
+              id: 0,
+              executionSetId: 0,
+              segmentOrder: 2,
+              reps: 8,
+              weight: 40,
+            ),
+          ],
+        ))
+            .isSuccess,
+        isTrue,
+      );
+      final segments = (await repository.getSegments(setId)).getOrThrow();
+      expect(segments.length, 2);
+      expect(segments.first.segmentOrder, 1);
+
+      expect((await repository.finish(executionId, notes: 'ok')).isSuccess, isTrue);
+      final lastFinished = (await repository.getLastFinished()).getOrThrow();
+      expect(lastFinished, isNotNull);
+      expect(lastFinished!.notes, 'ok');
+
+      expect((await repository.delete(executionId)).isSuccess, isTrue);
+      expect((await repository.getById(executionId)).getOrThrow(), isNull);
+    });
+
+    test('getLastTwoFinishedWithVolume calcula volume corretamente', () async {
+      final e1 = (await repository.start(1)).getOrThrow();
+      await repository.logSet(
+        domain.ExecutionSet(
+          id: 0,
+          executionId: e1,
+          exerciseId: 1,
+          setNumber: 1,
+          reps: 10,
+          weight: 50,
+          isCompleted: true,
+        ),
+      );
+      await repository.finish(e1);
+
+      final e2 = (await repository.start(1)).getOrThrow();
+      await repository.logSet(
+        domain.ExecutionSet(
+          id: 0,
+          executionId: e2,
+          exerciseId: 1,
+          setNumber: 1,
+          reps: 8,
+          weight: 60,
+          isCompleted: true,
+        ),
+      );
+      await repository.finish(e2);
+
+      final comparison =
+          (await repository.getLastTwoFinishedWithVolume(1)).getOrThrow();
+      expect(comparison, isNotNull);
+      final volumes = [comparison!.volumeLast, comparison.volumePrevious];
+      expect(volumes, containsAll(<double>[480, 500]));
+    });
+
+    test('getLastWeightsForExercises retorna ultimo peso concluido', () async {
+      final executionId = (await repository.start(1)).getOrThrow();
+      await repository.logSet(
+        domain.ExecutionSet(
+          id: 0,
+          executionId: executionId,
+          exerciseId: 1,
+          setNumber: 1,
+          reps: 10,
+          weight: 55.5,
+          isCompleted: true,
+        ),
+      );
+      await repository.finish(executionId);
+
+      final weights =
+          (await repository.getLastWeightsForExercises(const [1, 2]))
+              .getOrThrow();
+      expect(weights[1], 55.5);
+      expect(weights.containsKey(2), isFalse);
+    });
+  });
+}

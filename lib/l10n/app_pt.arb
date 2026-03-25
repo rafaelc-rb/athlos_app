@@ -51,6 +51,177 @@
   "@profileEquipmentTab": {
     "description": "Profile tab label for equipment category"
   },
+  "profileDataTab": "Dados",
+  "@profileDataTab": {
+    "description": "Profile tab label for data backup/import category"
+  },
+  "profileDataSectionTitle": "Backup local (dados do usuário)",
+  "@profileDataSectionTitle": {
+    "description": "Profile data section title for local backup"
+  },
+  "profileDataSectionDescription": "Exporte seus dados autorais (itens custom e histórico) para JSON. Itens oficiais do catálogo são referenciados por ID canônico.",
+  "@profileDataSectionDescription": {
+    "description": "Profile data section description"
+  },
+  "profileDataExportAction": "Exportar dados",
+  "@profileDataExportAction": {
+    "description": "Action button to export user data"
+  },
+  "profileDataImportAction": "Importar dados",
+  "@profileDataImportAction": {
+    "description": "Action button to import user data"
+  },
+  "profileDataExportShareText": "Backup dos dados do Athlos",
+  "@profileDataExportShareText": {
+    "description": "Share text for exported backup file"
+  },
+  "profileDataExportError": "Não foi possível exportar os dados agora.",
+  "@profileDataExportError": {
+    "description": "Error message when export fails"
+  },
+  "profileDataImportError": "Não foi possível importar este arquivo.",
+  "@profileDataImportError": {
+    "description": "Error message when import fails"
+  },
+  "profileDataImportConfirmTitle": "Confirmar importação",
+  "@profileDataImportConfirmTitle": {
+    "description": "Title for import confirmation dialog"
+  },
+  "profileDataImportConfirmMessage": "Serão processados {total} registros. Deseja continuar?",
+  "@profileDataImportConfirmMessage": {
+    "description": "Message before running import",
+    "placeholders": {
+      "total": { "type": "int" }
+    }
+  },
+  "profileDataImportResultTitle": "Importação concluída",
+  "@profileDataImportResultTitle": {
+    "description": "Title for import result dialog"
+  },
+  "profileDataImportResultMessage": "Criados: {created}\nAtualizados: {updated}\nIgnorados: {skipped}\nFalhas: {failed}",
+  "@profileDataImportResultMessage": {
+    "description": "Summary message after import",
+    "placeholders": {
+      "created": { "type": "int" },
+      "updated": { "type": "int" },
+      "skipped": { "type": "int" },
+      "failed": { "type": "int" }
+    }
+  },
+  "profileDataConflictTitle": "Conflito encontrado",
+  "@profileDataConflictTitle": {
+    "description": "Title of conflict resolution dialog during import"
+  },
+  "profileDataConflictType": "Tipo: {type}",
+  "@profileDataConflictType": {
+    "description": "Conflict type label",
+    "placeholders": {
+      "type": { "type": "String" }
+    }
+  },
+  "profileDataConflictExisting": "Atual: {value}",
+  "@profileDataConflictExisting": {
+    "description": "Current local value in conflict dialog",
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
+  "profileDataConflictImported": "Importado: {value}",
+  "@profileDataConflictImported": {
+    "description": "Imported value in conflict dialog",
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
+  "profileDataConflictKeepExisting": "Manter atual",
+  "@profileDataConflictKeepExisting": {
+    "description": "Resolution action to keep local data"
+  },
+  "profileDataConflictOverwrite": "Substituir pelo importado",
+  "@profileDataConflictOverwrite": {
+    "description": "Resolution action to overwrite local data"
+  },
+  "profileDataConflictKeepBoth": "Manter os dois",
+  "@profileDataConflictKeepBoth": {
+    "description": "Resolution action to keep both records"
+  },
+  "profileDataPendingTitle": "Revisão necessária",
+  "@profileDataPendingTitle": {
+    "description": "Title shown for pending import review decision"
+  },
+  "profileDataPendingType": "Pendência: {type}",
+  "@profileDataPendingType": {
+    "description": "Pending review type label",
+    "placeholders": {
+      "type": { "type": "String" }
+    }
+  },
+  "profileDataPendingImported": "Importado: {value}",
+  "@profileDataPendingImported": {
+    "description": "Imported item label in pending review",
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
+  "profileDataPendingExisting": "Local: {value}",
+  "@profileDataPendingExisting": {
+    "description": "Existing local item label in pending review",
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
+  "profileDataPendingSuggested": "Sugestão: {value} (score {score})",
+  "@profileDataPendingSuggested": {
+    "description": "Suggested local item with similarity score",
+    "placeholders": {
+      "value": { "type": "String" },
+      "score": { "type": "String" }
+    }
+  },
+  "profileDataPendingNoSuggestion": "Sem sugestão automática confiável.",
+  "@profileDataPendingNoSuggestion": {
+    "description": "Shown when no suggestion is available for pending review"
+  },
+  "profileDataPendingLinkSuggested": "Vincular à sugestão",
+  "@profileDataPendingLinkSuggested": {
+    "description": "Action to link import item to suggested local item"
+  },
+  "profileDataPendingCreateCustom": "Criar como item custom",
+  "@profileDataPendingCreateCustom": {
+    "description": "Action to create unresolved item as custom"
+  },
+  "profileDataPendingSkip": "Ignorar item",
+  "@profileDataPendingSkip": {
+    "description": "Action to skip unresolved imported item"
+  },
+  "profileDataPendingMissingCanonical": "Referência canônica ausente ({entity})",
+  "@profileDataPendingMissingCanonical": {
+    "description": "Pending type for missing canonical catalog reference",
+    "placeholders": {
+      "entity": { "type": "String" }
+    }
+  },
+  "profileDataPendingFuzzy": "Possível duplicação por similaridade ({entity})",
+  "@profileDataPendingFuzzy": {
+    "description": "Pending type for fuzzy duplicate suggestion",
+    "placeholders": {
+      "entity": { "type": "String" }
+    }
+  },
+  "profileDataPendingVerifiedVsCustom": "Item verificado x custom ({entity}) — confirmar equivalência",
+  "@profileDataPendingVerifiedVsCustom": {
+    "description": "Pending type for verified versus non-verified confirmation",
+    "placeholders": {
+      "entity": { "type": "String" }
+    }
+  },
+  "profileDataPendingGovernance": "Conflito crítico de catálogo ({entity}) — requer governança",
+  "@profileDataPendingGovernance": {
+    "description": "Pending type for verified vs verified governance conflict",
+    "placeholders": {
+      "entity": { "type": "String" }
+    }
+  },
   "@profile": {
     "description": "Label do perfil"
   },
@@ -530,6 +701,8 @@
   "@equipmentLegExtensionMachine": { "description": "Equipamento: leg extension machine" },
   "equipmentLegCurlMachine": "Mesa Flexora",
   "@equipmentLegCurlMachine": { "description": "Equipamento: leg curl machine" },
+  "equipmentSeatedLegCurlMachine": "Cadeira Flexora",
+  "@equipmentSeatedLegCurlMachine": { "description": "Equipamento: seated leg curl machine" },
   "equipmentHackSquatMachine": "Hack Squat",
   "@equipmentHackSquatMachine": { "description": "Equipamento: hack squat machine" },
 
@@ -844,6 +1017,8 @@
   "@exerciseHackSquat": { "description": "Exercise name" },
   "exerciseLegCurl": "Mesa Flexora",
   "@exerciseLegCurl": { "description": "Exercise name" },
+  "exerciseSeatedLegCurl": "Cadeira Flexora",
+  "@exerciseSeatedLegCurl": { "description": "Exercise name" },
   "exerciseKneePushUp": "Flexão de Joelhos",
   "@exerciseKneePushUp": { "description": "Exercise name" },
   "exerciseSeatedCalfRaise": "Panturrilha Sentado",

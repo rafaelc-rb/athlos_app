@@ -3,6 +3,8 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'tables/catalog_governance_applied_rules_table.dart';
+import 'tables/catalog_governance_events_table.dart';
 import '../../features/profile/data/datasources/daos/user_profile_dao.dart';
 import '../../features/profile/data/datasources/tables/user_profiles_table.dart';
 import '../../features/profile/domain/enums/body_aesthetic.dart';
@@ -42,7 +44,6 @@ import '../../features/training/data/datasources/tables/workouts_table.dart';
 part 'app_database.g.dart';
 
 const _skipDevSeed = bool.fromEnvironment('SKIP_DEV_SEED');
-bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed;
 
 @DriftDatabase(
   tables: [
@@ -59,6 +60,8 @@ bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed;
     ExecutionSetSegments,
     CycleSteps,
     UserEquipments,
+    CatalogGovernanceEvents,
+    CatalogGovernanceAppliedRules,
     // Profile
     UserProfiles,
   ],
@@ -72,10 +75,20 @@ bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed;
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(driftDatabase(name: 'athlos'));
+  final bool _enableDevSeed;
+
+  AppDatabase({bool enableDevSeed = true})
+      : _enableDevSeed = enableDevSeed,
+        super(driftDatabase(name: 'athlos'));
+
+  AppDatabase.forTesting(super.executor, {bool enableDevSeed = false})
+      : _enableDevSeed = enableDevSeed,
+        super();
+
+  bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed && _enableDevSeed;
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -246,6 +259,25 @@ class AppDatabase extends _$AppDatabase {
             await customStatement(
               'ALTER TABLE workout_exercises ADD COLUMN is_unilateral INTEGER NOT NULL DEFAULT 0',
             );
+          }
+
+          if (from < 10) {
+            await customStatement(
+              'ALTER TABLE equipments ADD COLUMN catalog_remote_id TEXT',
+            );
+            await customStatement(
+              'ALTER TABLE exercises ADD COLUMN catalog_remote_id TEXT',
+            );
+          }
+
+          if (from < 11) {
+            await seedEquipmentsV5(this);
+            await seedExercisesV5(this);
+          }
+
+          if (from < 12) {
+            await m.createTable(catalogGovernanceEvents);
+            await m.createTable(catalogGovernanceAppliedRules);
           }
         },
       );

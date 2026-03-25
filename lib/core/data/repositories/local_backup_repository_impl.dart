@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:developer' as dev;
 import 'dart:math' as math;
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../database/app_database.dart';
 import '../../domain/entities/local_backup_models.dart';
@@ -196,6 +198,12 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       var updatedCount = 0;
       var skippedCount = 0;
       var failedCount = 0;
+      final skippedReasons = <String, int>{};
+      final failedReasons = <String, int>{};
+
+      void bumpReason(Map<String, int> target, String reason, [int delta = 1]) {
+        target.update(reason, (value) => value + delta, ifAbsent: () => delta);
+      }
 
       final equipmentIdMap = <int, int>{};
       final exerciseIdMap = <int, int>{};
@@ -208,6 +216,13 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         equipmentIdMap.addAll(canonicalResult.equipmentIdMap);
         exerciseIdMap.addAll(canonicalResult.exerciseIdMap);
         failedCount += canonicalResult.unresolvedCount;
+        if (canonicalResult.unresolvedCount > 0) {
+          bumpReason(
+            failedReasons,
+            'canonical_reference_unresolved',
+            canonicalResult.unresolvedCount,
+          );
+        }
 
         final customEquipmentResult = await _importCustomCatalogRows(
           rows: payload.tables[_tableEquipments] ?? const [],
@@ -251,6 +266,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           final name = (row['name'] as String?)?.trim();
           if (oldId == null || name == null || name.isEmpty) {
             failedCount++;
+            bumpReason(failedReasons, 'workout_invalid_row');
             continue;
           }
 
@@ -276,6 +292,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
               workoutIdMap[oldId] = existingId;
               importWorkoutDetails[oldId] = false;
               skippedCount++;
+              bumpReason(skippedReasons, 'workout_keep_existing');
             case BackupConflictResolution.overwriteExisting:
               await _updateRowById(
                 _tableWorkouts,
@@ -306,9 +323,12 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         for (final row in userEquipmentRows) {
           final oldEquipmentId = _asInt(row['equipment_id']);
           if (oldEquipmentId == null) continue;
-          final newEquipmentId = equipmentIdMap[oldEquipmentId];
+          final newEquipmentId =
+              equipmentIdMap[oldEquipmentId] ??
+              await _findVerifiedEquipmentIdByLocalId(oldEquipmentId);
           if (newEquipmentId == null) {
             failedCount++;
+            bumpReason(failedReasons, 'user_equipment_missing_mapping');
             continue;
           }
           await _insertRow(
@@ -328,6 +348,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           final newEquipmentId = equipmentIdMap[oldEquipmentId];
           if (newExerciseId == null || newEquipmentId == null) {
             failedCount++;
+            bumpReason(failedReasons, 'exercise_equipment_missing_mapping');
             continue;
           }
           await _insertRow(
@@ -347,6 +368,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           final newExerciseId = exerciseIdMap[oldExerciseId];
           if (newExerciseId == null) {
             failedCount++;
+            bumpReason(failedReasons, 'exercise_target_muscle_missing_mapping');
             continue;
           }
           await _insertRow(
@@ -370,6 +392,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           final newVariationId = exerciseIdMap[oldVariationId];
           if (newExerciseId == null || newVariationId == null) {
             failedCount++;
+            bumpReason(failedReasons, 'exercise_variation_missing_mapping');
             continue;
           }
           await _insertRow(
@@ -390,9 +413,12 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           if (importWorkoutDetails[oldWorkoutId] == false) continue;
 
           final newWorkoutId = workoutIdMap[oldWorkoutId];
-          final newExerciseId = exerciseIdMap[oldExerciseId];
+          final newExerciseId =
+              exerciseIdMap[oldExerciseId] ??
+              await _findVerifiedExerciseIdByLocalId(oldExerciseId);
           if (newWorkoutId == null || newExerciseId == null) {
             failedCount++;
+            bumpReason(failedReasons, 'workout_exercise_missing_mapping');
             continue;
           }
           await _insertRow(
@@ -414,15 +440,20 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         }
 
         final executionRows = payload.tables[_tableWorkoutExecutions] ?? const [];
+        final skippedExecutionIds = <int>{};
         for (final row in executionRows) {
           final oldExecutionId = _asInt(row['id']);
           final oldWorkoutId = _asInt(row['workout_id']);
           if (oldExecutionId == null || oldWorkoutId == null) continue;
-          if (importWorkoutDetails[oldWorkoutId] == false) continue;
+          if (importWorkoutDetails[oldWorkoutId] == false) {
+            skippedExecutionIds.add(oldExecutionId);
+            continue;
+          }
 
           final newWorkoutId = workoutIdMap[oldWorkoutId];
           if (newWorkoutId == null) {
             failedCount++;
+            bumpReason(failedReasons, 'workout_execution_missing_workout_mapping');
             continue;
           }
           final newExecutionId = await _insertRow(
@@ -439,6 +470,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         }
 
         final executionSetRows = payload.tables[_tableExecutionSets] ?? const [];
+        final skippedExecutionSetIds = <int>{};
         for (final row in executionSetRows) {
           final oldSetId = _asInt(row['id']);
           final oldExecutionId = _asInt(row['execution_id']);
@@ -448,9 +480,16 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           }
 
           final newExecutionId = executionIdMap[oldExecutionId];
-          final newExerciseId = exerciseIdMap[oldExerciseId];
+          final newExerciseId =
+              exerciseIdMap[oldExerciseId] ??
+              await _findVerifiedExerciseIdByLocalId(oldExerciseId);
+          if (newExecutionId == null && skippedExecutionIds.contains(oldExecutionId)) {
+            skippedExecutionSetIds.add(oldSetId);
+            continue;
+          }
           if (newExecutionId == null || newExerciseId == null) {
             failedCount++;
+            bumpReason(failedReasons, 'execution_set_missing_mapping');
             continue;
           }
           final newSetId = await _insertRow(
@@ -479,8 +518,13 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           final oldExecutionSetId = _asInt(row['execution_set_id']);
           if (oldExecutionSetId == null) continue;
           final newExecutionSetId = executionSetIdMap[oldExecutionSetId];
+          if (newExecutionSetId == null &&
+              skippedExecutionSetIds.contains(oldExecutionSetId)) {
+            continue;
+          }
           if (newExecutionSetId == null) {
             failedCount++;
+            bumpReason(failedReasons, 'execution_segment_missing_set_mapping');
             continue;
           }
           await _insertRow(
@@ -517,6 +561,26 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         }
       });
 
+      if (kDebugMode && (failedCount > 0 || skippedCount > 0)) {
+        final summary =
+            '[backup-import] summary: created=$createdCount '
+            'updated=$updatedCount skipped=$skippedCount failed=$failedCount';
+        debugPrint(summary);
+        dev.log(summary, name: 'LocalBackupRepository');
+        if (skippedReasons.isNotEmpty) {
+          final skippedLog =
+              '[backup-import] skipped_reasons=${jsonEncode(skippedReasons)}';
+          debugPrint(skippedLog);
+          dev.log(skippedLog, name: 'LocalBackupRepository');
+        }
+        if (failedReasons.isNotEmpty) {
+          final failedLog =
+              '[backup-import] failed_reasons=${jsonEncode(failedReasons)}';
+          debugPrint(failedLog);
+          dev.log(failedLog, name: 'LocalBackupRepository');
+        }
+      }
+
       return Success(
         BackupImportReport(
           createdCount: createdCount,
@@ -526,8 +590,23 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         ),
       );
     } on AppException catch (e) {
+      if (kDebugMode) {
+        dev.log(
+          '[backup-import] app_exception: ${e.toString()}',
+          name: 'LocalBackupRepository',
+          error: e,
+        );
+      }
       return Failure(e);
-    } on Exception catch (e) {
+    } on Exception catch (e, stackTrace) {
+      if (kDebugMode) {
+        dev.log(
+          '[backup-import] unexpected_exception: ${e.toString()}',
+          name: 'LocalBackupRepository',
+          error: e,
+          stackTrace: stackTrace,
+        );
+      }
       return Failure(DatabaseException('Failed to import backup: $e'));
     }
   }
@@ -841,18 +920,20 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       if (existingProfiles.isNotEmpty) {
         final imported = importedProfiles.first;
         final existing = existingProfiles.first;
-        conflicts.add(
-          BackupImportConflict(
-            conflictId: 'profile:${_asInt(imported['id']) ?? 0}',
-            type: BackupConflictType.profile,
-            existingLabel: (existing['name'] as String?) ?? 'Perfil atual',
-            importedLabel: (imported['name'] as String?) ?? 'Perfil importado',
-            allowedResolutions: const [
-              BackupConflictResolution.keepExisting,
-              BackupConflictResolution.overwriteExisting,
-            ],
-          ),
-        );
+        if (!_profilesAreEquivalent(imported: imported, existing: existing)) {
+          conflicts.add(
+            BackupImportConflict(
+              conflictId: 'profile:${_asInt(imported['id']) ?? 0}',
+              type: BackupConflictType.profile,
+              existingLabel: (existing['name'] as String?) ?? 'Perfil atual',
+              importedLabel: (imported['name'] as String?) ?? 'Perfil importado',
+              allowedResolutions: const [
+                BackupConflictResolution.keepExisting,
+                BackupConflictResolution.overwriteExisting,
+              ],
+            ),
+          );
+        }
       }
     }
 
@@ -868,6 +949,50 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     return conflicts;
   }
 
+  bool _profilesAreEquivalent({
+    required Map<String, dynamic> imported,
+    required Map<String, dynamic> existing,
+  }) {
+    // Ignore volatile/system fields to prevent false-positive conflicts.
+    const comparableKeys = <String>{
+      'name',
+      'weight',
+      'height',
+      'age',
+      'goal',
+      'body_aesthetic',
+      'training_style',
+      'experience_level',
+      'gender',
+      'training_frequency',
+      'available_workout_minutes',
+      'trains_at_gym',
+      'injuries',
+      'bio',
+    };
+    for (final key in comparableKeys) {
+      final left = _normalizeProfileValue(imported[key]);
+      final right = _normalizeProfileValue(existing[key]);
+      if (left != right) return false;
+    }
+    return true;
+  }
+
+  Object? _normalizeProfileValue(dynamic value) {
+    if (value == null) return null;
+    if (value is String) {
+      final normalized = value.trim();
+      return normalized.isEmpty ? null : normalized;
+    }
+    if (value is bool) return value ? '1' : '0';
+    if (value is DateTime) return value.toIso8601String();
+    if (value is num) {
+      if (value % 1 == 0) return value.toInt().toString();
+      return value.toDouble().toString();
+    }
+    return value.toString();
+  }
+
   Future<List<BackupImportConflict>> _scanNamedConflicts({
     required List<Map<String, dynamic>> importedRows,
     required String tableName,
@@ -875,17 +1000,30 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     required String idPrefix,
   }) async {
     final conflicts = <BackupImportConflict>[];
-    final existingByName = await _fetchNamedIds(tableName);
+    final existingRows = await _fetchTableRows(tableName);
+    final existingByName = <String, Map<String, dynamic>>{};
+    for (final existing in existingRows) {
+      final existingName = (existing['name'] as String?)?.trim();
+      if (existingName == null || existingName.isEmpty) continue;
+      existingByName[_normalizeName(existingName)] = existing;
+    }
     for (final row in importedRows) {
       final id = _asInt(row['id']);
       final name = (row['name'] as String?)?.trim();
       if (id == null || name == null || name.isEmpty) continue;
-      if (!existingByName.containsKey(_normalizeName(name))) continue;
+      final existing = existingByName[_normalizeName(name)];
+      if (existing == null) continue;
+
+      if (tableName == _tableWorkouts &&
+          _workoutsAreEquivalent(imported: row, existing: existing)) {
+        continue;
+      }
+
       conflicts.add(
         BackupImportConflict(
           conflictId: '$idPrefix:$id',
           type: type,
-          existingLabel: name,
+          existingLabel: (existing['name'] as String?) ?? name,
           importedLabel: name,
           allowedResolutions: const [
             BackupConflictResolution.keepExisting,
@@ -896,6 +1034,19 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       );
     }
     return conflicts;
+  }
+
+  bool _workoutsAreEquivalent({
+    required Map<String, dynamic> imported,
+    required Map<String, dynamic> existing,
+  }) {
+    final keys = <String>{'name', 'description', 'is_archived', 'sort_order'};
+    for (final key in keys) {
+      final left = _normalizeProfileValue(imported[key]);
+      final right = _normalizeProfileValue(existing[key]);
+      if (left != right) return false;
+    }
+    return true;
   }
 
   Future<List<BackupPendingReview>> _scanPendingReviews(
@@ -1247,6 +1398,24 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     return rows.map((row) => Map<String, dynamic>.from(row.data)).toList();
   }
 
+  Future<int?> _findVerifiedEquipmentIdByLocalId(int localId) async {
+    final rows = await _db.customSelect(
+      'SELECT id FROM $_tableEquipments WHERE id = ? AND is_verified = 1 LIMIT 1',
+      variables: [Variable<int>(localId)],
+    ).get();
+    if (rows.isEmpty) return null;
+    return _asInt(rows.first.data['id']);
+  }
+
+  Future<int?> _findVerifiedExerciseIdByLocalId(int localId) async {
+    final rows = await _db.customSelect(
+      'SELECT id FROM $_tableExercises WHERE id = ? AND is_verified = 1 LIMIT 1',
+      variables: [Variable<int>(localId)],
+    ).get();
+    if (rows.isEmpty) return null;
+    return _asInt(rows.first.data['id']);
+  }
+
   Future<Map<String, int>> _fetchNamedIds(String tableName) async {
     final rows = await _db.customSelect('SELECT id, name FROM $tableName').get();
     final namedIds = <String, int>{};
@@ -1323,7 +1492,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     final placeholders = <String>[];
     final variables = <Variable<Object>>[];
     for (final entry in filtered.entries) {
-      columns.add(entry.key);
+      columns.add(_quoteIdentifier(entry.key));
       if (entry.value == null) {
         placeholders.add('NULL');
       } else {
@@ -1336,7 +1505,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         ? 'INSERT OR IGNORE'
         : (orReplace ? 'INSERT OR REPLACE' : 'INSERT');
     final sql =
-        '$mode INTO $tableName (${columns.join(', ')}) VALUES (${placeholders.join(', ')})';
+        '$mode INTO ${_quoteIdentifier(tableName)} (${columns.join(', ')}) VALUES (${placeholders.join(', ')})';
     return _db.customInsert(sql, variables: variables);
   }
 
@@ -1354,15 +1523,21 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     final variables = <Variable<Object>>[];
     for (final entry in filtered.entries) {
       if (entry.value == null) {
-        setters.add('${entry.key} = NULL');
+        setters.add('${_quoteIdentifier(entry.key)} = NULL');
       } else {
-        setters.add('${entry.key} = ?');
+        setters.add('${_quoteIdentifier(entry.key)} = ?');
         variables.add(_toVariable(entry.value));
       }
     }
     variables.add(Variable<int>(id));
-    final sql = 'UPDATE $tableName SET ${setters.join(', ')} WHERE id = ?';
+    final sql =
+        'UPDATE ${_quoteIdentifier(tableName)} SET ${setters.join(', ')} WHERE ${_quoteIdentifier('id')} = ?';
     await _db.customUpdate(sql, variables: variables);
+  }
+
+  String _quoteIdentifier(String identifier) {
+    final escaped = identifier.replaceAll('"', '""');
+    return '"$escaped"';
   }
 
   _CatalogMatch? _findBestCatalogMatch({

@@ -98,7 +98,7 @@
   "@profileDataImportResultTitle": {
     "description": "Title for import result dialog"
   },
-  "profileDataImportResultMessage": "Criados: {created}\\nAtualizados: {updated}\\nIgnorados: {skipped}\\nFalhas: {failed}",
+  "profileDataImportResultMessage": "Criados: {created}\nAtualizados: {updated}\nIgnorados: {skipped}\nFalhas: {failed}",
   "@profileDataImportResultMessage": {
     "description": "Summary message after import",
     "placeholders": {

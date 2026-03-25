@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:developer' as dev;
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -29,6 +31,11 @@ import '../widgets/aesthetic_selector.dart';
 import '../widgets/experience_selector.dart';
 import '../widgets/goal_selector.dart';
 import '../widgets/style_selector.dart';
+import '../../../training/presentation/providers/equipment_notifier.dart';
+import '../../../training/presentation/providers/exercise_notifier.dart';
+import '../../../training/presentation/providers/training_analytics_provider.dart';
+import '../../../training/presentation/providers/workout_execution_notifier.dart';
+import '../../../training/presentation/providers/workout_notifier.dart';
 import '../../../training/presentation/widgets/equipment_management_body.dart';
 
 /// Profile view/edit screen (P-04).
@@ -424,6 +431,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _importData(AppLocalizations l10n) async {
     setState(() => _isImporting = true);
     try {
+      if (kDebugMode) {
+        dev.log('[backup-ui] start file picker', name: 'ProfileScreen');
+      }
       final fileResult = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: const ['json'],
@@ -432,6 +442,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (fileResult == null || fileResult.files.isEmpty) return;
 
       final file = fileResult.files.single;
+      if (kDebugMode) {
+        dev.log(
+          '[backup-ui] selected file: name=${file.name} size=${file.size}',
+          name: 'ProfileScreen',
+        );
+      }
       String? jsonContent;
       if (file.bytes != null) {
         jsonContent = utf8.decode(file.bytes!);
@@ -443,8 +459,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       }
 
       final previewUseCase = ref.read(previewLocalBackupImportUseCaseProvider);
+      if (kDebugMode) {
+        dev.log('[backup-ui] preview import', name: 'ProfileScreen');
+      }
       final previewResult = await previewUseCase(jsonContent);
       final preview = previewResult.getOrThrow();
+      if (kDebugMode) {
+        dev.log(
+          '[backup-ui] preview done: conflicts=${preview.conflicts.length} '
+          'pending=${preview.pendingReviews.length} total=${preview.totalRecords}',
+          name: 'ProfileScreen',
+        );
+      }
 
       final resolutions = <String, BackupConflictResolution>{};
       for (final conflict in preview.conflicts) {
@@ -486,6 +512,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (!confirmed) return;
 
       final importUseCase = ref.read(importLocalBackupUseCaseProvider);
+      if (kDebugMode) {
+        dev.log('[backup-ui] execute import', name: 'ProfileScreen');
+      }
       final importResult = await importUseCase(
         BackupImportRequest(
           jsonContent: jsonContent,
@@ -494,8 +523,34 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
       );
       final report = importResult.getOrThrow();
+      if (kDebugMode) {
+        dev.log(
+          '[backup-ui] import done: created=${report.createdCount} '
+          'updated=${report.updatedCount} skipped=${report.skippedCount} '
+          'failed=${report.failedCount}',
+          name: 'ProfileScreen',
+        );
+      }
 
+      // Refresh all affected read models so the app reflects imported data
+      // immediately without requiring a full restart.
       ref.invalidate(profileProvider);
+      ref.invalidate(workoutListProvider);
+      ref.invalidate(archivedWorkoutListProvider);
+      ref.invalidate(lastFinishedWorkoutIdProvider);
+      ref.invalidate(workoutExecutionListProvider);
+      ref.invalidate(exerciseListProvider);
+      ref.invalidate(exerciseEquipmentMapProvider);
+      ref.invalidate(equipmentListProvider);
+      ref.invalidate(userEquipmentIdsProvider);
+      ref.invalidate(cycleStepsProvider);
+      ref.invalidate(effectiveCycleStepsProvider);
+      ref.invalidate(cycleListItemsProvider);
+      ref.invalidate(nextCycleStepProvider);
+      ref.invalidate(nextWorkoutToStartProvider);
+      ref.invalidate(nextCycleStepIndexProvider);
+      ref.invalidate(executionStreakProvider);
+      ref.invalidate(trainingHomeAnalyticsProvider);
 
       if (!mounted) return;
       await showDialog<void>(
@@ -518,10 +573,31 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ],
         ),
       );
-    } on Exception catch (_) {
+    } on Exception catch (e, stackTrace) {
+      final debugMessage = '[backup-ui] import flow exception: ${e.toString()}';
+      debugPrint(debugMessage);
+      debugPrintStack(
+        stackTrace: stackTrace,
+        label: '[backup-ui] import flow stacktrace',
+      );
+      if (kDebugMode) {
+        dev.log(
+          debugMessage,
+          name: 'ProfileScreen',
+          error: e,
+          stackTrace: stackTrace,
+        );
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.profileDataImportError)),
+        SnackBar(
+          content: Text(
+            kDebugMode
+                ? '${l10n.profileDataImportError}\n${e.toString()}'
+                : l10n.profileDataImportError,
+          ),
+          duration: const Duration(seconds: 6),
+        ),
       );
     } finally {
       if (mounted) setState(() => _isImporting = false);

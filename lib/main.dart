@@ -85,6 +85,19 @@ class _AthlosAppState extends ConsumerState<AthlosApp> {
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: router,
+      builder: (context, child) {
+        return Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (_) {
+            final currentFocus = FocusScope.of(context);
+            if (!currentFocus.hasPrimaryFocus &&
+                currentFocus.focusedChild != null) {
+              currentFocus.unfocus();
+            }
+          },
+          child: child,
+        );
+      },
     );
   }
 }

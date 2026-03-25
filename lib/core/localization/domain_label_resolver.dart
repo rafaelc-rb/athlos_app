@@ -173,6 +173,7 @@ Map<String, String> _exerciseNameMap(AppLocalizations l10n) => {
   'romanianDeadlift': l10n.exerciseRomanianDeadlift,
   'nordicCurl': l10n.exerciseNordicCurl,
   'legCurl': l10n.exerciseLegCurl,
+  'seatedLegCurl': l10n.exerciseSeatedLegCurl,
   'hipThrust': l10n.exerciseHipThrust,
   'gluteBridge': l10n.exerciseGluteBridge,
   'cableKickback': l10n.exerciseCableKickback,

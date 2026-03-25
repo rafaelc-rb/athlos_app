@@ -16,8 +16,8 @@ import UIKit
       didFinishLaunchingWithOptions: launchOptions
     )
 
-    if let controller = window?.rootViewController as? FlutterViewController {
-      setupRestTimerLiveActivityChannel(binaryMessenger: controller.binaryMessenger)
+    if let registrar = registrar(forPlugin: "RestTimerLiveActivityChannel") {
+      setupRestTimerLiveActivityChannel(binaryMessenger: registrar.messenger())
     }
 
     return didFinish

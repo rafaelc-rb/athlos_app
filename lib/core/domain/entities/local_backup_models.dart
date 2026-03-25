@@ -14,6 +14,8 @@ enum BackupConflictResolution {
 enum BackupPendingReviewType {
   missingCanonicalReference,
   fuzzyMatchCandidate,
+  verifiedVsCustomConfirmation,
+  governanceConflict,
 }
 
 enum BackupPendingReviewResolution {
@@ -112,6 +114,7 @@ class BackupPendingReview {
   final BackupPendingReviewType type;
   final BackupConflictType entityType;
   final String importedLabel;
+  final String? existingLabel;
   final String? suggestedLabel;
   final double? similarityScore;
 
@@ -120,6 +123,7 @@ class BackupPendingReview {
     required this.type,
     required this.entityType,
     required this.importedLabel,
+    this.existingLabel,
     this.suggestedLabel,
     this.similarityScore,
   });

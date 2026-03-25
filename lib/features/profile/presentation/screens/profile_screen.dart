@@ -586,23 +586,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Text(
                 l10n.profileDataPendingImported(review.importedLabel),
               ),
+              if (review.existingLabel != null)
+                Text(l10n.profileDataPendingExisting(review.existingLabel!)),
               Text(suggestionText),
             ],
           ),
           actions: [
-            if (review.suggestedLabel != null)
+            if (review.type != BackupPendingReviewType.governanceConflict &&
+                review.suggestedLabel != null)
               TextButton(
                 onPressed: () => Navigator.of(context).pop(
                   BackupPendingReviewResolution.linkSuggested,
                 ),
                 child: Text(l10n.profileDataPendingLinkSuggested),
               ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(
-                BackupPendingReviewResolution.createCustom,
+            if (review.type != BackupPendingReviewType.governanceConflict)
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(
+                  BackupPendingReviewResolution.createCustom,
+                ),
+                child: Text(l10n.profileDataPendingCreateCustom),
               ),
-              child: Text(l10n.profileDataPendingCreateCustom),
-            ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(
                 BackupPendingReviewResolution.skip,
@@ -626,6 +630,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         l10n.profileDataPendingMissingCanonical(entityLabel),
       BackupPendingReviewType.fuzzyMatchCandidate =>
         l10n.profileDataPendingFuzzy(entityLabel),
+      BackupPendingReviewType.verifiedVsCustomConfirmation =>
+        l10n.profileDataPendingVerifiedVsCustom(entityLabel),
+      BackupPendingReviewType.governanceConflict =>
+        l10n.profileDataPendingGovernance(entityLabel),
     };
   }
 

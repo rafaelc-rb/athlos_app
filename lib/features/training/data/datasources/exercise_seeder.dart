@@ -526,6 +526,13 @@ final _seedItems = [
         _p(TargetMuscle.semitendinosus),
       ],
       equipmentKeys: ['legCurlMachine']),
+  _SeedExercise('seatedLegCurl', MuscleGroup.hamstrings,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.bicepsFemoris),
+        _p(TargetMuscle.semitendinosus),
+      ],
+      equipmentKeys: ['seatedLegCurlMachine']),
 
   // ── Glutes ──
   _SeedExercise('hipThrust', MuscleGroup.glutes,
@@ -837,6 +844,48 @@ Future<void> seedExercisesV4(AppDatabase db) async {
             mode: InsertMode.insertOrIgnore,
           );
     }
+  }
+}
+
+/// Seeds the hamstrings variation added in schema version 11.
+Future<void> seedExercisesV5(AppDatabase db) async {
+  final equipmentIds = await _resolveEquipmentIds(db);
+  final seatedMachineId = equipmentIds['seatedLegCurlMachine'];
+  final exerciseId = await db.into(db.exercises).insert(
+        ExercisesCompanion.insert(
+          name: 'seatedLegCurl',
+          muscleGroup: MuscleGroup.hamstrings,
+          type: const Value(ExerciseType.strength),
+          movementPattern: const Value(MovementPattern.isolation),
+          isVerified: const Value(true),
+          description: const Value.absent(),
+        ),
+      );
+
+  await db.into(db.exerciseTargetMuscles).insert(
+        ExerciseTargetMusclesCompanion(
+          exerciseId: Value(exerciseId),
+          targetMuscle: const Value(TargetMuscle.bicepsFemoris),
+          muscleRegion: const Value(null),
+          role: const Value(MuscleRole.primary),
+        ),
+      );
+  await db.into(db.exerciseTargetMuscles).insert(
+        ExerciseTargetMusclesCompanion(
+          exerciseId: Value(exerciseId),
+          targetMuscle: const Value(TargetMuscle.semitendinosus),
+          muscleRegion: const Value(null),
+          role: const Value(MuscleRole.primary),
+        ),
+      );
+
+  if (seatedMachineId != null) {
+    await db.into(db.exerciseEquipments).insert(
+          ExerciseEquipmentsCompanion(
+            exerciseId: Value(exerciseId),
+            equipmentId: Value(seatedMachineId),
+          ),
+        );
   }
 }
 

@@ -3,6 +3,8 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'tables/catalog_governance_applied_rules_table.dart';
+import 'tables/catalog_governance_events_table.dart';
 import '../../features/profile/data/datasources/daos/user_profile_dao.dart';
 import '../../features/profile/data/datasources/tables/user_profiles_table.dart';
 import '../../features/profile/domain/enums/body_aesthetic.dart';
@@ -59,6 +61,8 @@ bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed;
     ExecutionSetSegments,
     CycleSteps,
     UserEquipments,
+    CatalogGovernanceEvents,
+    CatalogGovernanceAppliedRules,
     // Profile
     UserProfiles,
   ],
@@ -75,7 +79,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(driftDatabase(name: 'athlos'));
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -255,6 +259,16 @@ class AppDatabase extends _$AppDatabase {
             await customStatement(
               'ALTER TABLE exercises ADD COLUMN catalog_remote_id TEXT',
             );
+          }
+
+          if (from < 11) {
+            await seedEquipmentsV5(this);
+            await seedExercisesV5(this);
+          }
+
+          if (from < 12) {
+            await m.createTable(catalogGovernanceEvents);
+            await m.createTable(catalogGovernanceAppliedRules);
           }
         },
       );

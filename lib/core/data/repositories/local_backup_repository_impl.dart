@@ -11,6 +11,7 @@ import '../../errors/result.dart';
 
 const _backupFormatVersion = 2;
 const _fuzzyThreshold = 0.84;
+const _strongMatchThreshold = 0.96;
 
 const _tableUserProfiles = 'user_profiles';
 const _tableEquipments = 'equipments';
@@ -25,6 +26,7 @@ const _tableExecutionSets = 'execution_sets';
 const _tableExecutionSetSegments = 'execution_set_segments';
 const _tableCycleSteps = 'cycle_steps';
 const _tableUserEquipments = 'user_equipments';
+const _tableCatalogGovernanceEvents = 'catalog_governance_events';
 
 const _tableCatalogReferences = 'catalogReferences';
 const _catalogEquipments = 'equipments';
@@ -635,10 +637,10 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
 
     final existingRows = await _fetchTableRows(tableName);
     final byNormalized = <String, Map<String, dynamic>>{};
-    for (final row in existingRows) {
-      final name = row[nameField] as String?;
-      if (name == null || name.trim().isEmpty) continue;
-      byNormalized[_normalizeName(name)] = row;
+    for (final existing in existingRows) {
+      final existingName = existing[nameField] as String?;
+      if (existingName == null || existingName.trim().isEmpty) continue;
+      byNormalized[_normalizeName(existingName)] = existing;
     }
 
     for (final row in rows) {
@@ -650,60 +652,161 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       }
 
       final normalized = _normalizeName(name);
-      final existing = byNormalized[normalized];
-      if (existing != null) {
-        final existingId = _asInt(existing['id'])!;
-        final resolution = request.conflictResolutions['$conflictPrefix:$oldId'] ??
-            BackupConflictResolution.keepExisting;
-        switch (resolution) {
-          case BackupConflictResolution.keepExisting:
+      final match = _findBestCatalogMatch(
+        tableName: tableName,
+        importedRow: row,
+        importedName: name,
+        existingRows: existingRows,
+      );
+      if (match != null) {
+        final existing = match.row;
+        final existingId = _asInt(existing['id']);
+        if (existingId == null) {
+          failedCount++;
+          continue;
+        }
+
+        final importedIsVerified = _asBool(row['is_verified']);
+        final existingIsVerified = _asBool(existing['is_verified']);
+
+        if (importedIsVerified && existingIsVerified) {
+          final sameRemoteId = row['catalog_remote_id']?.toString().isNotEmpty ==
+                  true &&
+              row['catalog_remote_id']?.toString() ==
+                  existing['catalog_remote_id']?.toString();
+          if (!sameRemoteId) {
+            final pendingId = 'governance_${entityType.name}_$oldId';
+            final resolution = request.pendingReviewResolutions[pendingId] ??
+                BackupPendingReviewResolution.skip;
+            if (resolution == BackupPendingReviewResolution.skip) {
+              await _enqueueGovernanceEvent(
+                eventUuid: 'import_conflict_${entityType.name}_$oldId',
+                eventType: 'verified_vs_verified_conflict',
+                entityType: entityType.name,
+                localEntityId: existingId,
+                catalogRemoteId: existing['catalog_remote_id']?.toString(),
+                payload: {
+                  'imported': row,
+                  'existing': existing,
+                  'reason': 'same_name_or_semantic_match_with_different_remote_id',
+                },
+              );
+              failedCount++;
+              continue;
+            }
+          }
+
+          final mergedRow = _mergeRowPreservingPrecedence(
+            existingRow: existing,
+            importedRow: row,
+            keepExistingValues: true,
+          );
+          await _updateRowById(
+            tableName,
+            existingId,
+            mergedRow,
+            excludeKeys: const {'id'},
+          );
+          idMap[oldId] = existingId;
+          updatedCount++;
+          continue;
+        }
+
+        if (importedIsVerified != existingIsVerified) {
+          final pendingId = 'verified_confirm_${entityType.name}_$oldId';
+          final resolution = request.pendingReviewResolutions[pendingId] ??
+              BackupPendingReviewResolution.createCustom;
+          if (resolution == BackupPendingReviewResolution.linkSuggested) {
             idMap[oldId] = existingId;
             skippedCount++;
-          case BackupConflictResolution.overwriteExisting:
-            await _updateRowById(
-              tableName,
-              existingId,
-              row,
-              excludeKeys: const {'id'},
+            final duplicateCustomId = _findDuplicateCustomByName(
+              rows: existingRows,
+              normalizedName: normalized,
+              winnerId: existingId,
             );
-            idMap[oldId] = existingId;
-            updatedCount++;
-          case BackupConflictResolution.keepBoth:
-            final uniqueName = _buildUniqueName(
-              name,
-              byNormalized.map((key, value) => MapEntry(key, _asInt(value['id'])!)),
-            );
-            final nextRow = Map<String, dynamic>.from(row)..[nameField] = uniqueName;
-            final newId = await _insertRow(
-              tableName,
-              nextRow,
-              excludeKeys: const {'id'},
-            );
-            idMap[oldId] = newId;
-            byNormalized[_normalizeName(uniqueName)] = nextRow..['id'] = newId;
-            createdCount++;
-        }
-        continue;
-      }
-
-      final fuzzy = _topFuzzyCandidates(name, existingRows, limit: 1);
-      if (fuzzy.isNotEmpty && fuzzy.first['score'] >= _fuzzyThreshold) {
-        final pendingId = '${pendingPrefix}_$oldId';
-        final pendingResolution = request.pendingReviewResolutions[pendingId] ??
-            BackupPendingReviewResolution.createCustom;
-
-        if (pendingResolution == BackupPendingReviewResolution.linkSuggested) {
-          final suggestedId = _asInt(fuzzy.first['id']);
-          if (suggestedId != null) {
-            idMap[oldId] = suggestedId;
+            if (duplicateCustomId != null) {
+              await _mergeLocalLoserIntoWinner(
+                tableName: tableName,
+                loserId: duplicateCustomId,
+                winnerId: existingId,
+              );
+              updatedCount++;
+            }
+            continue;
+          }
+          if (resolution == BackupPendingReviewResolution.skip) {
             skippedCount++;
             continue;
           }
+          // `createCustom` keeps both items by inserting imported as non-verified.
+          final uniqueName = _buildUniqueName(
+            name,
+            byNormalized.map((key, value) => MapEntry(key, _asInt(value['id'])!)),
+          );
+          final nextRow = Map<String, dynamic>.from(row)
+            ..[nameField] = uniqueName
+            ..['is_verified'] = 0
+            ..remove('catalog_remote_id');
+          final newId = await _insertRow(
+            tableName,
+            nextRow,
+            excludeKeys: const {'id'},
+          );
+          idMap[oldId] = newId;
+          byNormalized[_normalizeName(uniqueName)] = nextRow..['id'] = newId;
+          existingRows.add(nextRow);
+          createdCount++;
+          continue;
         }
 
+        // Both non-verified: auto-merge when confidence is high.
+        if (match.isStrong) {
+          final mergedRow = _mergeRowPreservingPrecedence(
+            existingRow: existing,
+            importedRow: row,
+            keepExistingValues: true,
+          );
+          await _updateRowById(
+            tableName,
+            existingId,
+            mergedRow,
+            excludeKeys: const {'id'},
+          );
+          idMap[oldId] = existingId;
+          updatedCount++;
+          continue;
+        }
+
+        final pendingId = '${pendingPrefix}_$oldId';
+        final pendingResolution = request.pendingReviewResolutions[pendingId] ??
+            BackupPendingReviewResolution.createCustom;
+        if (pendingResolution == BackupPendingReviewResolution.linkSuggested) {
+          idMap[oldId] = existingId;
+          skippedCount++;
+          continue;
+        }
         if (pendingResolution == BackupPendingReviewResolution.skip) {
           skippedCount++;
           continue;
+        }
+      } else {
+        final fuzzy = _topFuzzyCandidates(name, existingRows, limit: 1);
+        if (fuzzy.isNotEmpty && fuzzy.first['score'] >= _fuzzyThreshold) {
+          final pendingId = '${pendingPrefix}_$oldId';
+          final pendingResolution = request.pendingReviewResolutions[pendingId] ??
+              BackupPendingReviewResolution.createCustom;
+          if (pendingResolution == BackupPendingReviewResolution.linkSuggested) {
+            final suggestedId = _asInt(fuzzy.first['id']);
+            if (suggestedId != null) {
+              idMap[oldId] = suggestedId;
+              skippedCount++;
+              continue;
+            }
+          }
+          if (pendingResolution == BackupPendingReviewResolution.skip) {
+            skippedCount++;
+            continue;
+          }
         }
       }
 
@@ -713,6 +816,9 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         excludeKeys: const {'id'},
       );
       idMap[oldId] = newId;
+      final insertedRow = Map<String, dynamic>.from(row)..['id'] = newId;
+      existingRows.add(insertedRow);
+      byNormalized[_normalizeName(name)] = insertedRow;
       createdCount++;
     }
 
@@ -750,22 +856,6 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       }
     }
 
-    conflicts.addAll(
-      await _scanNamedConflicts(
-        importedRows: tables[_tableEquipments] ?? const [],
-        tableName: _tableEquipments,
-        type: BackupConflictType.equipment,
-        idPrefix: 'equipment',
-      ),
-    );
-    conflicts.addAll(
-      await _scanNamedConflicts(
-        importedRows: tables[_tableExercises] ?? const [],
-        tableName: _tableExercises,
-        type: BackupConflictType.exercise,
-        idPrefix: 'exercise',
-      ),
-    );
     conflicts.addAll(
       await _scanNamedConflicts(
         importedRows: tables[_tableWorkouts] ?? const [],
@@ -859,58 +949,157 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       );
     }
 
-    final fuzzyRows = [
-      (
+    pending.addAll(
+      await _scanCatalogImportReviews(
         tableName: _tableEquipments,
-        rows: payload.tables[_tableEquipments] ?? const [],
-        type: BackupConflictType.equipment,
-        prefix: 'fuzzy_equipment',
+        importedRows: payload.tables[_tableEquipments] ?? const [],
+        entityType: BackupConflictType.equipment,
+        fuzzyPrefix: 'fuzzy_equipment',
       ),
-      (
+    );
+    pending.addAll(
+      await _scanCatalogImportReviews(
         tableName: _tableExercises,
-        rows: payload.tables[_tableExercises] ?? const [],
-        type: BackupConflictType.exercise,
-        prefix: 'fuzzy_exercise',
+        importedRows: payload.tables[_tableExercises] ?? const [],
+        entityType: BackupConflictType.exercise,
+        fuzzyPrefix: 'fuzzy_exercise',
       ),
-      (
-        tableName: _tableWorkouts,
-        rows: payload.tables[_tableWorkouts] ?? const [],
-        type: BackupConflictType.workout,
-        prefix: 'fuzzy_workout',
+    );
+    pending.addAll(
+      await _scanWorkoutFuzzyReviews(
+        importedRows: payload.tables[_tableWorkouts] ?? const [],
       ),
-    ];
+    );
 
-    for (final item in fuzzyRows) {
-      final localRows = await _fetchTableRows(item.tableName);
-      final localByNormalized = {
-        for (final row in localRows)
-          if ((row['name'] as String?)?.trim().isNotEmpty ?? false)
-            _normalizeName(row['name'] as String): row,
-      };
-      for (final row in item.rows) {
-        final oldId = _asInt(row['id']);
-        final name = (row['name'] as String?)?.trim();
-        if (oldId == null || name == null || name.isEmpty) continue;
-        if (localByNormalized.containsKey(_normalizeName(name))) continue;
+    return pending;
+  }
 
+  Future<List<BackupPendingReview>> _scanCatalogImportReviews({
+    required String tableName,
+    required List<Map<String, dynamic>> importedRows,
+    required BackupConflictType entityType,
+    required String fuzzyPrefix,
+  }) async {
+    final pending = <BackupPendingReview>[];
+    final localRows = await _fetchTableRows(tableName);
+    for (final row in importedRows) {
+      final oldId = _asInt(row['id']);
+      final name = (row['name'] as String?)?.trim();
+      if (oldId == null || name == null || name.isEmpty) continue;
+
+      final match = _findBestCatalogMatch(
+        tableName: tableName,
+        importedRow: row,
+        importedName: name,
+        existingRows: localRows,
+      );
+      if (match == null) {
         final suggestion = _topFuzzyCandidates(name, localRows, limit: 1);
         if (suggestion.isEmpty) continue;
         final best = suggestion.first['score'] as double;
         if (best < _fuzzyThreshold) continue;
-
         pending.add(
           BackupPendingReview(
-            reviewId: '${item.prefix}_$oldId',
+            reviewId: '${fuzzyPrefix}_$oldId',
             type: BackupPendingReviewType.fuzzyMatchCandidate,
-            entityType: item.type,
+            entityType: entityType,
             importedLabel: name,
             suggestedLabel: suggestion.first['name'] as String?,
             similarityScore: best,
           ),
         );
+        continue;
+      }
+
+      final existing = match.row;
+      final existingName = existing['name']?.toString();
+      final importedIsVerified = _asBool(row['is_verified']);
+      final existingIsVerified = _asBool(existing['is_verified']);
+
+      if (importedIsVerified != existingIsVerified) {
+        pending.add(
+          BackupPendingReview(
+            reviewId: 'verified_confirm_${entityType.name}_$oldId',
+            type: BackupPendingReviewType.verifiedVsCustomConfirmation,
+            entityType: entityType,
+            importedLabel: name,
+            existingLabel: existingName,
+            suggestedLabel: existingName,
+            similarityScore: match.score,
+          ),
+        );
+        continue;
+      }
+
+      if (importedIsVerified && existingIsVerified) {
+        final importedRemoteId = row['catalog_remote_id']?.toString();
+        final existingRemoteId = existing['catalog_remote_id']?.toString();
+        if (importedRemoteId != null &&
+            existingRemoteId != null &&
+            importedRemoteId != existingRemoteId) {
+          pending.add(
+            BackupPendingReview(
+              reviewId: 'governance_${entityType.name}_$oldId',
+              type: BackupPendingReviewType.governanceConflict,
+              entityType: entityType,
+              importedLabel: name,
+              existingLabel: existingName,
+              suggestedLabel: existingName,
+              similarityScore: match.score,
+            ),
+          );
+        }
+        continue;
+      }
+
+      if (!match.isStrong) {
+        pending.add(
+          BackupPendingReview(
+            reviewId: '${fuzzyPrefix}_$oldId',
+            type: BackupPendingReviewType.fuzzyMatchCandidate,
+            entityType: entityType,
+            importedLabel: name,
+            existingLabel: existingName,
+            suggestedLabel: existingName,
+            similarityScore: match.score,
+          ),
+        );
       }
     }
+    return pending;
+  }
 
+  Future<List<BackupPendingReview>> _scanWorkoutFuzzyReviews({
+    required List<Map<String, dynamic>> importedRows,
+  }) async {
+    final pending = <BackupPendingReview>[];
+    final localRows = await _fetchTableRows(_tableWorkouts);
+    final localByNormalized = {
+      for (final row in localRows)
+        if ((row['name'] as String?)?.trim().isNotEmpty ?? false)
+          _normalizeName(row['name'] as String): row,
+    };
+    for (final row in importedRows) {
+      final oldId = _asInt(row['id']);
+      final name = (row['name'] as String?)?.trim();
+      if (oldId == null || name == null || name.isEmpty) continue;
+      if (localByNormalized.containsKey(_normalizeName(name))) continue;
+
+      final suggestion = _topFuzzyCandidates(name, localRows, limit: 1);
+      if (suggestion.isEmpty) continue;
+      final best = suggestion.first['score'] as double;
+      if (best < _fuzzyThreshold) continue;
+      pending.add(
+        BackupPendingReview(
+          reviewId: 'fuzzy_workout_$oldId',
+          type: BackupPendingReviewType.fuzzyMatchCandidate,
+          entityType: BackupConflictType.workout,
+          importedLabel: name,
+          suggestedLabel: suggestion.first['name'] as String?,
+          similarityScore: best,
+        ),
+      );
+    }
     return pending;
   }
 
@@ -1176,6 +1365,205 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     await _db.customUpdate(sql, variables: variables);
   }
 
+  _CatalogMatch? _findBestCatalogMatch({
+    required String tableName,
+    required Map<String, dynamic> importedRow,
+    required String importedName,
+    required List<Map<String, dynamic>> existingRows,
+  }) {
+    final importedNormalized = _normalizeName(importedName);
+    _CatalogMatch? best;
+    for (final existingRow in existingRows) {
+      final existingName = (existingRow['name'] as String?)?.trim();
+      if (existingName == null || existingName.isEmpty) continue;
+      if (!_isSemanticallyCompatible(
+        tableName: tableName,
+        importedRow: importedRow,
+        existingRow: existingRow,
+      )) {
+        continue;
+      }
+      final existingNormalized = _normalizeName(existingName);
+      final containsMatch = importedNormalized.contains(existingNormalized) ||
+          existingNormalized.contains(importedNormalized);
+      final score = containsMatch
+          ? 0.98
+          : _similarity(importedNormalized, existingNormalized);
+      if (score < _fuzzyThreshold) continue;
+
+      final isStrong = score >= _strongMatchThreshold || containsMatch;
+      final candidate = _CatalogMatch(
+        row: existingRow,
+        score: score,
+        isStrong: isStrong,
+      );
+      if (best == null || candidate.score > best.score) {
+        best = candidate;
+      }
+    }
+    return best;
+  }
+
+  bool _isSemanticallyCompatible({
+    required String tableName,
+    required Map<String, dynamic> importedRow,
+    required Map<String, dynamic> existingRow,
+  }) {
+    if (tableName == _tableEquipments) {
+      final importedCategory = importedRow['category']?.toString();
+      final existingCategory = existingRow['category']?.toString();
+      if (importedCategory == null || existingCategory == null) return true;
+      return importedCategory == existingCategory;
+    }
+    if (tableName == _tableExercises) {
+      final keys = ['muscle_group', 'type', 'movement_pattern'];
+      for (final key in keys) {
+        final imported = importedRow[key]?.toString();
+        final existing = existingRow[key]?.toString();
+        if (imported == null || imported.isEmpty) continue;
+        if (existing == null || existing.isEmpty) continue;
+        if (imported != existing) return false;
+      }
+    }
+    return true;
+  }
+
+  Map<String, dynamic> _mergeRowPreservingPrecedence({
+    required Map<String, dynamic> existingRow,
+    required Map<String, dynamic> importedRow,
+    required bool keepExistingValues,
+  }) {
+    final merged = Map<String, dynamic>.from(existingRow);
+    for (final entry in importedRow.entries) {
+      final key = entry.key;
+      if (key == 'id') continue;
+      if (entry.value == null) continue;
+      final current = merged[key];
+      if (current == null || (current is String && current.trim().isEmpty)) {
+        merged[key] = entry.value;
+        continue;
+      }
+      if (!keepExistingValues) {
+        merged[key] = entry.value;
+      }
+    }
+    return merged;
+  }
+
+  int? _findDuplicateCustomByName({
+    required List<Map<String, dynamic>> rows,
+    required String normalizedName,
+    required int winnerId,
+  }) {
+    for (final row in rows) {
+      final id = _asInt(row['id']);
+      final name = (row['name'] as String?)?.trim();
+      if (id == null || id == winnerId || name == null || name.isEmpty) continue;
+      if (_asBool(row['is_verified'])) continue;
+      if (_normalizeName(name) == normalizedName) return id;
+    }
+    return null;
+  }
+
+  Future<void> _mergeLocalLoserIntoWinner({
+    required String tableName,
+    required int loserId,
+    required int winnerId,
+  }) async {
+    if (loserId == winnerId) return;
+    final loserRows = await _db
+        .customSelect('SELECT is_verified FROM $tableName WHERE id = $loserId')
+        .get();
+    if (loserRows.isEmpty) return;
+    final loserIsVerified = _asBool(loserRows.first.data['is_verified']);
+    if (loserIsVerified) {
+      // Safety rule: verified entries are never auto-deleted.
+      return;
+    }
+
+    if (tableName == _tableEquipments) {
+      await _db.customStatement(
+        'DELETE FROM $_tableUserEquipments WHERE equipment_id = $loserId AND EXISTS (SELECT 1 FROM $_tableUserEquipments WHERE equipment_id = $winnerId)',
+      );
+      await _db.customUpdate(
+        'UPDATE $_tableUserEquipments SET equipment_id = ? WHERE equipment_id = ?',
+        variables: [Variable<int>(winnerId), Variable<int>(loserId)],
+      );
+      await _db.customStatement(
+        'DELETE FROM $_tableExerciseEquipments WHERE equipment_id = $loserId AND EXISTS (SELECT 1 FROM $_tableExerciseEquipments ee2 WHERE ee2.exercise_id = $_tableExerciseEquipments.exercise_id AND ee2.equipment_id = $winnerId)',
+      );
+      await _db.customUpdate(
+        'UPDATE $_tableExerciseEquipments SET equipment_id = ? WHERE equipment_id = ?',
+        variables: [Variable<int>(winnerId), Variable<int>(loserId)],
+      );
+    } else if (tableName == _tableExercises) {
+      await _db.customStatement(
+        'DELETE FROM $_tableWorkoutExercises WHERE exercise_id = $loserId AND EXISTS (SELECT 1 FROM $_tableWorkoutExercises we2 WHERE we2.workout_id = $_tableWorkoutExercises.workout_id AND we2.exercise_id = $winnerId)',
+      );
+      await _db.customUpdate(
+        'UPDATE $_tableWorkoutExercises SET exercise_id = ? WHERE exercise_id = ?',
+        variables: [Variable<int>(winnerId), Variable<int>(loserId)],
+      );
+      await _db.customUpdate(
+        'UPDATE $_tableExecutionSets SET exercise_id = ? WHERE exercise_id = ?',
+        variables: [Variable<int>(winnerId), Variable<int>(loserId)],
+      );
+      await _db.customStatement(
+        'DELETE FROM $_tableExerciseEquipments WHERE exercise_id = $loserId AND EXISTS (SELECT 1 FROM $_tableExerciseEquipments ee2 WHERE ee2.exercise_id = $winnerId AND ee2.equipment_id = $_tableExerciseEquipments.equipment_id)',
+      );
+      await _db.customUpdate(
+        'UPDATE $_tableExerciseEquipments SET exercise_id = ? WHERE exercise_id = ?',
+        variables: [Variable<int>(winnerId), Variable<int>(loserId)],
+      );
+      await _db.customStatement(
+        'DELETE FROM $_tableExerciseVariations WHERE exercise_id = $loserId AND EXISTS (SELECT 1 FROM $_tableExerciseVariations ev2 WHERE ev2.exercise_id = $winnerId AND ev2.variation_id = $_tableExerciseVariations.variation_id)',
+      );
+      await _db.customUpdate(
+        'UPDATE $_tableExerciseVariations SET exercise_id = ? WHERE exercise_id = ?',
+        variables: [Variable<int>(winnerId), Variable<int>(loserId)],
+      );
+      await _db.customStatement(
+        'DELETE FROM $_tableExerciseVariations WHERE variation_id = $loserId AND EXISTS (SELECT 1 FROM $_tableExerciseVariations ev2 WHERE ev2.exercise_id = $_tableExerciseVariations.exercise_id AND ev2.variation_id = $winnerId)',
+      );
+      await _db.customUpdate(
+        'UPDATE $_tableExerciseVariations SET variation_id = ? WHERE variation_id = ?',
+        variables: [Variable<int>(winnerId), Variable<int>(loserId)],
+      );
+      await _db.customUpdate(
+        'UPDATE $_tableExerciseTargetMuscles SET exercise_id = ? WHERE exercise_id = ?',
+        variables: [Variable<int>(winnerId), Variable<int>(loserId)],
+      );
+    }
+
+    await _db.customUpdate(
+      'DELETE FROM $tableName WHERE id = ?',
+      variables: [Variable<int>(loserId)],
+    );
+  }
+
+  Future<void> _enqueueGovernanceEvent({
+    required String eventUuid,
+    required String eventType,
+    required String entityType,
+    int? localEntityId,
+    String? catalogRemoteId,
+    required Map<String, dynamic> payload,
+  }) async {
+    await _insertRow(
+      _tableCatalogGovernanceEvents,
+      {
+        'event_uuid': eventUuid,
+        'event_type': eventType,
+        'entity_type': entityType,
+        'local_entity_id': localEntityId,
+        'catalog_remote_id': catalogRemoteId,
+        'payload_json': jsonEncode(payload),
+        'status': 'pending',
+      },
+      orIgnore: true,
+    );
+  }
+
   List<Map<String, dynamic>> _topFuzzyCandidates(
     String inputName,
     List<Map<String, dynamic>> rows, {
@@ -1308,5 +1696,17 @@ class _CanonicalResolutionResult {
     required this.equipmentIdMap,
     required this.exerciseIdMap,
     required this.unresolvedCount,
+  });
+}
+
+class _CatalogMatch {
+  final Map<String, dynamic> row;
+  final double score;
+  final bool isStrong;
+
+  const _CatalogMatch({
+    required this.row,
+    required this.score,
+    required this.isStrong,
   });
 }

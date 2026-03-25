@@ -88,6 +88,27 @@ const _v4Items = [
   _SeedItem('preacherBench', EquipmentCategory.accessories),
 ];
 
+/// Seeds only the equipment added in schema version 11
+/// (seatedLegCurlMachine).
+Future<void> seedEquipmentsV5(AppDatabase db) async {
+  await db.batch((batch) {
+    for (final item in _v5Items) {
+      batch.insert(
+        db.equipments,
+        EquipmentsCompanion.insert(
+          name: item.name,
+          category: item.category,
+          isVerified: const Value(true),
+        ),
+      );
+    }
+  });
+}
+
+const _v5Items = [
+  _SeedItem('seatedLegCurlMachine', EquipmentCategory.machines),
+];
+
 class _SeedItem {
   final String name;
   final EquipmentCategory category;
@@ -112,6 +133,7 @@ const _seedItems = [
   _SeedItem('pecDeckMachine', EquipmentCategory.machines),
   _SeedItem('legExtensionMachine', EquipmentCategory.machines),
   _SeedItem('legCurlMachine', EquipmentCategory.machines),
+  _SeedItem('seatedLegCurlMachine', EquipmentCategory.machines),
   _SeedItem('hackSquatMachine', EquipmentCategory.machines),
   _SeedItem('adductorMachine', EquipmentCategory.machines),
   _SeedItem('abductorMachine', EquipmentCategory.machines),

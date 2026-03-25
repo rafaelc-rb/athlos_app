@@ -163,6 +163,13 @@
       "value": { "type": "String" }
     }
   },
+  "profileDataPendingExisting": "Local: {value}",
+  "@profileDataPendingExisting": {
+    "description": "Existing local item label in pending review",
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
   "profileDataPendingSuggested": "Sugestão: {value} (score {score})",
   "@profileDataPendingSuggested": {
     "description": "Suggested local item with similarity score",
@@ -197,6 +204,20 @@
   "profileDataPendingFuzzy": "Possível duplicação por similaridade ({entity})",
   "@profileDataPendingFuzzy": {
     "description": "Pending type for fuzzy duplicate suggestion",
+    "placeholders": {
+      "entity": { "type": "String" }
+    }
+  },
+  "profileDataPendingVerifiedVsCustom": "Item verificado x custom ({entity}) — confirmar equivalência",
+  "@profileDataPendingVerifiedVsCustom": {
+    "description": "Pending type for verified versus non-verified confirmation",
+    "placeholders": {
+      "entity": { "type": "String" }
+    }
+  },
+  "profileDataPendingGovernance": "Conflito crítico de catálogo ({entity}) — requer governança",
+  "@profileDataPendingGovernance": {
+    "description": "Pending type for verified vs verified governance conflict",
     "placeholders": {
       "entity": { "type": "String" }
     }
@@ -680,6 +701,8 @@
   "@equipmentLegExtensionMachine": { "description": "Equipamento: leg extension machine" },
   "equipmentLegCurlMachine": "Mesa Flexora",
   "@equipmentLegCurlMachine": { "description": "Equipamento: leg curl machine" },
+  "equipmentSeatedLegCurlMachine": "Cadeira Flexora",
+  "@equipmentSeatedLegCurlMachine": { "description": "Equipamento: seated leg curl machine" },
   "equipmentHackSquatMachine": "Hack Squat",
   "@equipmentHackSquatMachine": { "description": "Equipamento: hack squat machine" },
 
@@ -994,6 +1017,8 @@
   "@exerciseHackSquat": { "description": "Exercise name" },
   "exerciseLegCurl": "Mesa Flexora",
   "@exerciseLegCurl": { "description": "Exercise name" },
+  "exerciseSeatedLegCurl": "Cadeira Flexora",
+  "@exerciseSeatedLegCurl": { "description": "Exercise name" },
   "exerciseKneePushUp": "Flexão de Joelhos",
   "@exerciseKneePushUp": { "description": "Exercise name" },
   "exerciseSeatedCalfRaise": "Panturrilha Sentado",

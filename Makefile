@@ -11,8 +11,9 @@ CHIRON_DEBUG_DEFINE = --dart-define=CHIRON_DEBUG_TRACE=$(CHIRON_DEBUG_TRACE)
 
 SIM_DEVICE = iPhone 17 Pro
 SIM_UDID = A60DDE07-87E2-4D7E-A79E-3188235C7783
+IOS_DEVICE_UDID ?=
 
-.PHONY: help run run-ios run-release run-clean-ios sim-boot sim-open build-apk build-apk-debug build-aab build-ipa gen gen-watch gen-l10n analyze clean
+.PHONY: help run run-ios run-release run-ios-prod run-clean-ios sim-boot sim-open build-apk build-apk-debug build-aab build-ipa gen gen-watch gen-l10n analyze clean
 
 help:                 ## Show this help
 	@echo "Athlos — available targets:"
@@ -29,6 +30,14 @@ run-ios:               ## Run on iPhone 17 Pro simulator
 
 run-release:           ## Run release build
 	flutter run --release $(DART_DEFINES)
+
+run-ios-prod:          ## Run release on physical iPhone with prod-like flags (requires IOS_DEVICE_UDID)
+	@if [ -z "$(IOS_DEVICE_UDID)" ]; then \
+		echo "ERROR: set IOS_DEVICE_UDID=<your_device_udid>"; \
+		echo "Example: make run-ios-prod IOS_DEVICE_UDID=00008030-0012682C2639802E"; \
+		exit 1; \
+	fi
+	flutter run --release -d $(IOS_DEVICE_UDID) $(DART_DEFINES) $(CHIRON_DEBUG_DEFINE) --dart-define=ENV=prod
 
 run-clean-ios:         ## Run debug without dev seed data (fresh user experience)
 	@$(MAKE) sim-boot

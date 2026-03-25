@@ -25,9 +25,7 @@ void main() async {
   }
 
   final container = ProviderContainer(
-    overrides: [
-      sharedPreferencesProvider.overrideWithValue(prefs),
-    ],
+    overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
   );
 
   if (isSupabaseConfigured) {
@@ -35,10 +33,7 @@ void main() async {
   }
 
   runApp(
-    UncontrolledProviderScope(
-      container: container,
-      child: const AthlosApp(),
-    ),
+    UncontrolledProviderScope(container: container, child: const AthlosApp()),
   );
 }
 
@@ -86,14 +81,10 @@ class _AthlosAppState extends ConsumerState<AthlosApp> {
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: router,
       builder: (context, child) {
-        return Listener(
+        return GestureDetector(
           behavior: HitTestBehavior.translucent,
-          onPointerDown: (_) {
-            final currentFocus = FocusScope.of(context);
-            if (!currentFocus.hasPrimaryFocus &&
-                currentFocus.focusedChild != null) {
-              currentFocus.unfocus();
-            }
+          onTap: () {
+            FocusManager.instance.primaryFocus?.unfocus();
           },
           child: child,
         );

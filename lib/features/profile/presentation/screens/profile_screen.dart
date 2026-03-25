@@ -26,6 +26,7 @@ import '../../domain/enums/experience_level.dart';
 import '../../domain/enums/gender.dart';
 import '../../domain/enums/training_goal.dart';
 import '../../domain/enums/training_style.dart';
+import '../helpers/profile_l10n.dart';
 import '../providers/profile_notifier.dart';
 import '../widgets/aesthetic_selector.dart';
 import '../widgets/experience_selector.dart';
@@ -126,27 +127,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         body: profileAsync.hasError
             ? Center(child: Text(l10n.genericError))
             : _isEditing
-                ? _buildEditView(resolved, l10n)
-                : TabBarView(
-                    children: [
-                      Skeletonizer(
-                        enabled: profileAsync.isLoading,
-                        child: _buildOverviewCategory(resolved, l10n),
-                      ),
-                      Skeletonizer(
-                        enabled: profileAsync.isLoading,
-                        child: _buildTrainingPreferencesCategory(resolved, l10n),
-                      ),
-                      EquipmentManagementBody(
-                        onEquipmentTap: (equipment) {
-                          context.push(
-                            RoutePaths.trainingEquipmentDetail(equipment.id),
-                          );
-                        },
-                      ),
-                      _buildDataCategory(l10n),
-                    ],
+            ? _buildEditView(resolved, l10n)
+            : TabBarView(
+                children: [
+                  Skeletonizer(
+                    enabled: profileAsync.isLoading,
+                    child: _buildOverviewCategory(resolved, l10n),
                   ),
+                  Skeletonizer(
+                    enabled: profileAsync.isLoading,
+                    child: _buildTrainingPreferencesCategory(resolved, l10n),
+                  ),
+                  EquipmentManagementBody(
+                    onEquipmentTap: (equipment) {
+                      context.push(
+                        RoutePaths.trainingEquipmentDetail(equipment.id),
+                      );
+                    },
+                  ),
+                  _buildDataCategory(l10n),
+                ],
+              ),
       ),
     );
   }
@@ -261,7 +262,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildTrainingPreferencesCategory(
-      UserProfile profile, AppLocalizations l10n) {
+    UserProfile profile,
+    AppLocalizations l10n,
+  ) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AthlosSpacing.md),
       child: Column(
@@ -317,7 +320,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     label: l10n.profileAvailableWorkoutMinutes,
                     value: profile.availableWorkoutMinutes != null
                         ? l10n.profileAvailableWorkoutMinutesValue(
-                            profile.availableWorkoutMinutes!)
+                            profile.availableWorkoutMinutes!,
+                          )
                         : l10n.profileAvailableWorkoutMinutesNotSet,
                   ),
                   _ProfileTile(
@@ -362,8 +366,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   const Gap(AthlosSpacing.md),
                   FilledButton.icon(
-                    onPressed:
-                        _isExporting || _isImporting ? null : () => _exportData(l10n),
+                    onPressed: _isExporting || _isImporting
+                        ? null
+                        : () => _exportData(l10n),
                     icon: _isExporting
                         ? SizedBox(
                             width: 16,
@@ -378,8 +383,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   const Gap(AthlosSpacing.sm),
                   OutlinedButton.icon(
-                    onPressed:
-                        _isExporting || _isImporting ? null : () => _importData(l10n),
+                    onPressed: _isExporting || _isImporting
+                        ? null
+                        : () => _importData(l10n),
                     icon: _isImporting
                         ? SizedBox(
                             width: 16,
@@ -420,9 +426,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       );
     } on Exception catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.profileDataExportError)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.profileDataExportError)));
     } finally {
       if (mounted) setState(() => _isExporting = false);
     }
@@ -489,7 +495,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       }
 
       if (!mounted) return;
-      final confirmed = await showDialog<bool>(
+      final confirmed =
+          await showDialog<bool>(
             context: context,
             builder: (context) => AlertDialog(
               title: Text(l10n.profileDataImportConfirmTitle),
@@ -617,7 +624,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(l10n.profileDataConflictType(_conflictTypeLabel(conflict, l10n))),
+              Text(
+                l10n.profileDataConflictType(
+                  _conflictTypeLabel(conflict, l10n),
+                ),
+              ),
               const Gap(AthlosSpacing.sm),
               Text(l10n.profileDataConflictExisting(conflict.existingLabel)),
               Text(l10n.profileDataConflictImported(conflict.importedLabel)),
@@ -659,9 +670,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 l10n.profileDataPendingType(_pendingTypeLabel(review, l10n)),
               ),
               const Gap(AthlosSpacing.sm),
-              Text(
-                l10n.profileDataPendingImported(review.importedLabel),
-              ),
+              Text(l10n.profileDataPendingImported(review.importedLabel)),
               if (review.existingLabel != null)
                 Text(l10n.profileDataPendingExisting(review.existingLabel!)),
               Text(suggestionText),
@@ -671,22 +680,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             if (review.type != BackupPendingReviewType.governanceConflict &&
                 review.suggestedLabel != null)
               TextButton(
-                onPressed: () => Navigator.of(context).pop(
-                  BackupPendingReviewResolution.linkSuggested,
-                ),
+                onPressed: () => Navigator.of(
+                  context,
+                ).pop(BackupPendingReviewResolution.linkSuggested),
                 child: Text(l10n.profileDataPendingLinkSuggested),
               ),
             if (review.type != BackupPendingReviewType.governanceConflict)
               TextButton(
-                onPressed: () => Navigator.of(context).pop(
-                  BackupPendingReviewResolution.createCustom,
-                ),
+                onPressed: () => Navigator.of(
+                  context,
+                ).pop(BackupPendingReviewResolution.createCustom),
                 child: Text(l10n.profileDataPendingCreateCustom),
               ),
             TextButton(
-              onPressed: () => Navigator.of(context).pop(
-                BackupPendingReviewResolution.skip,
-              ),
+              onPressed: () =>
+                  Navigator.of(context).pop(BackupPendingReviewResolution.skip),
               child: Text(l10n.profileDataPendingSkip),
             ),
           ],
@@ -695,10 +703,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  String _pendingTypeLabel(
-    BackupPendingReview review,
-    AppLocalizations l10n,
-  ) {
+  String _pendingTypeLabel(BackupPendingReview review, AppLocalizations l10n) {
     final entityLabel = _conflictTypeFromEnum(review.entityType, l10n);
 
     return switch (review.type) {
@@ -720,10 +725,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return _conflictTypeFromEnum(conflict.type, l10n);
   }
 
-  String _conflictTypeFromEnum(
-    BackupConflictType type,
-    AppLocalizations l10n,
-  ) {
+  String _conflictTypeFromEnum(BackupConflictType type, AppLocalizations l10n) {
     return switch (type) {
       BackupConflictType.profile => l10n.profile,
       BackupConflictType.equipment => l10n.profileEquipmentTab,
@@ -737,7 +739,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     AppLocalizations l10n,
   ) {
     return switch (resolution) {
-      BackupConflictResolution.keepExisting => l10n.profileDataConflictKeepExisting,
+      BackupConflictResolution.keepExisting =>
+        l10n.profileDataConflictKeepExisting,
       BackupConflictResolution.overwriteExisting =>
         l10n.profileDataConflictOverwrite,
       BackupConflictResolution.keepBoth => l10n.profileDataConflictKeepBoth,
@@ -758,9 +761,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const Gap(AthlosSpacing.sm),
             TextFormField(
               controller: _nameController,
-              decoration: InputDecoration(
-                labelText: l10n.nameLabel,
-              ),
+              decoration: InputDecoration(labelText: l10n.nameLabel),
               textCapitalization: TextCapitalization.words,
             ),
             const Gap(AthlosSpacing.md),
@@ -770,8 +771,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 labelText: l10n.weightLabel,
                 suffixText: l10n.weightUnit,
               ),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
               ],
@@ -788,8 +790,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 labelText: l10n.heightLabel,
                 suffixText: l10n.heightUnit,
               ),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
               ],
@@ -815,15 +818,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               },
             ),
             const Gap(AthlosSpacing.md),
-            Text(l10n.profileGender,
-                style: textTheme.titleMedium),
+            Text(l10n.profileGender, style: textTheme.titleMedium),
             Wrap(
               spacing: AthlosSpacing.sm,
               children: [
                 ChoiceChip(
                   label: Text(l10n.genderMale),
                   selected: _selectedGender == Gender.male,
-                  onSelected: (_) => setState(() => _selectedGender = Gender.male),
+                  onSelected: (_) =>
+                      setState(() => _selectedGender = Gender.male),
                 ),
                 ChoiceChip(
                   label: Text(l10n.genderFemale),
@@ -854,8 +857,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const Gap(AthlosSpacing.md),
             StyleSelector(
               selected: _selectedStyle,
-              onSelected: (style) =>
-                  setState(() => _selectedStyle = style),
+              onSelected: (style) => setState(() => _selectedStyle = style),
             ),
             const Gap(AthlosSpacing.md),
             ExperienceSelector(
@@ -864,16 +866,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   setState(() => _selectedExperience = level),
             ),
             const Gap(AthlosSpacing.lg),
-            Text(l10n.trainingFrequencyLabel,
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              l10n.trainingFrequencyLabel,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             Slider(
               value: (_trainingFrequency ?? 3).toDouble(),
               min: 1,
               max: 7,
               divisions: 6,
               label: '${_trainingFrequency ?? 3}x',
-              onChanged: (v) =>
-                  setState(() => _trainingFrequency = v.round()),
+              onChanged: (v) => setState(() => _trainingFrequency = v.round()),
             ),
             Center(
               child: Text('${_trainingFrequency ?? 3} ${l10n.daysPerWeek}'),
@@ -888,16 +891,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
               value: _availableWorkoutMinutes != null,
-              onChanged: (v) => setState(() =>
-                  _availableWorkoutMinutes = v ? 60 : null),
+              onChanged: (v) =>
+                  setState(() => _availableWorkoutMinutes = v ? 60 : null),
             ),
             if (_availableWorkoutMinutes != null) ...[
               Row(
                 children: [
                   Expanded(
                     child: Slider(
-                      value: (_availableWorkoutMinutes!.toDouble())
-                          .clamp(30, 120),
+                      value: (_availableWorkoutMinutes!.toDouble()).clamp(
+                        30,
+                        120,
+                      ),
                       min: 30,
                       max: 120,
                       divisions: 6,
@@ -1003,48 +1008,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     } on Exception catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.genericError),
-          ),
+          SnackBar(content: Text(AppLocalizations.of(context)!.genericError)),
         );
       }
     }
   }
 
-  String _goalLabel(TrainingGoal goal, AppLocalizations l10n) => switch (goal) {
-        TrainingGoal.hypertrophy => l10n.goalHypertrophy,
-        TrainingGoal.weightLoss => l10n.goalWeightLoss,
-        TrainingGoal.endurance => l10n.goalEndurance,
-        TrainingGoal.strength => l10n.goalStrength,
-        TrainingGoal.generalFitness => l10n.goalGeneralFitness,
-      };
+  String _goalLabel(TrainingGoal goal, AppLocalizations l10n) =>
+      localizedTrainingGoalName(goal, l10n);
 
   String _aestheticLabel(BodyAesthetic aesthetic, AppLocalizations l10n) =>
-      switch (aesthetic) {
-        BodyAesthetic.athletic => l10n.aestheticAthletic,
-        BodyAesthetic.bulky => l10n.aestheticBulky,
-        BodyAesthetic.robust => l10n.aestheticRobust,
-      };
+      localizedBodyAestheticName(aesthetic, l10n);
 
   String _styleLabel(TrainingStyle style, AppLocalizations l10n) =>
-      switch (style) {
-        TrainingStyle.traditional => l10n.styleTraditional,
-        TrainingStyle.calisthenics => l10n.styleCalisthenics,
-        TrainingStyle.functional => l10n.styleFunctional,
-        TrainingStyle.hybrid => l10n.styleHybrid,
-      };
+      localizedTrainingStyleName(style, l10n);
 
   String _experienceLabel(ExperienceLevel level, AppLocalizations l10n) =>
-      switch (level) {
-        ExperienceLevel.beginner => l10n.experienceBeginner,
-        ExperienceLevel.intermediate => l10n.experienceIntermediate,
-        ExperienceLevel.advanced => l10n.experienceAdvanced,
-      };
+      localizedExperienceLevelName(level, l10n);
 
-  String _genderLabel(Gender gender, AppLocalizations l10n) => switch (gender) {
-        Gender.male => l10n.genderMale,
-        Gender.female => l10n.genderFemale,
-      };
+  String _genderLabel(Gender gender, AppLocalizations l10n) =>
+      localizedGenderName(gender, l10n);
 }
 
 /// Section title in profile (read and edit views).
@@ -1101,10 +1084,7 @@ class _ProfileTile extends StatelessWidget {
                     color: colorScheme.onSurfaceVariant,
                   ),
                 ),
-                Text(
-                  value,
-                  style: textTheme.bodyLarge,
-                ),
+                Text(value, style: textTheme.bodyLarge),
               ],
             ),
           ),

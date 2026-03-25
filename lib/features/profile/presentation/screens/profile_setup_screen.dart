@@ -14,6 +14,7 @@ import '../../domain/enums/experience_level.dart';
 import '../../domain/enums/gender.dart';
 import '../../domain/enums/training_goal.dart';
 import '../../domain/enums/training_style.dart';
+import '../helpers/profile_l10n.dart';
 import '../providers/profile_notifier.dart';
 
 /// Chat-style profile setup screen shown on first launch.
@@ -24,8 +25,7 @@ class ProfileSetupScreen extends ConsumerStatefulWidget {
   const ProfileSetupScreen({super.key});
 
   @override
-  ConsumerState<ProfileSetupScreen> createState() =>
-      _ProfileSetupScreenState();
+  ConsumerState<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
 }
 
 enum _StepType {
@@ -48,17 +48,9 @@ class _ChatEntry {
   final bool isUser;
   final _StepType? inputStep;
 
-  const _ChatEntry({
-    required this.text,
-    required this.isUser,
-    this.inputStep,
-  });
+  const _ChatEntry({required this.text, required this.isUser, this.inputStep});
 
-  _ChatEntry copyWith({
-    String? text,
-    bool? isUser,
-    _StepType? inputStep,
-  }) {
+  _ChatEntry copyWith({String? text, bool? isUser, _StepType? inputStep}) {
     return _ChatEntry(
       text: text ?? this.text,
       isUser: isUser ?? this.isUser,
@@ -125,11 +117,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   void _addUserMessage(String text, {_StepType? answeredStep}) {
     setState(() {
       _entries.add(
-        _ChatEntry(
-          text: text,
-          isUser: true,
-          inputStep: answeredStep,
-        ),
+        _ChatEntry(text: text, isUser: true, inputStep: answeredStep),
       );
       _waitingInput = false;
     });
@@ -142,7 +130,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         // List is reversed: position 0 = newest messages (bottom of chat)
         _scrollController.animateTo(
           0,
-                  duration: AthlosDurations.normal,
+          duration: AthlosDurations.normal,
           curve: Curves.easeOut,
         );
       }
@@ -260,8 +248,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     final userText = value == null
         ? l10n.setupChatPreferNotToSay
         : value == Gender.male
-            ? l10n.genderMale
-            : l10n.genderFemale;
+        ? l10n.genderMale
+        : l10n.genderFemale;
     if (_tryApplyEditedAnswer(
       step: _StepType.gender,
       text: userText,
@@ -315,10 +303,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
     Future.delayed(const Duration(milliseconds: 400), () {
       if (!mounted) return;
-      _addChironMessage(
-        l10n.setupChatAskStyle,
-        inputStep: _StepType.style,
-      );
+      _addChironMessage(l10n.setupChatAskStyle, inputStep: _StepType.style);
     });
   }
 
@@ -450,7 +435,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     setState(() => _isSaving = true);
 
     try {
-      await ref.read(profileProvider.notifier).create(
+      await ref
+          .read(profileProvider.notifier)
+          .create(
             name: _name,
             weight: _weight,
             height: _height,
@@ -472,9 +459,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     } on Exception catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.genericError),
-          ),
+          SnackBar(content: Text(AppLocalizations.of(context)!.genericError)),
         );
       }
     } finally {
@@ -485,7 +470,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   Future<void> _onSkip() async {
     setState(() => _isSaving = true);
     try {
-      await ref.read(profileProvider.notifier).create(
+      await ref
+          .read(profileProvider.notifier)
+          .create(
             name: _name,
             weight: _weight,
             height: _height,
@@ -505,9 +492,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     } on Exception catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.genericError),
-          ),
+          SnackBar(content: Text(AppLocalizations.of(context)!.genericError)),
         );
       }
     } finally {
@@ -551,20 +536,19 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                     key: ValueKey(entryIndex),
                     entry: entry,
                     isEditing: _editingIndex == entryIndex,
-                    onTap: entry.isUser &&
+                    onTap:
+                        entry.isUser &&
                             entry.inputStep != null &&
                             !_isSaving &&
-                            (_editingIndex == null || _editingIndex == entryIndex)
+                            (_editingIndex == null ||
+                                _editingIndex == entryIndex)
                         ? () => _startEditing(entryIndex)
                         : null,
                   );
                 },
               ),
             ),
-            _SetupInputBar(
-              step: _activeInputStep,
-              state: this,
-            ),
+            _SetupInputBar(step: _activeInputStep, state: this),
           ],
         ),
       ),
@@ -573,65 +557,29 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   // --- Label helpers ---
 
-  String _goalLabel(TrainingGoal goal, AppLocalizations l10n) => switch (goal) {
-        TrainingGoal.hypertrophy => l10n.goalHypertrophy,
-        TrainingGoal.weightLoss => l10n.goalWeightLoss,
-        TrainingGoal.endurance => l10n.goalEndurance,
-        TrainingGoal.strength => l10n.goalStrength,
-        TrainingGoal.generalFitness => l10n.goalGeneralFitness,
-      };
+  String _goalLabel(TrainingGoal goal, AppLocalizations l10n) =>
+      localizedTrainingGoalName(goal, l10n);
 
   String _aestheticLabel(BodyAesthetic a, AppLocalizations l10n) =>
-      switch (a) {
-        BodyAesthetic.athletic => l10n.aestheticAthletic,
-        BodyAesthetic.bulky => l10n.aestheticBulky,
-        BodyAesthetic.robust => l10n.aestheticRobust,
-      };
+      localizedBodyAestheticName(a, l10n);
 
-  String _styleLabel(TrainingStyle s, AppLocalizations l10n) => switch (s) {
-        TrainingStyle.traditional => l10n.styleTraditional,
-        TrainingStyle.calisthenics => l10n.styleCalisthenics,
-        TrainingStyle.functional => l10n.styleFunctional,
-        TrainingStyle.hybrid => l10n.styleHybrid,
-      };
+  String _styleLabel(TrainingStyle s, AppLocalizations l10n) =>
+      localizedTrainingStyleName(s, l10n);
 
   String _experienceLabel(ExperienceLevel e, AppLocalizations l10n) =>
-      switch (e) {
-        ExperienceLevel.beginner => l10n.experienceBeginner,
-        ExperienceLevel.intermediate => l10n.experienceIntermediate,
-        ExperienceLevel.advanced => l10n.experienceAdvanced,
-      };
+      localizedExperienceLevelName(e, l10n);
 
   String _goalDescription(TrainingGoal goal, AppLocalizations l10n) =>
-      switch (goal) {
-        TrainingGoal.hypertrophy => l10n.goalHypertrophyDesc,
-        TrainingGoal.weightLoss => l10n.goalWeightLossDesc,
-        TrainingGoal.endurance => l10n.goalEnduranceDesc,
-        TrainingGoal.strength => l10n.goalStrengthDesc,
-        TrainingGoal.generalFitness => l10n.goalGeneralFitnessDesc,
-      };
+      localizedTrainingGoalDescription(goal, l10n);
 
   String _aestheticDescription(BodyAesthetic a, AppLocalizations l10n) =>
-      switch (a) {
-        BodyAesthetic.athletic => l10n.aestheticAthleticDesc,
-        BodyAesthetic.bulky => l10n.aestheticBulkyDesc,
-        BodyAesthetic.robust => l10n.aestheticRobustDesc,
-      };
+      localizedBodyAestheticDescription(a, l10n);
 
   String _styleDescription(TrainingStyle s, AppLocalizations l10n) =>
-      switch (s) {
-        TrainingStyle.traditional => l10n.styleTraditionalDesc,
-        TrainingStyle.calisthenics => l10n.styleCalisthenicsDesc,
-        TrainingStyle.functional => l10n.styleFunctionalDesc,
-        TrainingStyle.hybrid => l10n.styleHybridDesc,
-      };
+      localizedTrainingStyleDescription(s, l10n);
 
   String _experienceDescription(ExperienceLevel e, AppLocalizations l10n) =>
-      switch (e) {
-        ExperienceLevel.beginner => l10n.experienceBeginnerDesc,
-        ExperienceLevel.intermediate => l10n.experienceIntermediateDesc,
-        ExperienceLevel.advanced => l10n.experienceAdvancedDesc,
-      };
+      localizedExperienceLevelDescription(e, l10n);
 }
 
 /// Renders a single chat bubble (WhatsApp/Telegram style).
@@ -684,8 +632,9 @@ class _ChatBubbleItem extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: AthlosSpacing.sm),
       child: Row(
-        mainAxisAlignment:
-            entry.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: entry.isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!entry.isUser) _buildAvatar(context),
@@ -713,11 +662,7 @@ class _ChatBubbleItem extends StatelessWidget {
     return CircleAvatar(
       radius: 16,
       backgroundColor: colorScheme.primaryContainer,
-      child: Icon(
-        Icons.auto_awesome,
-        size: 18,
-        color: colorScheme.primary,
-      ),
+      child: Icon(Icons.auto_awesome, size: 18, color: colorScheme.primary),
     );
   }
 }
@@ -727,10 +672,7 @@ class _SetupInputBar extends StatelessWidget {
   final _StepType? step;
   final _ProfileSetupScreenState state;
 
-  const _SetupInputBar({
-    required this.step,
-    required this.state,
-  });
+  const _SetupInputBar({required this.step, required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -778,19 +720,19 @@ class _SetupInputBar extends StatelessWidget {
       _StepType.frequency => _FrequencyInput(state: state),
       _StepType.gym => _GymInput(state: state),
       _StepType.injuries => _TextInput(
-          hint: AppLocalizations.of(context)!.injuriesHint,
-          onSubmitted: state._onInjuriesSubmitted,
-          allowSkip: true,
-          skipLabel: AppLocalizations.of(context)!.setupChatNone,
-          initialValue: state._injuries ?? '',
-        ),
+        hint: AppLocalizations.of(context)!.injuriesHint,
+        onSubmitted: state._onInjuriesSubmitted,
+        allowSkip: true,
+        skipLabel: AppLocalizations.of(context)!.setupChatNone,
+        initialValue: state._injuries ?? '',
+      ),
       _StepType.bio => _TextInput(
-          hint: AppLocalizations.of(context)!.bioHint,
-          onSubmitted: state._onBioSubmitted,
-          allowSkip: true,
-          skipLabel: AppLocalizations.of(context)!.skip,
-          initialValue: state._bio ?? '',
-        ),
+        hint: AppLocalizations.of(context)!.bioHint,
+        onSubmitted: state._onBioSubmitted,
+        allowSkip: true,
+        skipLabel: AppLocalizations.of(context)!.skip,
+        initialValue: state._bio ?? '',
+      ),
       _StepType.done => _DoneInput(state: state),
     };
   }
@@ -817,9 +759,7 @@ class _NameInput extends StatelessWidget {
                 horizontal: AthlosSpacing.smd,
                 vertical: AthlosSpacing.smd,
               ),
-              border: OutlineInputBorder(
-                borderRadius: AthlosRadius.mdAll,
-              ),
+              border: OutlineInputBorder(borderRadius: AthlosRadius.mdAll),
             ),
             textCapitalization: TextCapitalization.words,
             onSubmitted: (v) {
@@ -888,12 +828,11 @@ class _BodyInputState extends State<_BodyInput> {
                     horizontal: AthlosSpacing.smd,
                     vertical: AthlosSpacing.smd,
                   ),
-                  border: OutlineInputBorder(
-                    borderRadius: AthlosRadius.mdAll,
-                  ),
+                  border: OutlineInputBorder(borderRadius: AthlosRadius.mdAll),
                 ),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
                 ],
@@ -911,12 +850,11 @@ class _BodyInputState extends State<_BodyInput> {
                     horizontal: AthlosSpacing.smd,
                     vertical: AthlosSpacing.smd,
                   ),
-                  border: OutlineInputBorder(
-                    borderRadius: AthlosRadius.mdAll,
-                  ),
+                  border: OutlineInputBorder(borderRadius: AthlosRadius.mdAll),
                 ),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
                 ],
@@ -934,9 +872,7 @@ class _BodyInputState extends State<_BodyInput> {
                     horizontal: AthlosSpacing.smd,
                     vertical: AthlosSpacing.smd,
                   ),
-                  border: OutlineInputBorder(
-                    borderRadius: AthlosRadius.mdAll,
-                  ),
+                  border: OutlineInputBorder(borderRadius: AthlosRadius.mdAll),
                 ),
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -1177,10 +1113,7 @@ class _FrequencyInputState extends State<_FrequencyInput> {
           label: '${_value}x',
           onChanged: (v) => setState(() => _value = v.round()),
         ),
-        Text(
-          '$_value ${l10n.daysPerWeek}',
-          style: textTheme.titleSmall,
-        ),
+        Text('$_value ${l10n.daysPerWeek}', style: textTheme.titleSmall),
         const Gap(AthlosSpacing.sm),
         SizedBox(
           width: double.infinity,

@@ -7,6 +7,7 @@ import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/enums/body_aesthetic.dart';
+import '../helpers/profile_l10n.dart';
 
 /// Selector for [BodyAesthetic].
 ///
@@ -107,10 +108,14 @@ class AestheticSelector extends StatelessWidget {
                         curve: Curves.easeInOut,
                         child: shouldShowHelp
                             ? Padding(
-                                padding: const EdgeInsets.only(top: AthlosSpacing.smd),
+                                padding: const EdgeInsets.only(
+                                  top: AthlosSpacing.smd,
+                                ),
                                 child: Container(
                                   width: double.infinity,
-                                  padding: const EdgeInsets.all(AthlosSpacing.smd),
+                                  padding: const EdgeInsets.all(
+                                    AthlosSpacing.smd,
+                                  ),
                                   decoration: BoxDecoration(
                                     borderRadius: AthlosRadius.smAll,
                                     color: colorScheme.surfaceContainerHighest
@@ -129,10 +134,8 @@ class AestheticSelector extends StatelessWidget {
                                       Expanded(
                                         child: Text(
                                           _impactFor(aesthetic, l10n),
-                                          style:
-                                              textTheme.bodySmall?.copyWith(
-                                            color:
-                                                colorScheme.onSurfaceVariant,
+                                          style: textTheme.bodySmall?.copyWith(
+                                            color: colorScheme.onSurfaceVariant,
                                             height: 1.4,
                                           ),
                                         ),
@@ -155,29 +158,17 @@ class AestheticSelector extends StatelessWidget {
   }
 
   IconData _iconFor(BodyAesthetic aesthetic) => switch (aesthetic) {
-        BodyAesthetic.athletic => Icons.sports_gymnastics,
-        BodyAesthetic.bulky => Icons.fitness_center,
-        BodyAesthetic.robust => Icons.bolt,
-      };
+    BodyAesthetic.athletic => Icons.sports_gymnastics,
+    BodyAesthetic.bulky => Icons.fitness_center,
+    BodyAesthetic.robust => Icons.bolt,
+  };
 
   String _titleFor(BodyAesthetic aesthetic, AppLocalizations l10n) =>
-      switch (aesthetic) {
-        BodyAesthetic.athletic => l10n.aestheticAthletic,
-        BodyAesthetic.bulky => l10n.aestheticBulky,
-        BodyAesthetic.robust => l10n.aestheticRobust,
-      };
+      localizedBodyAestheticName(aesthetic, l10n);
 
   String _descriptionFor(BodyAesthetic aesthetic, AppLocalizations l10n) =>
-      switch (aesthetic) {
-        BodyAesthetic.athletic => l10n.aestheticAthleticDesc,
-        BodyAesthetic.bulky => l10n.aestheticBulkyDesc,
-        BodyAesthetic.robust => l10n.aestheticRobustDesc,
-      };
+      localizedBodyAestheticDescription(aesthetic, l10n);
 
   String _impactFor(BodyAesthetic aesthetic, AppLocalizations l10n) =>
-      switch (aesthetic) {
-        BodyAesthetic.athletic => l10n.aestheticAthleticImpact,
-        BodyAesthetic.bulky => l10n.aestheticBulkyImpact,
-        BodyAesthetic.robust => l10n.aestheticRobustImpact,
-      };
+      localizedBodyAestheticImpact(aesthetic, l10n);
 }

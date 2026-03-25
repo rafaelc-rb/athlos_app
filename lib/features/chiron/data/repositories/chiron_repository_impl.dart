@@ -16,6 +16,7 @@ import '../../../training/domain/repositories/exercise_repository.dart';
 import '../../../training/domain/repositories/workout_repository.dart';
 import '../../domain/entities/chiron_message.dart';
 import '../../domain/repositories/chiron_repository.dart';
+import '../helpers/chiron_equipment_names.dart';
 import '../helpers/prompt_builder.dart';
 import '../seeds/chiron_context_seed.dart';
 import '../services/gemini_models_loader.dart';
@@ -44,14 +45,14 @@ class ChironRepositoryImpl implements ChironRepository {
     required CycleRepository cycleRepo,
     required PromptBuilder promptBuilder,
     GeminiModelsLoader? modelsLoader,
-  })  : _profileRepo = profileRepo,
-        _equipmentRepo = equipmentRepo,
-        _workoutRepo = workoutRepo,
-        _exerciseRepo = exerciseRepo,
-        _cycleRepo = cycleRepo,
-        _promptBuilder = promptBuilder,
-        _modelsLoader = modelsLoader ?? GeminiModelsLoader(apiKey: apiKey),
-        _restClient = GeminiRestClient(apiKey: apiKey);
+  }) : _profileRepo = profileRepo,
+       _equipmentRepo = equipmentRepo,
+       _workoutRepo = workoutRepo,
+       _exerciseRepo = exerciseRepo,
+       _cycleRepo = cycleRepo,
+       _promptBuilder = promptBuilder,
+       _modelsLoader = modelsLoader ?? GeminiModelsLoader(apiKey: apiKey),
+       _restClient = GeminiRestClient(apiKey: apiKey);
 
   final UserProfileRepository _profileRepo;
   final GeminiRestClient _restClient;
@@ -63,15 +64,19 @@ class ChironRepositoryImpl implements ChironRepository {
   final GeminiModelsLoader _modelsLoader;
 
   static const _maxMessagesPerMinute = 10;
+
   /// Max conversation turns (user+assistant pairs) sent to the API to save tokens.
   static const int _maxHistoryTurns = 12;
   static final Random _random = Random();
   final _timestamps = <DateTime>[];
 
-  static const _systemPrompt = r'''You are Quiron (Chiron), the Athlos AI training assistant. Persona: mentor centaur, concise and motivational.
+  static const _systemPrompt =
+      r'''You are Quiron (Chiron), the Athlos AI training assistant. Persona: mentor centaur, concise and motivational.
 
 Rules:
-- Always answer in Brazilian Portuguese. Focus on training, exercises, basic nutrition, and recovery. No medical advice; recommend a professional when appropriate. Use Markdown when useful.
+- Always answer in Brazilian Portuguese. Focus on training, exercises, basic nutrition, and recovery. No medical advice; recommend a professional when appropriate.
+- Be objective. Avoid long explanations. Prefer short WhatsApp-like blocks (1-2 short sentences per block), separated by blank lines when needed.
+- Never expose internal database keys/identifiers (e.g. equipment keys like "barbell") to the user-facing text.
 
 Missing profile fields: if gender, injuries, experienceLevel, or trainingFrequency are missing in context, ask naturally and save with the available tools. Avoid interrogation style. Bio should be enriched over time with updateBio (append only, never erase).
 
@@ -115,8 +120,9 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
         ? history.sublist(history.length - maxHistoryMessages)
         : history;
     final shouldStartExtended = _needsExtendedContext(userMessage);
-    final initialUserContext =
-        await _promptBuilder.build(extended: shouldStartExtended);
+    final initialUserContext = await _promptBuilder.build(
+      extended: shouldStartExtended,
+    );
 
     final modelIds =
         await _modelsLoader.getModelIdsForChat() ?? _geminiModelIdsFallback;
@@ -139,8 +145,8 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
           return;
         } catch (e) {
           lastError = e;
-          final shouldRetryOnSameModel = _isRetryableError(e) &&
-              attempt < _geminiRetryBackoff.length;
+          final shouldRetryOnSameModel =
+              _isRetryableError(e) && attempt < _geminiRetryBackoff.length;
           if (shouldRetryOnSameModel) {
             await Future<void>.delayed(
               _withJitter(_geminiRetryBackoff[attempt]),
@@ -218,14 +224,14 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
       contents.add({
         'role': role,
         'parts': [
-          {'text': msg.content}
+          {'text': msg.content},
         ],
       });
     }
     contents.add({
       'role': 'user',
       'parts': [
-        {'text': userMessage}
+        {'text': userMessage},
       ],
     });
 
@@ -260,7 +266,8 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
             hasExtendedContext = true;
             result = {
               'success': true,
-              'message': 'Extended context loaded with additional workout history.',
+              'message':
+                  'Extended context loaded with additional workout history.',
             };
           }
         } else {
@@ -276,10 +283,7 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
       }
 
       contents = List<Map<String, dynamic>>.from(contents);
-      contents.add({
-        'role': 'model',
-        'parts': parse.modelParts,
-      });
+      contents.add({'role': 'model', 'parts': parse.modelParts});
       contents.add({
         'role': 'user',
         'parts': buildFunctionResponseParts(
@@ -327,8 +331,8 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
         return _handleArchiveWorkout(
           args['workoutId'] != null
               ? (args['workoutId'] is int
-                  ? args['workoutId'] as int
-                  : int.tryParse(args['workoutId'].toString()))
+                    ? args['workoutId'] as int
+                    : int.tryParse(args['workoutId'].toString()))
               : null,
         );
       case 'setCycle':
@@ -351,7 +355,10 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
       return {'success': false, 'error': 'Workout name is required'};
     }
     if (exercisesList == null || exercisesList.isEmpty) {
-      return {'success': false, 'error': 'Workout requires at least one exercise'};
+      return {
+        'success': false,
+        'error': 'Workout requires at least one exercise',
+      };
     }
 
     final workoutExercises = <domain_we.WorkoutExercise>[];
@@ -367,8 +374,9 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
       final restSeconds = map['restSeconds'] != null
           ? _parseInt(map['restSeconds'], 90)
           : 90;
-      final durationSeconds =
-          map['durationSeconds'] != null ? _parseInt(map['durationSeconds'], 0) : null;
+      final durationSeconds = map['durationSeconds'] != null
+          ? _parseInt(map['durationSeconds'], 0)
+          : null;
       final notes = map['notes']?.toString().trim();
 
       final exResult = await _exerciseRepo.findByName(exerciseName);
@@ -382,7 +390,8 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
       if (exercise == null) {
         return {
           'success': false,
-          'error': 'Exercise not found in catalog: "$exerciseName". '
+          'error':
+              'Exercise not found in catalog: "$exerciseName". '
               'Use the exact exercise name.',
         };
       }
@@ -403,13 +412,18 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
     }
 
     if (workoutExercises.isEmpty) {
-      return {'success': false, 'error': 'No valid exercises to create workout'};
+      return {
+        'success': false,
+        'error': 'No valid exercises to create workout',
+      };
     }
 
     final workout = domain_workout.Workout(
       id: 0,
       name: name.trim(),
-      description: description?.trim().isEmpty ?? true ? null : description?.trim(),
+      description: description?.trim().isEmpty ?? true
+          ? null
+          : description?.trim(),
       createdAt: DateTime.now(),
     );
 
@@ -458,7 +472,10 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
 
   Future<Map<String, Object?>> _handleSetCycle(List? stepsList) async {
     if (stepsList == null || stepsList.isEmpty) {
-      return {'success': false, 'error': 'steps is required and cannot be empty'};
+      return {
+        'success': false,
+        'error': 'steps is required and cannot be empty',
+      };
     }
     final cycleSteps = <TrainingCycleStep>[];
     for (var i = 0; i < stepsList.length; i++) {
@@ -467,41 +484,43 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
       final map = item;
       final typeStr = map['type']?.toString().toLowerCase();
       if (typeStr == 'rest') {
-        cycleSteps.add(TrainingCycleStep(
-          id: 0,
-          orderIndex: i,
-          type: CycleStepType.rest,
-          workoutId: null,
-        ));
+        cycleSteps.add(
+          TrainingCycleStep(
+            id: 0,
+            orderIndex: i,
+            type: CycleStepType.rest,
+            workoutId: null,
+          ),
+        );
       } else if (typeStr == 'workout') {
         final workoutId = map['workoutId'] != null
             ? (map['workoutId'] is int
-                ? map['workoutId'] as int
-                : int.tryParse(map['workoutId'].toString()))
+                  ? map['workoutId'] as int
+                  : int.tryParse(map['workoutId'].toString()))
             : null;
         if (workoutId == null || workoutId <= 0) continue;
-        cycleSteps.add(TrainingCycleStep(
-          id: 0,
-          orderIndex: i,
-          type: CycleStepType.workout,
-          workoutId: workoutId,
-        ));
+        cycleSteps.add(
+          TrainingCycleStep(
+            id: 0,
+            orderIndex: i,
+            type: CycleStepType.workout,
+            workoutId: workoutId,
+          ),
+        );
       }
     }
     if (cycleSteps.isEmpty) {
       return {
         'success': false,
-        'error': 'No valid steps (use type: workout with workoutId or type: rest)',
+        'error':
+            'No valid steps (use type: workout with workoutId or type: rest)',
       };
     }
     final result = await _cycleRepo.setSteps(cycleSteps);
     if (!result.isSuccess) {
       return {'success': false, 'error': 'Failed to persist cycle'};
     }
-    return {
-      'success': true,
-      'stepCount': cycleSteps.length,
-    };
+    return {'success': true, 'stepCount': cycleSteps.length};
   }
 
   Future<Map<String, Object?>> _handleGetTrainingState() async {
@@ -552,8 +571,7 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
     if (profile == null) return {'success': false, 'error': 'No profile'};
 
     final existing = profile.bio ?? '';
-    final combined =
-        existing.isEmpty ? newBio : '$existing; $newBio';
+    final combined = existing.isEmpty ? newBio : '$existing; $newBio';
 
     final result = await _profileRepo.update(
       profile.copyWith(bio: () => combined),
@@ -563,14 +581,12 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
         : {'success': false, 'error': 'Failed to update bio'};
   }
 
-  Future<Map<String, Object?>> _handleUpdateInjuries(
-      String newInjuries) async {
+  Future<Map<String, Object?>> _handleUpdateInjuries(String newInjuries) async {
     final profile = await _getProfile();
     if (profile == null) return {'success': false, 'error': 'No profile'};
 
     final existing = profile.injuries ?? '';
-    final combined =
-        existing.isEmpty ? newInjuries : '$existing; $newInjuries';
+    final combined = existing.isEmpty ? newInjuries : '$existing; $newInjuries';
 
     final result = await _profileRepo.update(
       profile.copyWith(injuries: () => combined),
@@ -581,7 +597,8 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
   }
 
   Future<Map<String, Object?>> _handleUpdateExperienceLevel(
-      String level) async {
+    String level,
+  ) async {
     final profile = await _getProfile();
     if (profile == null) return {'success': false, 'error': 'No profile'};
 
@@ -598,8 +615,7 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
         : {'success': false, 'error': 'Failed to update experience level'};
   }
 
-  Future<Map<String, Object?>> _handleUpdateTrainingFrequency(
-      int days) async {
+  Future<Map<String, Object?>> _handleUpdateTrainingFrequency(int days) async {
     final profile = await _getProfile();
     if (profile == null) return {'success': false, 'error': 'No profile'};
 
@@ -616,9 +632,7 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
     final profile = await _getProfile();
     if (profile == null) return {'success': false, 'error': 'No profile'};
 
-    final parsed = Gender.values
-        .where((e) => e.name == gender)
-        .firstOrNull;
+    final parsed = Gender.values.where((e) => e.name == gender).firstOrNull;
     if (parsed == null) {
       return {'success': false, 'error': 'Invalid gender: $gender'};
     }
@@ -631,18 +645,22 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
   }
 
   Future<Map<String, Object?>> _handleRegisterEquipment(
-      String equipmentName) async {
-    final result = await _equipmentRepo.addByName(equipmentName);
+    String equipmentName,
+  ) async {
+    final canonicalName = chironCanonicalEquipmentName(equipmentName);
+    final result = await _equipmentRepo.addByName(canonicalName);
     return result.isSuccess
-        ? {'success': true, 'equipment': equipmentName}
+        ? {'success': true, 'equipment': canonicalName}
         : {'success': false, 'error': 'Failed to register equipment'};
   }
 
   Future<Map<String, Object?>> _handleRemoveEquipment(
-      String equipmentName) async {
-    final result = await _equipmentRepo.removeByName(equipmentName);
+    String equipmentName,
+  ) async {
+    final canonicalName = chironCanonicalEquipmentName(equipmentName);
+    final result = await _equipmentRepo.removeByName(canonicalName);
     return result.isSuccess
-        ? {'success': true, 'removed': equipmentName}
+        ? {'success': true, 'removed': canonicalName}
         : {'success': false, 'error': 'Failed to remove equipment'};
   }
 

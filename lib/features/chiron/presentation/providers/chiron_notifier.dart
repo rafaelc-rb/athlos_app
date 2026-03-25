@@ -55,11 +55,12 @@ class ChironNotifier extends _$ChironNotifier {
         history: state.messages.where((m) => m.content.isNotEmpty).toList()
           ..removeLast(),
         onToolInvoked: (toolName, success, resultData) {
-          _trace('tool:$toolName success=$success hasResult=${resultData != null}');
-          toolFeedback.add(ChironToolFeedback(
-            toolName: toolName,
-            success: success,
-          ));
+          _trace(
+            'tool:$toolName success=$success hasResult=${resultData != null}',
+          );
+          toolFeedback.add(
+            ChironToolFeedback(toolName: toolName, success: success),
+          );
           if (toolName == 'createWorkout' &&
               success &&
               resultData != null &&
@@ -75,20 +76,22 @@ class ChironNotifier extends _$ChironNotifier {
       await for (final chunk in stream) {
         buffer.write(chunk);
         final updated = List<ChironMessage>.from(state.messages);
-        updated[updated.length - 1] =
-            updated.last.copyWith(content: buffer.toString());
+        updated[updated.length - 1] = updated.last.copyWith(
+          content: buffer.toString(),
+        );
         state = state.copyWith(messages: updated);
       }
 
-      if (buffer.isEmpty) {
+      if (buffer.isNotEmpty) {
+        _applyAssistantMessageBlocks(buffer.toString());
+      } else {
         _trace('send:emptyResponse workoutCreated=${createdWorkoutId != null}');
         final l10n = _resolveL10n();
         final fallback = createdWorkoutId != null
             ? l10n.chironWorkoutCreatedFallback
             : l10n.chironEmptyResponse;
         final updated = List<ChironMessage>.from(state.messages);
-        updated[updated.length - 1] =
-            updated.last.copyWith(content: fallback);
+        updated[updated.length - 1] = updated.last.copyWith(content: fallback);
         state = state.copyWith(messages: updated);
       }
     } on Exception catch (e, stackTrace) {
@@ -101,11 +104,12 @@ class ChironNotifier extends _$ChironNotifier {
       }
       final updated = List<ChironMessage>.from(state.messages);
       final String errorText = _errorMessage(e, _resolveL10n());
-      updated[updated.length - 1] =
-          updated.last.copyWith(content: errorText);
+      updated[updated.length - 1] = updated.last.copyWith(content: errorText);
       state = state.copyWith(messages: updated);
     } finally {
-      _trace('send:finish tools=${toolFeedback.length} workoutId=$createdWorkoutId');
+      _trace(
+        'send:finish tools=${toolFeedback.length} workoutId=$createdWorkoutId',
+      );
       state = state.copyWith(
         isStreaming: false,
         lastResponseToolFeedback: toolFeedback,
@@ -131,8 +135,7 @@ class ChironNotifier extends _$ChironNotifier {
     final isSupported = AppLocalizations.supportedLocales.any(
       (supported) => supported.languageCode == appLocale.languageCode,
     );
-    final locale =
-        isSupported ? appLocale : const Locale('pt');
+    final locale = isSupported ? appLocale : const Locale('pt');
     return lookupAppLocalizations(locale);
   }
 
@@ -150,5 +153,79 @@ class ChironNotifier extends _$ChironNotifier {
   static void _trace(String message) {
     if (!_chironDebugTrace) return;
     debugPrint('[ChironDebugTrace] $message');
+  }
+
+  void _applyAssistantMessageBlocks(String fullText) {
+    final blocks = _splitAssistantReply(fullText);
+    if (blocks.isEmpty) return;
+
+    final updated = List<ChironMessage>.from(state.messages);
+    if (updated.isEmpty || updated.last.role != ChironRole.assistant) return;
+    updated.removeLast();
+
+    final baseTime = DateTime.now();
+    for (var i = 0; i < blocks.length; i++) {
+      updated.add(
+        ChironMessage(
+          role: ChironRole.assistant,
+          content: blocks[i],
+          createdAt: baseTime.add(Duration(milliseconds: i)),
+        ),
+      );
+    }
+    state = state.copyWith(messages: updated);
+  }
+
+  static List<String> _splitAssistantReply(String text) {
+    final normalized = text.replaceAll('\r\n', '\n').trim();
+    if (normalized.isEmpty) return const [];
+
+    final paragraphBlocks = normalized
+        .split(RegExp(r'\n\s*\n'))
+        .map((p) => p.trim())
+        .where((p) => p.isNotEmpty)
+        .toList();
+
+    if (paragraphBlocks.isEmpty) return const [];
+
+    final output = <String>[];
+    for (final block in paragraphBlocks) {
+      final looksLikeList = block.startsWith('- ') || block.contains('\n- ');
+      if (looksLikeList || block.length <= 200) {
+        output.add(block);
+        continue;
+      }
+
+      final sentences = block
+          .split(RegExp(r'(?<=[.!?])\s+'))
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+
+      if (sentences.isEmpty) {
+        output.add(block);
+        continue;
+      }
+
+      final chunk = StringBuffer();
+      var sentenceCount = 0;
+      for (final sentence in sentences) {
+        final shouldFlush =
+            chunk.isNotEmpty &&
+            (chunk.length + sentence.length + 1 > 170 || sentenceCount >= 2);
+        if (shouldFlush) {
+          output.add(chunk.toString().trim());
+          chunk.clear();
+          sentenceCount = 0;
+        }
+        if (chunk.isNotEmpty) chunk.write(' ');
+        chunk.write(sentence);
+        sentenceCount++;
+      }
+      if (chunk.isNotEmpty) {
+        output.add(chunk.toString().trim());
+      }
+    }
+    return output;
   }
 }

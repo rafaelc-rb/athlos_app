@@ -235,12 +235,14 @@ List<Map<String, dynamic>> getChironToolDeclarations() {
     {
       'name': 'updateBio',
       'description':
-          'Append information to the user bio. '
-              'Always concatenate — never overwrite existing bio. '
-              'Use when user shares background, preferences, or goals.',
+          'Append NEW information to the user bio. '
+              'Check the existing "History" field in User Profile context — '
+              'do NOT repeat information that is already there. '
+              'Only add genuinely new facts the user shared. '
+              'Bio is auto-trimmed to 500 chars (oldest entries dropped).',
       'parameters': _schema(
         properties: {
-          'bio': _propString('Text to append to existing bio'),
+          'bio': _propString('New text to append (only info not already in bio)'),
         },
         required: ['bio'],
       ),

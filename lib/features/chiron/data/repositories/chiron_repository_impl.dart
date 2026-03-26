@@ -246,54 +246,35 @@ Me diz o foco do novo treino que eu monto pra ti! 💪"
     caseSensitive: false,
   );
 
-  static final RegExp _profileActionPattern = RegExp(
-    r'(perfil|bio|les[aã]o|lesões|experi[eê]ncia|frequência|gênero|sexo|'
-    r'idade|peso|altura|objetivo|meta|'
-    r'iniciante|intermediário|intermediario|avançado|avancado|'
-    r'masculino|feminino|homem|mulher|'
-    r'vezes\s*(por|na)\s*semana|\dx\s*semana|'
-    r'tenho\s+\d+\s*(anos?|kg|cm)|'
-    r'me\s+machuc|dor\s+(n[oa]|d[eo])|operad[oa]|cirurgia|'
-    r'academia|em\s*casa|home\s*gym|'
-    r'minutos?\s*(de\s+treino|por\s+treino|dispon)|tempo\s*(de|pro)\s*treino|'
-    r'melhor(ou|ando|ei)|cur(ou|ei|ado)|recuper)',
-    caseSensitive: false,
-  );
+  static const _workoutAndEquipmentTools = {
+    'createWorkout',
+    'updateWorkout',
+    'archiveWorkout',
+    'setCycle',
+    'getTrainingState',
+    'registerEquipment',
+    'removeEquipment',
+  };
 
   /// Returns tool declarations filtered to the message context.
   ///
-  /// For pure Q&A (no action keywords), returns an empty list so the model
-  /// answers without function calling — saving RPM on the free tier.
+  /// Profile tools are always available — the model needs them to collect
+  /// user info during natural conversation (onboarding, follow-ups).
+  /// Workout & equipment tools are only included when action keywords match,
+  /// saving output tokens on pure Q&A turns.
   static List<Map<String, dynamic>> _toolsForContext(String userMessage) {
     final msg = userMessage.toLowerCase();
 
-    final needsWorkoutTools = _workoutActionPattern.hasMatch(msg);
-    final needsEquipmentTools = _equipmentPattern.hasMatch(msg);
-    final needsProfileTools = _profileActionPattern.hasMatch(msg);
+    final needsWorkoutTools = _workoutActionPattern.hasMatch(msg) ||
+        _equipmentPattern.hasMatch(msg);
 
-    if (!needsWorkoutTools && !needsEquipmentTools && !needsProfileTools) {
-      return const [];
-    }
+    if (needsWorkoutTools) return getChironToolDeclarations();
 
-    final all = getChironToolDeclarations();
-
-    if (needsWorkoutTools && needsEquipmentTools) return all;
-
-    const workoutOnly = {
-      'createWorkout',
-      'updateWorkout',
-      'archiveWorkout',
-      'setCycle',
-      'getTrainingState',
-    };
-    const equipmentOnly = {'registerEquipment', 'removeEquipment'};
-
-    return all.where((tool) {
-      final name = tool['name'] as String;
-      if (workoutOnly.contains(name)) return needsWorkoutTools;
-      if (equipmentOnly.contains(name)) return needsEquipmentTools;
-      return true;
-    }).toList();
+    // Profile tools + requestExtendedHistory always available;
+    // workout/equipment tools excluded.
+    return getChironToolDeclarations()
+        .where((t) => !_workoutAndEquipmentTools.contains(t['name']))
+        .toList();
   }
 
   /// Sends the message using a single Gemini model via REST (supports
@@ -702,12 +683,22 @@ Me diz o foco do novo treino que eu monto pra ti! 💪"
     return parsed ?? fallback;
   }
 
+  static const int _maxBioLength = 500;
+
   Future<Map<String, Object?>> _handleUpdateBio(String newBio) async {
     final profile = await _getProfile();
     if (profile == null) return {'success': false, 'error': 'No profile'};
 
     final existing = profile.bio ?? '';
-    final combined = existing.isEmpty ? newBio : '$existing; $newBio';
+    var combined = existing.isEmpty ? newBio : '$existing; $newBio';
+
+    if (combined.length > _maxBioLength) {
+      combined = combined.substring(combined.length - _maxBioLength).trimLeft();
+      final firstSep = combined.indexOf('; ');
+      if (firstSep != -1 && firstSep < 40) {
+        combined = combined.substring(firstSep + 2);
+      }
+    }
 
     final result = await _profileRepo.update(
       profile.copyWith(bio: () => combined),

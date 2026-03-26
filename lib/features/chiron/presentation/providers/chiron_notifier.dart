@@ -124,6 +124,7 @@ class ChironNotifier extends _$ChironNotifier {
         final touchedProfile = toolNames.any(
           (n) =>
               n.startsWith('update') ||
+              n == 'setInjuries' ||
               n == 'registerEquipment' ||
               n == 'removeEquipment',
         );
@@ -208,17 +209,35 @@ class ChironNotifier extends _$ChironNotifier {
     state = state.copyWith(messages: updated);
   }
 
-  /// Splits the model reply on double-newlines (natural paragraph breaks).
-  /// No sentence-level splitting — the model + maxOutputTokens should keep
-  /// replies short. Each paragraph becomes one chat bubble.
+  static final RegExp _markdownStructureLine = RegExp(
+    r'^(\s*[-*+•]\s|#{1,4}\s|\d+\.\s)',
+  );
+
+  /// Splits the model reply into chat bubbles on paragraph breaks, but
+  /// keeps markdown structures (lists, headings) attached to the preceding
+  /// text so they don't float as orphaned bubbles.
   static List<String> _splitAssistantReply(String text) {
     final normalized = text.replaceAll('\r\n', '\n').trim();
     if (normalized.isEmpty) return const [];
 
-    return normalized
+    final rawBlocks = normalized
         .split(RegExp(r'\n\s*\n'))
         .map((p) => p.trim())
         .where((p) => p.isNotEmpty)
         .toList();
+
+    if (rawBlocks.length <= 1) return rawBlocks;
+
+    final merged = <String>[rawBlocks.first];
+    for (var i = 1; i < rawBlocks.length; i++) {
+      final block = rawBlocks[i];
+      final firstLine = block.split('\n').first;
+      if (_markdownStructureLine.hasMatch(firstLine)) {
+        merged.last = '${merged.last}\n\n$block';
+      } else {
+        merged.add(block);
+      }
+    }
+    return merged;
   }
 }

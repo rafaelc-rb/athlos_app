@@ -18,7 +18,7 @@ DART_DEFINES = \
 DEBUG_DART_DEFINES = $(DART_DEFINES)
 PROD_DART_DEFINES = $(DART_DEFINES) --dart-define=CHIRON_DEBUG_TRACE=$(CHIRON_DEBUG_TRACE) --dart-define=ENV=prod
 
-.PHONY: help run-ios run-ios-prod run-android ios-sim-open ios-sim-list android-sim-open android-emu-list build-apk build-aab build-ipa gen gen-l10n analyze clean
+.PHONY: help run-ios run-ios-device run-android ios-sim-open ios-sim-list android-sim-open android-emu-list build-apk build-aab build-ipa gen gen-l10n analyze clean
 
 help: ## Show organized command list
 	@echo ""
@@ -42,7 +42,7 @@ help: ## Show organized command list
 	@echo ""
 	@echo "Exemplos:"
 	@echo "  make run-ios"
-	@echo "  make run-ios-prod IOS_DEVICE_UDID=<your_device_udid>"
+	@echo "  make run-ios-device IOS_DEVICE_UDID=<your_device_udid>"
 	@echo "  make run-android ANDROID_EMULATOR=dev_pixel7_api34"
 	@echo ""
 
@@ -51,12 +51,12 @@ run-ios: ## Run debug on iOS simulator (name or UDID)
 	@xcrun simctl boot "$(IOS_SIM_TARGET)" 2>/dev/null || true
 	flutter run -d "$(IOS_SIM_TARGET)" $(DEBUG_DART_DEFINES)
 
-run-ios-prod: ## Run release on physical iPhone (near-prod)
+run-ios-device: ## Run profile on physical iPhone (near-prod, free signing)
 	@if [ -z "$(IOS_DEVICE_UDID)" ]; then \
 		echo "ERROR: set IOS_DEVICE_UDID=<your_device_udid>"; \
 		exit 1; \
 	fi
-	flutter run --release -d "$(IOS_DEVICE_UDID)" $(PROD_DART_DEFINES)
+	flutter run --profile -d "$(IOS_DEVICE_UDID)" $(PROD_DART_DEFINES)
 
 run-android: ## Run debug on Android emulator
 	@flutter emulators --launch "$(ANDROID_EMULATOR)" 2>/dev/null || true

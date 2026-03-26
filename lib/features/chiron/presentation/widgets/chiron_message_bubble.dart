@@ -33,14 +33,14 @@ class ChironMessageBubble extends StatelessWidget {
     final bgColor = isError
         ? colorScheme.errorContainer
         : isUser
-            ? colorScheme.primaryContainer
-            : colorScheme.surfaceContainerHighest;
+        ? colorScheme.primaryContainer
+        : colorScheme.surfaceContainerHighest;
 
     final textColor = isError
         ? colorScheme.onErrorContainer
         : isUser
-            ? colorScheme.onPrimaryContainer
-            : colorScheme.onSurface;
+        ? colorScheme.onPrimaryContainer
+        : colorScheme.onSurface;
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -57,10 +57,12 @@ class ChironMessageBubble extends StatelessWidget {
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(AthlosRadius.md),
             topRight: const Radius.circular(AthlosRadius.md),
-            bottomLeft:
-                isUser ? const Radius.circular(AthlosRadius.md) : Radius.zero,
-            bottomRight:
-                isUser ? Radius.zero : const Radius.circular(AthlosRadius.md),
+            bottomLeft: isUser
+                ? const Radius.circular(AthlosRadius.md)
+                : Radius.zero,
+            bottomRight: isUser
+                ? Radius.zero
+                : const Radius.circular(AthlosRadius.md),
           ),
         ),
         child: isError
@@ -68,11 +70,7 @@ class ChironMessageBubble extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 18,
-                    color: colorScheme.error,
-                  ),
+                  Icon(Icons.error_outline, size: 18, color: colorScheme.error),
                   const Gap(AthlosSpacing.sm),
                   Flexible(
                     child: Text(
@@ -83,28 +81,27 @@ class ChironMessageBubble extends StatelessWidget {
                 ],
               )
             : isUser
-                ? Text(
-                    message.content,
-                    style: textTheme.bodyMedium?.copyWith(color: textColor),
-                  )
-                : MarkdownBody(
-                    data: message.content,
-                    shrinkWrap: true,
-                    styleSheet: MarkdownStyleSheet(
-                      p: textTheme.bodyMedium?.copyWith(color: textColor),
-                      strong: textTheme.bodyMedium?.copyWith(
-                        color: textColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      em: textTheme.bodyMedium?.copyWith(
-                        color: textColor,
-                        fontStyle: FontStyle.italic,
-                      ),
-                      listBullet:
-                          textTheme.bodyMedium?.copyWith(color: textColor),
-                      blockSpacing: AthlosSpacing.xs,
-                    ),
+            ? Text(
+                message.content,
+                style: textTheme.bodyMedium?.copyWith(color: textColor),
+              )
+            : MarkdownBody(
+                data: message.content,
+                shrinkWrap: true,
+                styleSheet: MarkdownStyleSheet(
+                  p: textTheme.bodyMedium?.copyWith(color: textColor),
+                  strong: textTheme.bodyMedium?.copyWith(
+                    color: textColor,
+                    fontWeight: FontWeight.bold,
                   ),
+                  em: textTheme.bodyMedium?.copyWith(
+                    color: textColor,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  listBullet: textTheme.bodyMedium?.copyWith(color: textColor),
+                  blockSpacing: AthlosSpacing.xs,
+                ),
+              ),
       ),
     );
   }

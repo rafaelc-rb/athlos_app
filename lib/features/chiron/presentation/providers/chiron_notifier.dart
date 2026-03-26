@@ -58,8 +58,11 @@ class ChironNotifier extends _$ChironNotifier {
           _trace(
             'tool:$toolName success=$success hasResult=${resultData != null}',
           );
-          toolFeedback.add(
-            ChironToolFeedback(toolName: toolName, success: success),
+          final feedback =
+              ChironToolFeedback(toolName: toolName, success: success);
+          toolFeedback.add(feedback);
+          state = state.copyWith(
+            lastResponseToolFeedback: List.of(toolFeedback),
           );
           if (toolName == 'createWorkout' &&
               success &&
@@ -115,11 +118,29 @@ class ChironNotifier extends _$ChironNotifier {
         lastResponseToolFeedback: toolFeedback,
         lastCreatedWorkoutId: createdWorkoutId,
       );
-      // Refresh profile and training data in case function calling updated them
-      ref.invalidate(profileProvider);
-      ref.invalidate(workoutListProvider);
-      ref.invalidate(archivedWorkoutListProvider);
-      ref.invalidate(cycleStepsProvider);
+
+      if (toolFeedback.isNotEmpty) {
+        final toolNames = toolFeedback.map((f) => f.toolName).toSet();
+        final touchedProfile = toolNames.any(
+          (n) =>
+              n.startsWith('update') ||
+              n == 'registerEquipment' ||
+              n == 'removeEquipment',
+        );
+        final touchedTraining = toolNames.any(
+          (n) =>
+              n == 'createWorkout' ||
+              n == 'archiveWorkout' ||
+              n == 'setCycle',
+        );
+
+        if (touchedProfile) ref.invalidate(profileProvider);
+        if (touchedTraining) {
+          ref.invalidate(workoutListProvider);
+          ref.invalidate(archivedWorkoutListProvider);
+          ref.invalidate(cycleStepsProvider);
+        }
+      }
     }
   }
 
@@ -141,11 +162,21 @@ class ChironNotifier extends _$ChironNotifier {
 
   static String _errorMessage(Exception e, AppLocalizations l10n) {
     final msg = e.toString().toLowerCase();
-    if (msg.contains('rate limit') || msg.contains('quota')) {
+    if (msg.contains('rate limit') || msg.contains('quota') ||
+        msg.contains('resource_exhausted')) {
       return l10n.chironErrorRateLimit;
     }
     if (msg.contains('503') || msg.contains('high demand')) {
       return l10n.chironErrorHighDemand;
+    }
+    if (msg.contains('timeout')) {
+      return l10n.chironErrorTimeout;
+    }
+    if (msg.contains('socketexception') ||
+        msg.contains('failed host lookup') ||
+        msg.contains('connection closed') ||
+        msg.contains('handshake')) {
+      return l10n.chironErrorNetwork;
     }
     return l10n.chironErrorGeneric;
   }
@@ -176,56 +207,17 @@ class ChironNotifier extends _$ChironNotifier {
     state = state.copyWith(messages: updated);
   }
 
+  /// Splits the model reply on double-newlines (natural paragraph breaks).
+  /// No sentence-level splitting — the model + maxOutputTokens should keep
+  /// replies short. Each paragraph becomes one chat bubble.
   static List<String> _splitAssistantReply(String text) {
     final normalized = text.replaceAll('\r\n', '\n').trim();
     if (normalized.isEmpty) return const [];
 
-    final paragraphBlocks = normalized
+    return normalized
         .split(RegExp(r'\n\s*\n'))
         .map((p) => p.trim())
         .where((p) => p.isNotEmpty)
         .toList();
-
-    if (paragraphBlocks.isEmpty) return const [];
-
-    final output = <String>[];
-    for (final block in paragraphBlocks) {
-      final looksLikeList = block.startsWith('- ') || block.contains('\n- ');
-      if (looksLikeList || block.length <= 200) {
-        output.add(block);
-        continue;
-      }
-
-      final sentences = block
-          .split(RegExp(r'(?<=[.!?])\s+'))
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
-
-      if (sentences.isEmpty) {
-        output.add(block);
-        continue;
-      }
-
-      final chunk = StringBuffer();
-      var sentenceCount = 0;
-      for (final sentence in sentences) {
-        final shouldFlush =
-            chunk.isNotEmpty &&
-            (chunk.length + sentence.length + 1 > 170 || sentenceCount >= 2);
-        if (shouldFlush) {
-          output.add(chunk.toString().trim());
-          chunk.clear();
-          sentenceCount = 0;
-        }
-        if (chunk.isNotEmpty) chunk.write(' ');
-        chunk.write(sentence);
-        sentenceCount++;
-      }
-      if (chunk.isNotEmpty) {
-        output.add(chunk.toString().trim());
-      }
-    }
-    return output;
   }
 }

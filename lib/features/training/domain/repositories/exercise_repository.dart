@@ -11,6 +11,9 @@ abstract interface class ExerciseRepository {
   Future<Result<Exercise?>> getById(int id);
   /// Case-insensitive lookup by exercise name. Returns the first match or null.
   Future<Result<Exercise?>> findByName(String name);
+
+  /// Fuzzy lookup: tries exact, then diacritics-normalized, then containment.
+  Future<Result<Exercise?>> findByNameFuzzy(String name);
   Future<Result<List<Exercise>>> getByMuscleGroup(MuscleGroup group);
   Future<Result<List<Exercise>>> getVariations(int exerciseId);
   Future<Result<List<int>>> getEquipmentIds(int exerciseId);

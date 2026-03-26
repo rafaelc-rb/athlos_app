@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
@@ -19,6 +20,8 @@ class ChironMessageBubble extends StatelessWidget {
     final isUser = message.role == ChironRole.user;
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final textColor =
+        isUser ? colorScheme.onPrimaryContainer : colorScheme.onSurface;
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -52,14 +55,29 @@ class ChironMessageBubble extends StatelessWidget {
                   color: colorScheme.onSurfaceVariant,
                 ),
               )
-            : Text(
-                message.content,
-                style: textTheme.bodyMedium?.copyWith(
-                  color: isUser
-                      ? colorScheme.onPrimaryContainer
-                      : colorScheme.onSurface,
-                ),
-              ),
+            : isUser
+                ? Text(
+                    message.content,
+                    style: textTheme.bodyMedium?.copyWith(color: textColor),
+                  )
+                : MarkdownBody(
+                    data: message.content,
+                    shrinkWrap: true,
+                    styleSheet: MarkdownStyleSheet(
+                      p: textTheme.bodyMedium?.copyWith(color: textColor),
+                      strong: textTheme.bodyMedium?.copyWith(
+                        color: textColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      em: textTheme.bodyMedium?.copyWith(
+                        color: textColor,
+                        fontStyle: FontStyle.italic,
+                      ),
+                      listBullet:
+                          textTheme.bodyMedium?.copyWith(color: textColor),
+                      blockSpacing: AthlosSpacing.xs,
+                    ),
+                  ),
       ),
     );
   }

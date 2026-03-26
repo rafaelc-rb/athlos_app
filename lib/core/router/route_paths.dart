@@ -30,9 +30,6 @@ abstract final class RoutePaths {
   // :workoutId used via string interpolation
   // e.g. '${trainingWorkouts}/$id' and '${trainingWorkouts}/$id/edit'
 
-  // Chiron AI assistant
-  static const chiron = '/chiron';
-
   // Diet module (future)
   static const diet = '/diet';
 }

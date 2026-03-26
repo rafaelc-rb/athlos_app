@@ -151,6 +151,11 @@ class _ChironSheetState extends ConsumerState<_ChironSheet> {
                             colorScheme,
                             chatState.lastResponseToolFeedback,
                           ),
+                        if (chatState.isStreaming &&
+                            chatState.lastResponseToolFeedback.isEmpty &&
+                            (chatState.messages.isEmpty ||
+                                chatState.messages.last.content.isEmpty))
+                          _buildThinkingIndicator(l10n, colorScheme),
                       ],
                     ),
             ),
@@ -208,6 +213,8 @@ class _ChironSheetState extends ConsumerState<_ChironSheet> {
         return l10n.chironToolFeedbackCreateWorkout;
       case 'archiveWorkout':
         return l10n.chironToolFeedbackArchiveWorkout;
+      case 'setCycle':
+        return l10n.chironToolFeedbackSetCycle;
       case 'updateBio':
         return l10n.chironToolFeedbackUpdateBio;
       case 'updateInjuries':
@@ -225,6 +232,39 @@ class _ChironSheetState extends ConsumerState<_ChironSheet> {
       default:
         return toolName;
     }
+  }
+
+  Widget _buildThinkingIndicator(
+    AppLocalizations l10n,
+    ColorScheme colorScheme,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AthlosSpacing.md,
+        vertical: AthlosSpacing.sm,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: colorScheme.primary,
+            ),
+          ),
+          const Gap(AthlosSpacing.sm),
+          Text(
+            l10n.chironThinking,
+            style: TextStyle(
+              fontSize: 12,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildHandle(ColorScheme colorScheme) {

@@ -19,16 +19,28 @@ import '../../domain/repositories/chiron_repository.dart';
 import '../helpers/chiron_equipment_names.dart';
 import '../helpers/prompt_builder.dart';
 import '../seeds/chiron_context_seed.dart';
-import '../services/gemini_models_loader.dart';
 import '../services/gemini_rest_client.dart';
 
-/// Fallback when the API list is unavailable. Use only "-latest" aliases
-/// so Google can change the underlying version without app updates.
-const List<String> _geminiModelIdsFallback = [
-  'gemini-flash-latest',
-  'gemini-1.5-flash-latest',
-  'gemini-1.5-flash-8b-latest',
+/// Ordered model chain: primary first, fallback second.
+/// gemini-2.5-flash is the best free-tier model for function calling;
+/// gemini-2.0-flash serves as fallback when quota is exhausted.
+const List<String> _geminiModelIds = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
 ];
+
+/// Max output tokens per API call. Must accommodate function call JSON
+/// (createWorkout with 6 exercises ≈ 600-800 tokens) while still capping
+/// text-only replies at a reasonable length.
+const int _maxOutputTokens = 1024;
+
+/// Slightly below default (1.0) for more consistent, reliable tool usage.
+const double _temperature = 0.8;
+
+/// Hard cap on function-calling round-trips per user message.
+/// Prevents infinite loops from burning RPM quota.
+const int _maxFunctionCallingRounds = 4;
+
 const List<Duration> _geminiRetryBackoff = [
   Duration(seconds: 1),
   Duration(seconds: 2),
@@ -44,14 +56,12 @@ class ChironRepositoryImpl implements ChironRepository {
     required ExerciseRepository exerciseRepo,
     required CycleRepository cycleRepo,
     required PromptBuilder promptBuilder,
-    GeminiModelsLoader? modelsLoader,
   }) : _profileRepo = profileRepo,
        _equipmentRepo = equipmentRepo,
        _workoutRepo = workoutRepo,
        _exerciseRepo = exerciseRepo,
        _cycleRepo = cycleRepo,
        _promptBuilder = promptBuilder,
-       _modelsLoader = modelsLoader ?? GeminiModelsLoader(apiKey: apiKey),
        _restClient = GeminiRestClient(apiKey: apiKey);
 
   final UserProfileRepository _profileRepo;
@@ -61,46 +71,54 @@ class ChironRepositoryImpl implements ChironRepository {
   final ExerciseRepository _exerciseRepo;
   final CycleRepository _cycleRepo;
   final PromptBuilder _promptBuilder;
-  final GeminiModelsLoader _modelsLoader;
 
-  static const _maxMessagesPerMinute = 10;
+  /// Client-side RPM guard aligned with the free tier (10 RPM for
+  /// gemini-2.5-flash). Counts every generateContent call, not just
+  /// user messages, because function calling round-trips also count.
+  static const _maxApiCallsPerMinute = 10;
 
-  /// Max conversation turns (user+assistant pairs) sent to the API to save tokens.
-  static const int _maxHistoryTurns = 12;
+  /// Max conversation turns (user+assistant pairs) sent to the API.
+  /// 8 turns ≈ 16 messages — enough context for continuity while
+  /// keeping input tokens low on the free tier.
+  static const int _maxHistoryTurns = 8;
   static final Random _random = Random();
   final _timestamps = <DateTime>[];
 
   static const _systemPrompt =
-      r'''You are Quiron (Chiron), the Athlos AI training assistant. Persona: mentor centaur, concise and motivational.
+      r'''You are Quiron, the Athlos AI training coach. Persona: concise, motivational mentor.
 
-Rules:
-- Always answer in Brazilian Portuguese. Focus on training, exercises, basic nutrition, and recovery. No medical advice; recommend a professional when appropriate.
-- Be objective. Avoid long explanations. Prefer short WhatsApp-like blocks (1-2 short sentences per block), separated by blank lines when needed.
-- Never expose internal database keys/identifiers (e.g. equipment keys like "barbell") to the user-facing text.
+LANGUAGE & STYLE
+- Always answer in Brazilian Portuguese.
+- Maximum 2-3 short paragraphs. Use WhatsApp-style: 1-2 sentences per block, separated by blank lines.
+- Never give medical advice — recommend a professional when needed.
+- Never expose internal IDs or database keys to the user.
 
-Missing profile fields: if gender, injuries, experienceLevel, or trainingFrequency are missing in context, ask naturally and save with the available tools. Avoid interrogation style. Bio should be enriched over time with updateBio (append only, never erase).
+PROFILE
+- If gender, injuries, experienceLevel, or trainingFrequency are missing, ask naturally (one at a time, not interrogation) and save with the appropriate tool.
+- Enrich bio over time with updateBio (append, never overwrite).
 
-Gender and training: for female profiles, prioritize legs/glutes and proportional volume; for male profiles, prioritize classic splits (push/pull/legs etc.). Adapt aesthetics (athletic/bulky/robust) according to gender.
+WORKOUTS
+- Use only registered equipment. If needed equipment is missing, ask the user and register if confirmed.
+- createWorkout and archiveWorkout do NOT update the cycle. You MUST call setCycle afterward with all active workout IDs, then getTrainingState to verify.
+- Respect "Available workout time" from context when building workouts.
+- Use execution history to suggest progression (compare weights/reps across sessions).
 
-Equipment: when building workouts, use only registered equipment. If a required item is missing, ask "Do you have [X]?"; if yes, call registerEquipment and include it; if no, suggest an alternative. For injuries use updateInjuries to append new info (concatenate with "; ").
+<examples>
+User: "Monta um treino de peito"
+Assistant: "Montei um treino de peito com 5 exercícios e adicionei ao ciclo. Dá uma olhada e me diz o que achou! 💪"
 
-Progress: use execution history to suggest workout swaps, progression, and rest. Compare weights/reps across sessions.
+User: "O que acha do meu treino?"
+Assistant: "Teu treino tá bem montado pra peito e costas.
 
-Workouts — never delete: there is no delete function. You can only create (createWorkout) and archive (archiveWorkout). To replace a plan, create the new workout and then archive old ones with archiveWorkout(workoutId). Context lists active workouts with id=X; use those ids to archive.
+Só aumentaria o descanso no supino pra 90s — tá pouco pra carga pesada.
 
-Cycle (routine): after creating new workouts and archiving old ones, define cycle order with setCycle(steps). steps is an ordered list where each item is { type: "workout", workoutId: N } or { type: "rest" }. Include only active workoutIds (newly created or kept). Example: [ { type: "workout", workoutId: 5 }, { type: "rest" }, { type: "workout", workoutId: 6 } ]. This persists the routine and prevents outdated plans from staying active.
+Quer que eu ajuste?"
 
-Final review: after all changes (create, archive, setCycle), call getTrainingState(). Compare return values (activeWorkouts and cycleSteps) with intended result. If correct, confirm to the user. If anything differs (for example: an old workout still active, outdated cycle), report what failed and suggest checking the Training module.
+User: "Quero trocar meu treino"
+Assistant: "Entendi! Vou criar o novo treino e arquivar o atual.
 
-Available time: if context includes "Available workout time: X min", build workouts that fit this limit (estimate: sets x (reps or duration) + rest). Do not suggest workouts that exceed this time.
-
-Two scenarios:
-1) User with no active workouts: focus on creating the first plan. Use createWorkout with name and exercises (exerciseName, sets, reps, restSeconds). Then call setCycle with the created workouts. Finally call getTrainingState and confirm.
-2) User with active workouts: analyze current plan, sessions, and progression. Explain whether it is better to keep, add, replace, or modify workout/cycle. If replacing, use createWorkout for the new plan, archiveWorkout for old ones, setCycle with the new order (only active workouts + rests), then getTrainingState for verification.
-
-Function usage: use createWorkout and archiveWorkout as above; call setCycle after workout changes; call getTrainingState at the end for verification. Use updateBio, updateInjuries, updateExperienceLevel, updateGender, updateTrainingFrequency when you have concrete information; batch updates when possible. Use registerEquipment/removeEquipment when user confirms.
-
-Adaptive context: when you need long-term trend/evolution/comparison analysis and context appears too short, call requestExtendedHistory() before replying.
+Qual foco tu quer pro novo?"
+</examples>
 ''';
   static final RegExp _extendedContextPattern = RegExp(
     chironExtendedContextRegexSeed.join('|'),
@@ -113,8 +131,6 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
     required List<ChironMessage> history,
     ChironToolInvokedCallback? onToolInvoked,
   }) async* {
-    _enforceRateLimit();
-
     final maxHistoryMessages = _maxHistoryTurns * 2;
     final trimmedHistory = history.length > maxHistoryMessages
         ? history.sublist(history.length - maxHistoryMessages)
@@ -124,12 +140,10 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
       extended: shouldStartExtended,
     );
 
-    final modelIds =
-        await _modelsLoader.getModelIdsForChat() ?? _geminiModelIdsFallback;
-    final uniqueModelIds = modelIds.toSet().toList();
+    final modelIds = _geminiModelIds;
 
     Object? lastError;
-    for (final modelId in uniqueModelIds) {
+    for (final modelId in modelIds) {
       for (var attempt = 0; attempt <= _geminiRetryBackoff.length; attempt++) {
         try {
           await for (final chunk in _sendWithGeminiModel(
@@ -203,6 +217,65 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
     return _extendedContextPattern.hasMatch(userMessage.toLowerCase());
   }
 
+  static final RegExp _workoutActionPattern = RegExp(
+    r'(mont|cri|trein|substitui|troc|arquiv|novo|perna|peito|costas|ombro|'
+    r'braço|bíceps|tríceps|abdomen|push|pull|leg|upper|lower|full\s*body|'
+    r'split|ciclo|rotina|plano)',
+    caseSensitive: false,
+  );
+
+  static final RegExp _equipmentPattern = RegExp(
+    r'(equipamento|haltere|barra|máquina|cabo|polia|anilha|banco|corda|'
+    r'kettlebell|elástic|faixa|smith|leg\s*press|hack)',
+    caseSensitive: false,
+  );
+
+  static final RegExp _profileActionPattern = RegExp(
+    r'(perfil|bio|les[aã]o|lesões|experi[eê]ncia|frequência|gênero|sexo|'
+    r'idade|peso|altura|objetivo|meta|'
+    r'iniciante|intermediário|intermediario|avançado|avancado|'
+    r'masculino|feminino|homem|mulher|'
+    r'vezes\s*(por|na)\s*semana|\dx\s*semana|'
+    r'tenho\s+\d+\s*(anos?|kg|cm)|'
+    r'me\s+machuc|dor\s+(n[oa]|d[eo])|operad[oa]|cirurgia)',
+    caseSensitive: false,
+  );
+
+  /// Returns tool declarations filtered to the message context.
+  ///
+  /// For pure Q&A (no action keywords), returns an empty list so the model
+  /// answers without function calling — saving RPM on the free tier.
+  static List<Map<String, dynamic>> _toolsForContext(String userMessage) {
+    final msg = userMessage.toLowerCase();
+
+    final needsWorkoutTools = _workoutActionPattern.hasMatch(msg);
+    final needsEquipmentTools = _equipmentPattern.hasMatch(msg);
+    final needsProfileTools = _profileActionPattern.hasMatch(msg);
+
+    if (!needsWorkoutTools && !needsEquipmentTools && !needsProfileTools) {
+      return const [];
+    }
+
+    final all = getChironToolDeclarations();
+
+    if (needsWorkoutTools && needsEquipmentTools) return all;
+
+    const workoutOnly = {
+      'createWorkout',
+      'archiveWorkout',
+      'setCycle',
+      'getTrainingState',
+    };
+    const equipmentOnly = {'registerEquipment', 'removeEquipment'};
+
+    return all.where((tool) {
+      final name = tool['name'] as String;
+      if (workoutOnly.contains(name)) return needsWorkoutTools;
+      if (equipmentOnly.contains(name)) return needsEquipmentTools;
+      return true;
+    }).toList();
+  }
+
   /// Sends the message using a single Gemini model via REST (supports
   /// thought_signature for thinking models). May throw on API errors.
   Stream<String> _sendWithGeminiModel({
@@ -216,40 +289,37 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
     var currentUserContext = userContext;
     var hasExtendedContext = extendedAlreadyLoaded;
     var systemInstruction = '$_systemPrompt\n\n$currentUserContext';
-    final toolDeclarations = getChironToolDeclarations();
+    final toolDeclarations = _toolsForContext(userMessage);
 
-    var contents = <Map<String, dynamic>>[];
-    for (final msg in history) {
-      final role = msg.role == ChironRole.user ? 'user' : 'model';
-      contents.add({
-        'role': role,
-        'parts': [
-          {'text': msg.content},
-        ],
-      });
-    }
-    contents.add({
-      'role': 'user',
-      'parts': [
-        {'text': userMessage},
-      ],
-    });
+    var contents = _buildMergedContents(history, userMessage);
 
     var parse = GeminiResponseParse(text: '');
+    var fcRound = 0;
+    final textAccumulator = StringBuffer();
 
     while (true) {
+      _enforceRateLimit();
       final responseJson = await _restClient.generateContent(
         modelId: modelId,
         contents: contents,
         systemInstruction: systemInstruction,
         toolDeclarations: toolDeclarations,
+        maxOutputTokens: _maxOutputTokens,
+        temperature: _temperature,
       );
 
       parse = parseGenerateContentResponse(responseJson);
 
+      if (parse.text != null && parse.text!.isNotEmpty) {
+        textAccumulator.write(parse.text);
+      }
+
       if (parse.functionCalls.isEmpty) {
         break;
       }
+
+      fcRound++;
+      if (fcRound > _maxFunctionCallingRounds) break;
 
       final nameToResponse = <MapEntry<String, Map<String, Object?>>>[];
       for (final call in parse.functionCalls) {
@@ -293,7 +363,9 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
       });
     }
 
-    final text = parse.text;
+    final text = textAccumulator.isNotEmpty
+        ? textAccumulator.toString()
+        : parse.text;
     if (text != null && text.isNotEmpty) {
       yield text;
     }
@@ -305,22 +377,49 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
   ) async {
     switch (name) {
       case 'updateBio':
-        return _handleUpdateBio(args['bio'] as String);
+        final bio = args['bio']?.toString();
+        if (bio == null || bio.isEmpty) {
+          return {'success': false, 'error': 'bio is required'};
+        }
+        return _handleUpdateBio(bio);
       case 'updateInjuries':
-        return _handleUpdateInjuries(args['injuries'] as String);
+        final injuries = args['injuries']?.toString();
+        if (injuries == null || injuries.isEmpty) {
+          return {'success': false, 'error': 'injuries is required'};
+        }
+        return _handleUpdateInjuries(injuries);
       case 'updateExperienceLevel':
-        return _handleUpdateExperienceLevel(args['level'] as String);
+        final level = args['level']?.toString();
+        if (level == null || level.isEmpty) {
+          return {'success': false, 'error': 'level is required'};
+        }
+        return _handleUpdateExperienceLevel(level);
       case 'updateTrainingFrequency':
         final days = args['daysPerWeek'];
+        if (days == null) {
+          return {'success': false, 'error': 'daysPerWeek is required'};
+        }
         return _handleUpdateTrainingFrequency(
           days is int ? days : int.parse(days.toString()),
         );
       case 'updateGender':
-        return _handleUpdateGender(args['gender'] as String);
+        final gender = args['gender']?.toString();
+        if (gender == null || gender.isEmpty) {
+          return {'success': false, 'error': 'gender is required'};
+        }
+        return _handleUpdateGender(gender);
       case 'registerEquipment':
-        return _handleRegisterEquipment(args['equipmentName'] as String);
+        final equipName = args['equipmentName']?.toString();
+        if (equipName == null || equipName.isEmpty) {
+          return {'success': false, 'error': 'equipmentName is required'};
+        }
+        return _handleRegisterEquipment(equipName);
       case 'removeEquipment':
-        return _handleRemoveEquipment(args['equipmentName'] as String);
+        final equipName = args['equipmentName']?.toString();
+        if (equipName == null || equipName.isEmpty) {
+          return {'success': false, 'error': 'equipmentName is required'};
+        }
+        return _handleRemoveEquipment(equipName);
       case 'createWorkout':
         return _handleCreateWorkout(
           args['name']?.toString() ?? '',
@@ -379,7 +478,7 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
           : null;
       final notes = map['notes']?.toString().trim();
 
-      final exResult = await _exerciseRepo.findByName(exerciseName);
+      final exResult = await _exerciseRepo.findByNameFuzzy(exerciseName);
       if (!exResult.isSuccess) {
         return {
           'success': false,
@@ -392,7 +491,7 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
           'success': false,
           'error':
               'Exercise not found in catalog: "$exerciseName". '
-              'Use the exact exercise name.',
+              'Check the Catalog section for exact names.',
         };
       }
 
@@ -433,21 +532,13 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
     }
 
     final id = result.getOrThrow();
-    final cycleResult = await _cycleRepo.appendWorkoutToCycle(id);
-    if (!cycleResult.isSuccess) {
-      return {
-        'success': true,
-        'workoutId': id,
-        'workoutName': workout.name,
-        'exerciseCount': workoutExercises.length,
-        'warning': 'Workout created but failed to append into cycle',
-      };
-    }
     return {
       'success': true,
       'workoutId': id,
       'workoutName': workout.name,
       'exerciseCount': workoutExercises.length,
+      'hint': 'Now call setCycle to include this workout in the routine, '
+          'then getTrainingState to verify.',
     };
   }
 
@@ -459,15 +550,12 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
     if (!result.isSuccess) {
       return {'success': false, 'error': 'Failed to archive workout'};
     }
-    final cycleResult = await _cycleRepo.removeWorkoutFromCycle(workoutId);
-    if (!cycleResult.isSuccess) {
-      return {
-        'success': true,
-        'workoutId': workoutId,
-        'warning': 'Workout archived but failed to remove from cycle',
-      };
-    }
-    return {'success': true, 'workoutId': workoutId};
+    return {
+      'success': true,
+      'workoutId': workoutId,
+      'hint': 'Now call setCycle without this workout, '
+          'then getTrainingState to verify.',
+    };
   }
 
   Future<Map<String, Object?>> _handleSetCycle(List? stepsList) async {
@@ -602,10 +690,15 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
     final profile = await _getProfile();
     if (profile == null) return {'success': false, 'error': 'No profile'};
 
-    final parsed = ExperienceLevel.values.firstWhere(
-      (e) => e.name == level,
-      orElse: () => ExperienceLevel.beginner,
-    );
+    final parsed =
+        ExperienceLevel.values.where((e) => e.name == level).firstOrNull;
+    if (parsed == null) {
+      return {
+        'success': false,
+        'error': 'Invalid level: $level. '
+            'Use one of: ${ExperienceLevel.values.map((e) => e.name).join(", ")}',
+      };
+    }
 
     final result = await _profileRepo.update(
       profile.copyWith(experienceLevel: () => parsed),
@@ -664,6 +757,43 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
         : {'success': false, 'error': 'Failed to remove equipment'};
   }
 
+  /// Merges consecutive messages from the same role into a single content
+  /// entry. This prevents split UI bubbles from inflating the API turn count.
+  static List<Map<String, dynamic>> _buildMergedContents(
+    List<ChironMessage> history,
+    String userMessage,
+  ) {
+    final contents = <Map<String, dynamic>>[];
+    for (final msg in history) {
+      final role = msg.role == ChironRole.user ? 'user' : 'model';
+      if (contents.isNotEmpty && contents.last['role'] == role) {
+        final parts = contents.last['parts'] as List<Map<String, dynamic>>;
+        final prevText = parts.last['text'] as String;
+        parts.last = {'text': '$prevText\n\n${msg.content}'};
+      } else {
+        contents.add({
+          'role': role,
+          'parts': <Map<String, dynamic>>[
+            {'text': msg.content},
+          ],
+        });
+      }
+    }
+    if (contents.isNotEmpty && contents.last['role'] == 'user') {
+      final parts = contents.last['parts'] as List<Map<String, dynamic>>;
+      final prevText = parts.last['text'] as String;
+      parts.last = {'text': '$prevText\n\n$userMessage'};
+    } else {
+      contents.add({
+        'role': 'user',
+        'parts': <Map<String, dynamic>>[
+          {'text': userMessage},
+        ],
+      });
+    }
+    return contents;
+  }
+
   Future<UserProfile?> _getProfile() async {
     final result = await _profileRepo.get();
     return result.isSuccess ? result.getOrThrow() : null;
@@ -673,7 +803,7 @@ Adaptive context: when you need long-term trend/evolution/comparison analysis an
     final now = DateTime.now();
     _timestamps.removeWhere((t) => now.difference(t).inMinutes >= 1);
 
-    if (_timestamps.length >= _maxMessagesPerMinute) {
+    if (_timestamps.length >= _maxApiCallsPerMinute) {
       throw const ValidationException('Rate limit exceeded');
     }
 

@@ -20,7 +20,7 @@ class PromptBuilder {
       chironExtendedRecentExecutionsLimit;
   static const int maxWorkouts = chironDefaultWorkoutsLimit;
   static const int maxWorkoutsExtended = chironExtendedWorkoutsLimit;
-  static const int maxExerciseNamesInContext = 100;
+  static const int maxExerciseNamesInContext = 80;
 
   final UserProfileRepository _profileRepo;
   final EquipmentRepository _equipmentRepo;
@@ -251,21 +251,22 @@ class PromptBuilder {
       final setsResult = setResults[i];
       if (setsResult.isSuccess) {
         final sets = setsResult.getOrThrow();
-        final exerciseGroups = <int, List<String>>{};
+        final bestByExercise = <int, String>{};
         for (final s in sets.where((s) => s.isCompleted)) {
           final label = s.weight != null
               ? '${s.weight}kg×${s.reps ?? 0}'
               : s.duration != null
-              ? '${s.duration}s'
-              : '${s.reps ?? 0} reps';
-          exerciseGroups.putIfAbsent(s.exerciseId, () => []).add(label);
+                  ? '${s.duration}s'
+                  : '${s.reps ?? 0}r';
+          final prev = bestByExercise[s.exerciseId];
+          if (prev == null) bestByExercise[s.exerciseId] = label;
         }
-        final summary = exerciseGroups.entries
+        final summary = bestByExercise.entries
             .map((e) {
-              final exName = exerciseMap[e.key] ?? 'ex#${e.key}';
-              return '$exName: ${e.value.join(", ")}';
+              final exName = exerciseMap[e.key] ?? '#${e.key}';
+              return '$exName ${e.value}';
             })
-            .join(' | ');
+            .join(', ');
         lines.add('- $dateFmt $wName ($duration) [$summary]');
       } else {
         lines.add('- $dateFmt $wName ($duration)');
@@ -279,11 +280,10 @@ class PromptBuilder {
     final names = allExercises.map((e) => e.name).toList();
     final shown = names.take(maxExerciseNamesInContext).toList();
     final overflow = names.length > maxExerciseNamesInContext
-        ? ' (+${names.length - maxExerciseNamesInContext})'
+        ? ' +${names.length - maxExerciseNamesInContext}'
         : '';
     sections.add(
-      '## Catalog (${names.length} exercises)\n'
-      'Exact names for createWorkout: ${shown.join(", ")}$overflow',
+      '## Catalog (${names.length}$overflow)\n${shown.join("; ")}',
     );
   }
 

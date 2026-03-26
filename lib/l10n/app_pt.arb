@@ -1903,6 +1903,19 @@
   "chironToolFeedbackUpdateTrainingFrequency": "Frequência atualizada",
   "chironToolFeedbackRegisterEquipment": "Equipamento registado",
   "chironToolFeedbackRemoveEquipment": "Equipamento removido",
+  "chironToolFeedbackSetCycle": "Ciclo atualizado",
+  "chironThinking": "Quíron está pensando…",
+  "@chironThinking": {
+    "description": "Label shown while Chiron is processing"
+  },
+  "chironErrorTimeout": "A resposta demorou demais. Tente novamente.",
+  "@chironErrorTimeout": {
+    "description": "Error when Gemini request times out"
+  },
+  "chironErrorNetwork": "Sem conexão. Verifique sua internet e tente novamente.",
+  "@chironErrorNetwork": {
+    "description": "Error on network failure"
+  },
 
   "stepExperience": "Experiência",
   "@stepExperience": {

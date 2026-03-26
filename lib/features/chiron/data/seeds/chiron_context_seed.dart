@@ -2,10 +2,10 @@
 ///
 /// Centralizing these values keeps heuristics and limits easy to tune
 /// without scattering hardcoded strings across repository/helpers.
-const int chironDefaultRecentExecutionsLimit = 10;
-const int chironExtendedRecentExecutionsLimit = 30;
-const int chironDefaultWorkoutsLimit = 10;
-const int chironExtendedWorkoutsLimit = 25;
+const int chironDefaultRecentExecutionsLimit = 5;
+const int chironExtendedRecentExecutionsLimit = 20;
+const int chironDefaultWorkoutsLimit = 8;
+const int chironExtendedWorkoutsLimit = 20;
 
 /// Regex fragments used to detect "big picture" requests.
 /// They are combined in a single RegExp at runtime.

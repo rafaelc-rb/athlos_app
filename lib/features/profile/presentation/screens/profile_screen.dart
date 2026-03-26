@@ -1,9 +1,5 @@
-import 'dart:convert';
 import 'dart:io';
-import 'dart:developer' as dev;
 
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -14,7 +10,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../../../core/data/repositories/local_backup_providers.dart';
-import '../../../../core/domain/entities/local_backup_models.dart';
 import '../../../../core/errors/result.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/athlos_spacing.dart';
@@ -27,16 +22,13 @@ import '../../domain/enums/gender.dart';
 import '../../domain/enums/training_goal.dart';
 import '../../domain/enums/training_style.dart';
 import '../helpers/profile_l10n.dart';
+import '../helpers/backup_import_flow.dart';
+import '../providers/conflict_center_provider.dart';
 import '../providers/profile_notifier.dart';
 import '../widgets/aesthetic_selector.dart';
 import '../widgets/experience_selector.dart';
 import '../widgets/goal_selector.dart';
 import '../widgets/style_selector.dart';
-import '../../../training/presentation/providers/equipment_notifier.dart';
-import '../../../training/presentation/providers/exercise_notifier.dart';
-import '../../../training/presentation/providers/training_analytics_provider.dart';
-import '../../../training/presentation/providers/workout_execution_notifier.dart';
-import '../../../training/presentation/providers/workout_notifier.dart';
 import '../../../training/presentation/widgets/equipment_management_body.dart';
 
 /// Profile view/edit screen (P-04).
@@ -347,6 +339,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildDataCategory(AppLocalizations l10n) {
+    final conflictCenterAsync = ref.watch(backupConflictCenterProvider);
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AthlosSpacing.md),
       child: Column(
@@ -365,11 +358,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const Gap(AthlosSpacing.md),
+                  Text(
+                    l10n.profileDataConflictSummaryTitle,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const Gap(AthlosSpacing.xs),
+                  conflictCenterAsync.when(
+                    loading: () => Text(l10n.profileDataConflictSummaryLoading),
+                    error: (_, _) => Text(l10n.profileDataConflictSummaryError),
+                    data: (summary) => Text(
+                      l10n.profileDataLocalConflictSummary(
+                        summary.localDuplicateCount,
+                      ),
+                    ),
+                  ),
+                  const Gap(AthlosSpacing.xs),
+                  Text(
+                    l10n.profileDataConflictSummaryLocalHint,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const Gap(AthlosSpacing.md),
                   FilledButton.icon(
-                    onPressed: _isExporting || _isImporting
-                        ? null
-                        : () => _exportData(l10n),
-                    icon: _isExporting
+                    onPressed: () => context.push(RoutePaths.profileConflicts),
+                    icon: const Icon(Icons.rule_folder_outlined),
+                    label: Text(l10n.conflictCenterOpenAction),
+                  ),
+                  const Gap(AthlosSpacing.sm),
+                  FilledButton.icon(
+                    onPressed: _isImporting ? null : () => _importData(l10n),
+                    icon: _isImporting
                         ? SizedBox(
                             width: 16,
                             height: 16,
@@ -378,15 +395,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               color: Theme.of(context).colorScheme.onPrimary,
                             ),
                           )
-                        : const Icon(Icons.upload_file),
-                    label: Text(l10n.profileDataExportAction),
+                        : const Icon(Icons.download),
+                    label: Text(l10n.profileDataImportAction),
                   ),
                   const Gap(AthlosSpacing.sm),
                   OutlinedButton.icon(
-                    onPressed: _isExporting || _isImporting
-                        ? null
-                        : () => _importData(l10n),
-                    icon: _isImporting
+                    onPressed: _isExporting ? null : () => _exportData(l10n),
+                    icon: _isExporting
                         ? SizedBox(
                             width: 16,
                             height: 16,
@@ -395,8 +410,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               color: Theme.of(context).colorScheme.primary,
                             ),
                           )
-                        : const Icon(Icons.download),
-                    label: Text(l10n.profileDataImportAction),
+                        : const Icon(Icons.upload_file),
+                    label: Text(l10n.profileDataExportAction),
                   ),
                 ],
               ),
@@ -405,6 +420,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _importData(AppLocalizations l10n) async {
+    setState(() => _isImporting = true);
+    try {
+      await runBackupImportFlow(
+        context: context,
+        ref: ref,
+        l10n: l10n,
+        loggerName: 'ProfileScreen',
+      );
+      ref.invalidate(backupConflictCenterProvider);
+    } finally {
+      if (mounted) setState(() => _isImporting = false);
+    }
   }
 
   Future<void> _exportData(AppLocalizations l10n) async {
@@ -432,319 +462,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     } finally {
       if (mounted) setState(() => _isExporting = false);
     }
-  }
-
-  Future<void> _importData(AppLocalizations l10n) async {
-    setState(() => _isImporting = true);
-    try {
-      if (kDebugMode) {
-        dev.log('[backup-ui] start file picker', name: 'ProfileScreen');
-      }
-      final fileResult = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: const ['json'],
-        withData: true,
-      );
-      if (fileResult == null || fileResult.files.isEmpty) return;
-
-      final file = fileResult.files.single;
-      if (kDebugMode) {
-        dev.log(
-          '[backup-ui] selected file: name=${file.name} size=${file.size}',
-          name: 'ProfileScreen',
-        );
-      }
-      String? jsonContent;
-      if (file.bytes != null) {
-        jsonContent = utf8.decode(file.bytes!);
-      } else if (file.path != null) {
-        jsonContent = await File(file.path!).readAsString();
-      }
-      if (jsonContent == null) {
-        throw const FormatException('Selected file is empty.');
-      }
-
-      final previewUseCase = ref.read(previewLocalBackupImportUseCaseProvider);
-      if (kDebugMode) {
-        dev.log('[backup-ui] preview import', name: 'ProfileScreen');
-      }
-      final previewResult = await previewUseCase(jsonContent);
-      final preview = previewResult.getOrThrow();
-      if (kDebugMode) {
-        dev.log(
-          '[backup-ui] preview done: conflicts=${preview.conflicts.length} '
-          'pending=${preview.pendingReviews.length} total=${preview.totalRecords}',
-          name: 'ProfileScreen',
-        );
-      }
-
-      final resolutions = <String, BackupConflictResolution>{};
-      for (final conflict in preview.conflicts) {
-        if (!mounted) return;
-        final selected = await _showConflictDialog(conflict, l10n);
-        if (selected == null) return;
-        resolutions[conflict.conflictId] = selected;
-      }
-
-      final pendingResolutions = <String, BackupPendingReviewResolution>{};
-      for (final review in preview.pendingReviews) {
-        if (!mounted) return;
-        final selected = await _showPendingReviewDialog(review, l10n);
-        if (selected == null) return;
-        pendingResolutions[review.reviewId] = selected;
-      }
-
-      if (!mounted) return;
-      final confirmed =
-          await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Text(l10n.profileDataImportConfirmTitle),
-              content: Text(
-                l10n.profileDataImportConfirmMessage(preview.totalRecords),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: Text(l10n.cancel),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: Text(l10n.profileDataImportAction),
-                ),
-              ],
-            ),
-          ) ??
-          false;
-      if (!confirmed) return;
-
-      final importUseCase = ref.read(importLocalBackupUseCaseProvider);
-      if (kDebugMode) {
-        dev.log('[backup-ui] execute import', name: 'ProfileScreen');
-      }
-      final importResult = await importUseCase(
-        BackupImportRequest(
-          jsonContent: jsonContent,
-          conflictResolutions: resolutions,
-          pendingReviewResolutions: pendingResolutions,
-        ),
-      );
-      final report = importResult.getOrThrow();
-      if (kDebugMode) {
-        dev.log(
-          '[backup-ui] import done: created=${report.createdCount} '
-          'updated=${report.updatedCount} skipped=${report.skippedCount} '
-          'failed=${report.failedCount}',
-          name: 'ProfileScreen',
-        );
-      }
-
-      // Refresh all affected read models so the app reflects imported data
-      // immediately without requiring a full restart.
-      ref.invalidate(profileProvider);
-      ref.invalidate(workoutListProvider);
-      ref.invalidate(archivedWorkoutListProvider);
-      ref.invalidate(lastFinishedWorkoutIdProvider);
-      ref.invalidate(workoutExecutionListProvider);
-      ref.invalidate(exerciseListProvider);
-      ref.invalidate(exerciseEquipmentMapProvider);
-      ref.invalidate(equipmentListProvider);
-      ref.invalidate(userEquipmentIdsProvider);
-      ref.invalidate(cycleStepsProvider);
-      ref.invalidate(effectiveCycleStepsProvider);
-      ref.invalidate(cycleListItemsProvider);
-      ref.invalidate(nextCycleStepProvider);
-      ref.invalidate(nextWorkoutToStartProvider);
-      ref.invalidate(nextCycleStepIndexProvider);
-      ref.invalidate(executionStreakProvider);
-      ref.invalidate(trainingHomeAnalyticsProvider);
-
-      if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(l10n.profileDataImportResultTitle),
-          content: Text(
-            l10n.profileDataImportResultMessage(
-              report.createdCount,
-              report.updatedCount,
-              report.skippedCount,
-              report.failedCount,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(l10n.okButton),
-            ),
-          ],
-        ),
-      );
-    } on Exception catch (e, stackTrace) {
-      final debugMessage = '[backup-ui] import flow exception: ${e.toString()}';
-      debugPrint(debugMessage);
-      debugPrintStack(
-        stackTrace: stackTrace,
-        label: '[backup-ui] import flow stacktrace',
-      );
-      if (kDebugMode) {
-        dev.log(
-          debugMessage,
-          name: 'ProfileScreen',
-          error: e,
-          stackTrace: stackTrace,
-        );
-      }
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            kDebugMode
-                ? '${l10n.profileDataImportError}\n${e.toString()}'
-                : l10n.profileDataImportError,
-          ),
-          duration: const Duration(seconds: 6),
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isImporting = false);
-    }
-  }
-
-  Future<BackupConflictResolution?> _showConflictDialog(
-    BackupImportConflict conflict,
-    AppLocalizations l10n,
-  ) {
-    return showDialog<BackupConflictResolution>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(l10n.profileDataConflictTitle),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l10n.profileDataConflictType(
-                  _conflictTypeLabel(conflict, l10n),
-                ),
-              ),
-              const Gap(AthlosSpacing.sm),
-              Text(l10n.profileDataConflictExisting(conflict.existingLabel)),
-              Text(l10n.profileDataConflictImported(conflict.importedLabel)),
-            ],
-          ),
-          actions: [
-            for (final resolution in conflict.allowedResolutions)
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(resolution),
-                child: Text(_resolutionLabel(resolution, l10n)),
-              ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<BackupPendingReviewResolution?> _showPendingReviewDialog(
-    BackupPendingReview review,
-    AppLocalizations l10n,
-  ) {
-    final suggestionText = review.suggestedLabel != null
-        ? l10n.profileDataPendingSuggested(
-            review.suggestedLabel!,
-            review.similarityScore?.toStringAsFixed(2) ?? '-',
-          )
-        : l10n.profileDataPendingNoSuggestion;
-
-    return showDialog<BackupPendingReviewResolution>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(l10n.profileDataPendingTitle),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l10n.profileDataPendingType(_pendingTypeLabel(review, l10n)),
-              ),
-              const Gap(AthlosSpacing.sm),
-              Text(l10n.profileDataPendingImported(review.importedLabel)),
-              if (review.existingLabel != null)
-                Text(l10n.profileDataPendingExisting(review.existingLabel!)),
-              Text(suggestionText),
-            ],
-          ),
-          actions: [
-            if (review.type != BackupPendingReviewType.governanceConflict &&
-                review.suggestedLabel != null)
-              TextButton(
-                onPressed: () => Navigator.of(
-                  context,
-                ).pop(BackupPendingReviewResolution.linkSuggested),
-                child: Text(l10n.profileDataPendingLinkSuggested),
-              ),
-            if (review.type != BackupPendingReviewType.governanceConflict)
-              TextButton(
-                onPressed: () => Navigator.of(
-                  context,
-                ).pop(BackupPendingReviewResolution.createCustom),
-                child: Text(l10n.profileDataPendingCreateCustom),
-              ),
-            TextButton(
-              onPressed: () =>
-                  Navigator.of(context).pop(BackupPendingReviewResolution.skip),
-              child: Text(l10n.profileDataPendingSkip),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  String _pendingTypeLabel(BackupPendingReview review, AppLocalizations l10n) {
-    final entityLabel = _conflictTypeFromEnum(review.entityType, l10n);
-
-    return switch (review.type) {
-      BackupPendingReviewType.missingCanonicalReference =>
-        l10n.profileDataPendingMissingCanonical(entityLabel),
-      BackupPendingReviewType.fuzzyMatchCandidate =>
-        l10n.profileDataPendingFuzzy(entityLabel),
-      BackupPendingReviewType.verifiedVsCustomConfirmation =>
-        l10n.profileDataPendingVerifiedVsCustom(entityLabel),
-      BackupPendingReviewType.governanceConflict =>
-        l10n.profileDataPendingGovernance(entityLabel),
-    };
-  }
-
-  String _conflictTypeLabel(
-    BackupImportConflict conflict,
-    AppLocalizations l10n,
-  ) {
-    return _conflictTypeFromEnum(conflict.type, l10n);
-  }
-
-  String _conflictTypeFromEnum(BackupConflictType type, AppLocalizations l10n) {
-    return switch (type) {
-      BackupConflictType.profile => l10n.profile,
-      BackupConflictType.equipment => l10n.profileEquipmentTab,
-      BackupConflictType.exercise => l10n.tabExercises,
-      BackupConflictType.workout => l10n.tabWorkouts,
-    };
-  }
-
-  String _resolutionLabel(
-    BackupConflictResolution resolution,
-    AppLocalizations l10n,
-  ) {
-    return switch (resolution) {
-      BackupConflictResolution.keepExisting =>
-        l10n.profileDataConflictKeepExisting,
-      BackupConflictResolution.overwriteExisting =>
-        l10n.profileDataConflictOverwrite,
-      BackupConflictResolution.keepBoth => l10n.profileDataConflictKeepBoth,
-    };
   }
 
   Widget _buildEditView(UserProfile profile, AppLocalizations l10n) {

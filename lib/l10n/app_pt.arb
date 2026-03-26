@@ -63,6 +63,38 @@
   "@profileDataSectionDescription": {
     "description": "Profile data section description"
   },
+  "profileDataConflictSummaryTitle": "Status da central",
+  "@profileDataConflictSummaryTitle": {
+    "description": "Title for conflict center summary inside data tab"
+  },
+  "profileDataConflictSummaryLoading": "Carregando status de conflitos...",
+  "@profileDataConflictSummaryLoading": {
+    "description": "Loading text for conflict center summary"
+  },
+  "profileDataConflictSummaryError": "Não foi possível carregar o status agora.",
+  "@profileDataConflictSummaryError": {
+    "description": "Error text for conflict center summary"
+  },
+  "profileDataConflictSummary": "Governança pendente: {pending} | Falhas de governança: {failed} | Duplicados locais: {local}",
+  "@profileDataConflictSummary": {
+    "description": "Summary of governance conflict center counters",
+    "placeholders": {
+      "pending": { "type": "int" },
+      "failed": { "type": "int" },
+      "local": { "type": "int" }
+    }
+  },
+  "profileDataLocalConflictSummary": "Possíveis duplicados encontrados: {count}",
+  "@profileDataLocalConflictSummary": {
+    "description": "Summary of duplicate count",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "profileDataConflictSummaryLocalHint": "Duplicados são detectados e resolvidos dentro da Central de Conflitos.",
+  "@profileDataConflictSummaryLocalHint": {
+    "description": "Hint explaining where conflicts are resolved"
+  },
   "profileDataExportAction": "Exportar dados",
   "@profileDataExportAction": {
     "description": "Action button to export user data"
@@ -156,6 +188,40 @@
       "type": { "type": "String" }
     }
   },
+  "profileDataPendingScope": "Decisão: {scope}",
+  "@profileDataPendingScope": {
+    "description": "Decision scope for pending review",
+    "placeholders": {
+      "scope": { "type": "String" }
+    }
+  },
+  "profileDataPendingDetectedFrom": "Detectado em: {source}",
+  "@profileDataPendingDetectedFrom": {
+    "description": "Detection source for pending review",
+    "placeholders": {
+      "source": { "type": "String" }
+    }
+  },
+  "profileDataPendingScopeUserLocal": "Conflito local decidível pelo usuário",
+  "@profileDataPendingScopeUserLocal": {
+    "description": "Decision scope label for user-resolved local conflicts"
+  },
+  "profileDataPendingScopeCatalogGovernance": "Política de catálogo (governança)",
+  "@profileDataPendingScopeCatalogGovernance": {
+    "description": "Decision scope label for catalog governance conflicts"
+  },
+  "profileDataPendingSourceImportPreview": "Prévia de importação",
+  "@profileDataPendingSourceImportPreview": {
+    "description": "Detection source label for import preview"
+  },
+  "profileDataPendingSourceRuntimeScan": "Varredura local em runtime",
+  "@profileDataPendingSourceRuntimeScan": {
+    "description": "Detection source label for runtime scan"
+  },
+  "profileDataPendingSourceCatalogSync": "Sincronização de catálogo",
+  "@profileDataPendingSourceCatalogSync": {
+    "description": "Detection source label for catalog sync"
+  },
   "profileDataPendingImported": "Importado: {value}",
   "@profileDataPendingImported": {
     "description": "Imported item label in pending review",
@@ -222,6 +288,101 @@
       "entity": { "type": "String" }
     }
   },
+  "conflictCenterOpenAction": "Abrir central de conflitos",
+  "@conflictCenterOpenAction": {
+    "description": "Action to open conflict center from profile data tab"
+  },
+  "conflictCenterTitle": "Central de Conflitos",
+  "@conflictCenterTitle": {
+    "description": "Conflict center screen title"
+  },
+  "conflictCenterDescription": "Itens que parecem duplicados no seu dispositivo. Revise cada caso e decida.",
+  "@conflictCenterDescription": {
+    "description": "Conflict center screen description"
+  },
+  "conflictCenterLoadError": "Não foi possível carregar a central de conflitos.",
+  "@conflictCenterLoadError": {
+    "description": "Error message for conflict center loading"
+  },
+  "conflictCenterDuplicatesFound": "Possíveis duplicados encontrados: {count}",
+  "@conflictCenterDuplicatesFound": {
+    "description": "Counter of duplicate candidates",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "conflictCenterRescanAction": "Reanalisar agora",
+  "@conflictCenterRescanAction": {
+    "description": "Action to rerun duplicate scan"
+  },
+  "conflictCenterEmptyState": "Nenhum duplicado encontrado.",
+  "@conflictCenterEmptyState": {
+    "description": "Empty state when no duplicates"
+  },
+  "conflictCenterCardTitle": "Possível duplicado — {entity}",
+  "@conflictCenterCardTitle": {
+    "description": "Card title for a duplicate pair",
+    "placeholders": {
+      "entity": { "type": "String" }
+    }
+  },
+  "conflictCenterVerifiedBadge": "Verificado",
+  "@conflictCenterVerifiedBadge": {
+    "description": "Badge for verified catalog item"
+  },
+  "conflictCenterCustomBadge": "Personalizado",
+  "@conflictCenterCustomBadge": {
+    "description": "Badge for custom user item"
+  },
+  "conflictCenterSimilarity": "Similaridade: {score}%",
+  "@conflictCenterSimilarity": {
+    "description": "Similarity score between two items",
+    "placeholders": {
+      "score": { "type": "String" }
+    }
+  },
+  "conflictCenterNotDuplicateAction": "Não é duplicado",
+  "@conflictCenterNotDuplicateAction": {
+    "description": "Action to suppress a duplicate pair suggestion"
+  },
+  "conflictCenterConfirmDuplicateAction": "Está duplicado",
+  "@conflictCenterConfirmDuplicateAction": {
+    "description": "Action to confirm duplicate when one side is verified (verified wins)"
+  },
+  "conflictCenterKeepAAction": "Manter A",
+  "@conflictCenterKeepAAction": {
+    "description": "Action to keep item A and remove item B"
+  },
+  "conflictCenterKeepBAction": "Manter B",
+  "@conflictCenterKeepBAction": {
+    "description": "Action to keep item B and remove item A"
+  },
+  "conflictCenterMergeAttributesAction": "Fazer merge",
+  "@conflictCenterMergeAttributesAction": {
+    "description": "Action to open attribute-by-attribute merge dialog"
+  },
+  "conflictCenterMergeDialogTitle": "Mesclar atributos",
+  "@conflictCenterMergeDialogTitle": {
+    "description": "Title for attribute merge dialog"
+  },
+  "conflictCenterMergeDialogConfirm": "Confirmar merge",
+  "@conflictCenterMergeDialogConfirm": {
+    "description": "Confirm button in attribute merge dialog"
+  },
+  "conflictCenterMergeFieldName": "Nome",
+  "@conflictCenterMergeFieldName": { "description": "Merge field: name" },
+  "conflictCenterMergeFieldCategory": "Categoria",
+  "@conflictCenterMergeFieldCategory": { "description": "Merge field: category" },
+  "conflictCenterMergeFieldDescription": "Descrição",
+  "@conflictCenterMergeFieldDescription": { "description": "Merge field: description" },
+  "conflictCenterMergeFieldMuscleGroup": "Grupo muscular",
+  "@conflictCenterMergeFieldMuscleGroup": { "description": "Merge field: muscle group" },
+  "conflictCenterMergeFieldType": "Tipo",
+  "@conflictCenterMergeFieldType": { "description": "Merge field: type" },
+  "conflictCenterMergeFieldMovementPattern": "Padrão de movimento",
+  "@conflictCenterMergeFieldMovementPattern": { "description": "Merge field: movement pattern" },
+  "conflictCenterMergeFieldEmpty": "(vazio)",
+  "@conflictCenterMergeFieldEmpty": { "description": "Label for empty field value" },
   "@profile": {
     "description": "Label do perfil"
   },

@@ -3,6 +3,8 @@ import 'package:athlos_app/core/domain/repositories/local_backup_repository.dart
 import 'package:athlos_app/core/domain/usecases/export_local_backup_use_case.dart';
 import 'package:athlos_app/core/domain/usecases/import_local_backup_use_case.dart';
 import 'package:athlos_app/core/domain/usecases/preview_local_backup_import_use_case.dart';
+import 'package:athlos_app/core/domain/usecases/resolve_runtime_duplicate_use_case.dart';
+import 'package:athlos_app/core/domain/usecases/scan_runtime_local_duplicates_use_case.dart';
 import 'package:athlos_app/core/errors/app_exception.dart';
 import 'package:athlos_app/core/errors/result.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -58,20 +60,58 @@ void main() {
       expect(repository.lastImportRequest, same(request));
       expect(result.isSuccess, isTrue);
     });
+
+    test('ScanRuntimeLocalDuplicatesUseCase delega ao repositorio', () async {
+      final repository = _FakeLocalBackupRepository();
+      repository.runtimeScanResult = const Success([]);
+      final useCase = ScanRuntimeLocalDuplicatesUseCase(repository);
+
+      final result = await useCase();
+
+      expect(repository.scanRuntimeCalls, 1);
+      expect(result.isSuccess, isTrue);
+    });
+
+    test('ResolveRuntimeDuplicateUseCase delega ao repositorio', () async {
+      final repository = _FakeLocalBackupRepository();
+      repository.resolveRuntimeResult = const Success(null);
+      final useCase = ResolveRuntimeDuplicateUseCase(repository);
+
+      final result = await useCase(
+        entityType: BackupConflictType.equipment,
+        leftEntityId: 10,
+        rightEntityId: 20,
+        decision: RuntimeDuplicateDecision.notDuplicate,
+      );
+
+      expect(repository.resolveRuntimeCalls, 1);
+      expect(result.isSuccess, isTrue);
+    });
   });
 }
 
 class _FakeLocalBackupRepository implements LocalBackupRepository {
-  Result<BackupExportData> exportResult =
-      const Failure(DatabaseException('not configured'));
-  Result<BackupImportPreview> previewResult =
-      const Failure(DatabaseException('not configured'));
-  Result<BackupImportReport> importResult =
-      const Failure(DatabaseException('not configured'));
+  Result<BackupExportData> exportResult = const Failure(
+    DatabaseException('not configured'),
+  );
+  Result<BackupImportPreview> previewResult = const Failure(
+    DatabaseException('not configured'),
+  );
+  Result<BackupImportReport> importResult = const Failure(
+    DatabaseException('not configured'),
+  );
+  Result<List<BackupPendingReview>> runtimeScanResult = const Failure(
+    DatabaseException('not configured'),
+  );
+  Result<void> resolveRuntimeResult = const Failure(
+    DatabaseException('not configured'),
+  );
 
   int exportCalls = 0;
   int previewCalls = 0;
   int importCalls = 0;
+  int scanRuntimeCalls = 0;
+  int resolveRuntimeCalls = 0;
   String? lastPreviewPayload;
   BackupImportRequest? lastImportRequest;
 
@@ -95,5 +135,32 @@ class _FakeLocalBackupRepository implements LocalBackupRepository {
     importCalls++;
     lastImportRequest = request;
     return importResult;
+  }
+
+  @override
+  Future<Result<List<BackupPendingReview>>> scanRuntimeLocalDuplicates() async {
+    scanRuntimeCalls++;
+    return runtimeScanResult;
+  }
+
+  @override
+  Future<Result<void>> resolveRuntimeDuplicate({
+    required BackupConflictType entityType,
+    required int leftEntityId,
+    required int rightEntityId,
+    required RuntimeDuplicateDecision decision,
+    int? winnerId,
+    Map<String, dynamic>? mergedAttributes,
+  }) async {
+    resolveRuntimeCalls++;
+    return resolveRuntimeResult;
+  }
+
+  @override
+  Future<Result<Map<String, dynamic>>> loadEntityAttributes({
+    required BackupConflictType entityType,
+    required int entityId,
+  }) async {
+    return const Success({'id': 1, 'name': 'test'});
   }
 }

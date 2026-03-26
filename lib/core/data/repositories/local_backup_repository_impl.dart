@@ -1,15 +1,18 @@
 import 'dart:convert';
 import 'dart:developer' as dev;
 import 'dart:math' as math;
+import 'dart:ui' show Locale;
 
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../database/app_database.dart';
+import '../../localization/domain_label_resolver.dart';
 import '../../domain/entities/local_backup_models.dart';
 import '../../domain/repositories/local_backup_repository.dart';
 import '../../errors/app_exception.dart';
 import '../../errors/result.dart';
+import '../../../l10n/app_localizations.dart';
 
 const _backupFormatVersion = 2;
 const _fuzzyThreshold = 0.84;
@@ -45,10 +48,14 @@ const _tableExecutionSetSegments = 'execution_set_segments';
 const _tableCycleSteps = 'cycle_steps';
 const _tableUserEquipments = 'user_equipments';
 const _tableCatalogGovernanceEvents = 'catalog_governance_events';
+const _tableLocalDuplicateFeedback = 'local_duplicate_feedback';
 
 const _tableCatalogReferences = 'catalogReferences';
 const _catalogEquipments = 'equipments';
 const _catalogExercises = 'exercises';
+
+final AppLocalizations _ptBrL10n = lookupAppLocalizations(const Locale('pt'));
+final DomainLabelResolver _domainLabelResolver = DomainLabelResolver(_ptBrL10n);
 
 class LocalBackupRepositoryImpl implements LocalBackupRepository {
   final AppDatabase _db;
@@ -63,8 +70,9 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       final workoutExercises = await _fetchTableRows(_tableWorkoutExercises);
       final workoutExecutions = await _fetchTableRows(_tableWorkoutExecutions);
       final executionSets = await _fetchTableRows(_tableExecutionSets);
-      final executionSetSegments =
-          await _fetchTableRows(_tableExecutionSetSegments);
+      final executionSetSegments = await _fetchTableRows(
+        _tableExecutionSetSegments,
+      );
       final cycleSteps = await _fetchTableRows(_tableCycleSteps);
       final userEquipments = await _fetchTableRows(_tableUserEquipments);
 
@@ -112,7 +120,9 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         ...workoutExercises
             .map((row) => _asInt(row['exercise_id']))
             .whereType<int>(),
-        ...executionSets.map((row) => _asInt(row['exercise_id'])).whereType<int>(),
+        ...executionSets
+            .map((row) => _asInt(row['exercise_id']))
+            .whereType<int>(),
         ...variations
             .expand(
               (row) => [
@@ -154,8 +164,9 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           _tableWorkoutExercises: workoutExercises.map(_toJsonMap).toList(),
           _tableWorkoutExecutions: workoutExecutions.map(_toJsonMap).toList(),
           _tableExecutionSets: executionSets.map(_toJsonMap).toList(),
-          _tableExecutionSetSegments:
-              executionSetSegments.map(_toJsonMap).toList(),
+          _tableExecutionSetSegments: executionSetSegments
+              .map(_toJsonMap)
+              .toList(),
           _tableCycleSteps: cycleSteps.map(_toJsonMap).toList(),
           _tableUserEquipments: userEquipments.map(_toJsonMap).toList(),
         },
@@ -253,7 +264,8 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
                 )) {
                   continue;
                 }
-                final resolution = request.conflictResolutions['profile:$key'] ??
+                final resolution =
+                    request.conflictResolutions['profile:$key'] ??
                     BackupConflictResolution.keepExisting;
                 if (resolution == BackupConflictResolution.overwriteExisting) {
                   mergedProfile[key] = importedValue;
@@ -353,7 +365,8 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
             continue;
           }
 
-          final resolution = request.conflictResolutions['workout:$oldId'] ??
+          final resolution =
+              request.conflictResolutions['workout:$oldId'] ??
               BackupConflictResolution.keepExisting;
           switch (resolution) {
             case BackupConflictResolution.keepExisting:
@@ -387,7 +400,8 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           }
         }
 
-        final userEquipmentRows = payload.tables[_tableUserEquipments] ?? const [];
+        final userEquipmentRows =
+            payload.tables[_tableUserEquipments] ?? const [];
         for (final row in userEquipmentRows) {
           final oldEquipmentId = _asInt(row['equipment_id']);
           if (oldEquipmentId == null) continue;
@@ -399,11 +413,9 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
             bumpReason(failedReasons, 'user_equipment_missing_mapping');
             continue;
           }
-          await _insertRow(
-            _tableUserEquipments,
-            {'equipment_id': newEquipmentId},
-            orIgnore: true,
-          );
+          await _insertRow(_tableUserEquipments, {
+            'equipment_id': newEquipmentId,
+          }, orIgnore: true);
         }
 
         final exerciseEquipmentRows =
@@ -419,17 +431,14 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
             bumpReason(failedReasons, 'exercise_equipment_missing_mapping');
             continue;
           }
-          await _insertRow(
-            _tableExerciseEquipments,
-            {
-              'exercise_id': newExerciseId,
-              'equipment_id': newEquipmentId,
-            },
-            orIgnore: true,
-          );
+          await _insertRow(_tableExerciseEquipments, {
+            'exercise_id': newExerciseId,
+            'equipment_id': newEquipmentId,
+          }, orIgnore: true);
         }
 
-        final targetRows = payload.tables[_tableExerciseTargetMuscles] ?? const [];
+        final targetRows =
+            payload.tables[_tableExerciseTargetMuscles] ?? const [];
         for (final row in targetRows) {
           final oldExerciseId = _asInt(row['exercise_id']);
           if (oldExerciseId == null) continue;
@@ -439,19 +448,16 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
             bumpReason(failedReasons, 'exercise_target_muscle_missing_mapping');
             continue;
           }
-          await _insertRow(
-            _tableExerciseTargetMuscles,
-            {
-              'exercise_id': newExerciseId,
-              'target_muscle': row['target_muscle'],
-              'muscle_region': row['muscle_region'],
-              'role': row['role'],
-            },
-            orIgnore: true,
-          );
+          await _insertRow(_tableExerciseTargetMuscles, {
+            'exercise_id': newExerciseId,
+            'target_muscle': row['target_muscle'],
+            'muscle_region': row['muscle_region'],
+            'role': row['role'],
+          }, orIgnore: true);
         }
 
-        final variationRows = payload.tables[_tableExerciseVariations] ?? const [];
+        final variationRows =
+            payload.tables[_tableExerciseVariations] ?? const [];
         for (final row in variationRows) {
           final oldExerciseId = _asInt(row['exercise_id']);
           final oldVariationId = _asInt(row['variation_id']);
@@ -463,17 +469,14 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
             bumpReason(failedReasons, 'exercise_variation_missing_mapping');
             continue;
           }
-          await _insertRow(
-            _tableExerciseVariations,
-            {
-              'exercise_id': newExerciseId,
-              'variation_id': newVariationId,
-            },
-            orIgnore: true,
-          );
+          await _insertRow(_tableExerciseVariations, {
+            'exercise_id': newExerciseId,
+            'variation_id': newVariationId,
+          }, orIgnore: true);
         }
 
-        final workoutExerciseRows = payload.tables[_tableWorkoutExercises] ?? const [];
+        final workoutExerciseRows =
+            payload.tables[_tableWorkoutExercises] ?? const [];
         for (final row in workoutExerciseRows) {
           final oldWorkoutId = _asInt(row['workout_id']);
           final oldExerciseId = _asInt(row['exercise_id']);
@@ -489,25 +492,22 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
             bumpReason(failedReasons, 'workout_exercise_missing_mapping');
             continue;
           }
-          await _insertRow(
-            _tableWorkoutExercises,
-            {
-              'workout_id': newWorkoutId,
-              'exercise_id': newExerciseId,
-              'order': row['order'],
-              'sets': row['sets'],
-              'reps': row['reps'],
-              'rest': row['rest'],
-              'duration': row['duration'],
-              'group_id': row['group_id'],
-              'is_unilateral': row['is_unilateral'],
-              'notes': row['notes'],
-            },
-            orReplace: true,
-          );
+          await _insertRow(_tableWorkoutExercises, {
+            'workout_id': newWorkoutId,
+            'exercise_id': newExerciseId,
+            'order': row['order'],
+            'sets': row['sets'],
+            'reps': row['reps'],
+            'rest': row['rest'],
+            'duration': row['duration'],
+            'group_id': row['group_id'],
+            'is_unilateral': row['is_unilateral'],
+            'notes': row['notes'],
+          }, orReplace: true);
         }
 
-        final executionRows = payload.tables[_tableWorkoutExecutions] ?? const [];
+        final executionRows =
+            payload.tables[_tableWorkoutExecutions] ?? const [];
         final skippedExecutionIds = <int>{};
         for (final row in executionRows) {
           final oldExecutionId = _asInt(row['id']);
@@ -521,7 +521,10 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           final newWorkoutId = workoutIdMap[oldWorkoutId];
           if (newWorkoutId == null) {
             failedCount++;
-            bumpReason(failedReasons, 'workout_execution_missing_workout_mapping');
+            bumpReason(
+              failedReasons,
+              'workout_execution_missing_workout_mapping',
+            );
             continue;
           }
           final newExecutionId = await _insertRow(
@@ -537,13 +540,16 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           executionIdMap[oldExecutionId] = newExecutionId;
         }
 
-        final executionSetRows = payload.tables[_tableExecutionSets] ?? const [];
+        final executionSetRows =
+            payload.tables[_tableExecutionSets] ?? const [];
         final skippedExecutionSetIds = <int>{};
         for (final row in executionSetRows) {
           final oldSetId = _asInt(row['id']);
           final oldExecutionId = _asInt(row['execution_id']);
           final oldExerciseId = _asInt(row['exercise_id']);
-          if (oldSetId == null || oldExecutionId == null || oldExerciseId == null) {
+          if (oldSetId == null ||
+              oldExecutionId == null ||
+              oldExerciseId == null) {
             continue;
           }
 
@@ -551,7 +557,8 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           final newExerciseId =
               exerciseIdMap[oldExerciseId] ??
               await _findVerifiedExerciseIdByLocalId(oldExerciseId);
-          if (newExecutionId == null && skippedExecutionIds.contains(oldExecutionId)) {
+          if (newExecutionId == null &&
+              skippedExecutionIds.contains(oldExecutionId)) {
             skippedExecutionSetIds.add(oldSetId);
             continue;
           }
@@ -610,8 +617,9 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         final cycleStepRows = payload.tables[_tableCycleSteps] ?? const [];
         for (final row in cycleStepRows) {
           final oldWorkoutId = _asInt(row['workout_id']);
-          final newWorkoutId =
-              oldWorkoutId != null ? workoutIdMap[oldWorkoutId] : null;
+          final newWorkoutId = oldWorkoutId != null
+              ? workoutIdMap[oldWorkoutId]
+              : null;
           if (oldWorkoutId != null &&
               (newWorkoutId == null ||
                   importWorkoutDetails[oldWorkoutId] == false)) {
@@ -679,6 +687,241 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     }
   }
 
+  @override
+  Future<Result<List<BackupPendingReview>>> scanRuntimeLocalDuplicates() async {
+    try {
+      final pending = <BackupPendingReview>[];
+      pending.addAll(
+        await _scanRuntimeDuplicatesForTable(
+          tableName: _tableEquipments,
+          entityType: BackupConflictType.equipment,
+          reviewPrefix: 'runtime_equipment',
+        ),
+      );
+      pending.addAll(
+        await _scanRuntimeDuplicatesForTable(
+          tableName: _tableExercises,
+          entityType: BackupConflictType.exercise,
+          reviewPrefix: 'runtime_exercise',
+        ),
+      );
+      return Success(pending);
+    } on Exception catch (e) {
+      return Failure(
+        DatabaseException('Failed to scan runtime duplicates: $e'),
+      );
+    }
+  }
+
+  @override
+  Future<Result<void>> resolveRuntimeDuplicate({
+    required BackupConflictType entityType,
+    required int leftEntityId,
+    required int rightEntityId,
+    required RuntimeDuplicateDecision decision,
+    int? winnerId,
+    Map<String, dynamic>? mergedAttributes,
+  }) async {
+    if (leftEntityId == rightEntityId) {
+      return const Failure(ValidationException('Invalid duplicate pair.'));
+    }
+
+    final tableName = _runtimeConflictTable(entityType);
+    if (tableName == null) {
+      return const Failure(
+        ValidationException('Entity type does not support runtime merge.'),
+      );
+    }
+
+    try {
+      final rows = await _db
+          .customSelect(
+            'SELECT id, name, is_verified FROM $tableName WHERE id IN (?, ?)',
+            variables: [
+              Variable<int>(leftEntityId),
+              Variable<int>(rightEntityId),
+            ],
+          )
+          .get();
+      if (rows.length != 2) {
+        return const Failure(NotFoundException('Duplicate pair not found.'));
+      }
+
+      final left = rows
+          .firstWhere((r) => _asInt(r.data['id']) == leftEntityId)
+          .data;
+      final right = rows
+          .firstWhere((r) => _asInt(r.data['id']) == rightEntityId)
+          .data;
+
+      final leftFingerprint = _buildDuplicateFingerprint(
+        tableName: tableName,
+        label: left['name']?.toString() ?? '',
+      );
+      final rightFingerprint = _buildDuplicateFingerprint(
+        tableName: tableName,
+        label: right['name']?.toString() ?? '',
+      );
+
+      if (decision == RuntimeDuplicateDecision.notDuplicate) {
+        await _saveRuntimePairSuppression(
+          entityType: entityType,
+          leftFingerprint: leftFingerprint,
+          rightFingerprint: rightFingerprint,
+        );
+        return const Success(null);
+      }
+
+      final resolvedWinnerId =
+          winnerId ?? _autoPickWinner(left, right, leftEntityId, rightEntityId);
+      final loserId = resolvedWinnerId == leftEntityId
+          ? rightEntityId
+          : leftEntityId;
+
+      await _db.transaction(() async {
+        if (decision == RuntimeDuplicateDecision.mergeAttributes &&
+            mergedAttributes != null) {
+          await _applyMergedAttributes(
+            tableName: tableName,
+            entityId: resolvedWinnerId,
+            attributes: mergedAttributes,
+          );
+          await _unifyJunctionTables(
+            tableName: tableName,
+            winnerId: resolvedWinnerId,
+            loserId: loserId,
+          );
+        }
+
+        await _mergeLocalLoserIntoWinner(
+          tableName: tableName,
+          loserId: loserId,
+          winnerId: resolvedWinnerId,
+        );
+        await _deleteRuntimePairSuppression(
+          entityType: entityType,
+          leftFingerprint: leftFingerprint,
+          rightFingerprint: rightFingerprint,
+        );
+      });
+
+      return const Success(null);
+    } on AppException catch (e) {
+      return Failure(e);
+    } on Exception catch (e) {
+      return Failure(
+        DatabaseException('Failed to resolve runtime duplicate: $e'),
+      );
+    }
+  }
+
+  int _autoPickWinner(
+    Map<String, dynamic> left,
+    Map<String, dynamic> right,
+    int leftId,
+    int rightId,
+  ) {
+    final leftVerified = _asBool(left['is_verified']);
+    final rightVerified = _asBool(right['is_verified']);
+    if (leftVerified && !rightVerified) return leftId;
+    if (rightVerified && !leftVerified) return rightId;
+    return leftId;
+  }
+
+  Future<void> _applyMergedAttributes({
+    required String tableName,
+    required int entityId,
+    required Map<String, dynamic> attributes,
+  }) async {
+    if (attributes.isEmpty) return;
+    final allowedColumns = _editableColumns(tableName);
+    final setClauses = <String>[];
+    final variables = <Variable<Object>>[];
+    for (final entry in attributes.entries) {
+      if (!allowedColumns.contains(entry.key)) continue;
+      setClauses.add('"${entry.key}" = ?');
+      variables.add(Variable<String>(entry.value?.toString() ?? ''));
+    }
+    if (setClauses.isEmpty) return;
+    variables.add(Variable<int>(entityId));
+    await _db.customUpdate(
+      'UPDATE "$tableName" SET ${setClauses.join(', ')} WHERE id = ?',
+      variables: variables,
+    );
+  }
+
+  Set<String> _editableColumns(String tableName) {
+    if (tableName == _tableEquipments) {
+      return const {'name', 'description', 'category'};
+    }
+    if (tableName == _tableExercises) {
+      return const {
+        'name',
+        'description',
+        'muscle_group',
+        'type',
+        'movement_pattern',
+      };
+    }
+    return const {};
+  }
+
+  Future<void> _unifyJunctionTables({
+    required String tableName,
+    required int winnerId,
+    required int loserId,
+  }) async {
+    if (tableName == _tableEquipments) {
+      await _db.customStatement(
+        'INSERT OR IGNORE INTO "$_tableUserEquipments" (equipment_id) '
+        'SELECT $winnerId WHERE EXISTS '
+        '(SELECT 1 FROM "$_tableUserEquipments" WHERE equipment_id = $loserId)',
+      );
+      await _db.customStatement(
+        'INSERT OR IGNORE INTO "$_tableExerciseEquipments" (exercise_id, equipment_id) '
+        'SELECT exercise_id, $winnerId FROM "$_tableExerciseEquipments" '
+        'WHERE equipment_id = $loserId',
+      );
+    } else if (tableName == _tableExercises) {
+      await _db.customStatement(
+        'INSERT OR IGNORE INTO "$_tableExerciseEquipments" (exercise_id, equipment_id) '
+        'SELECT $winnerId, equipment_id FROM "$_tableExerciseEquipments" '
+        'WHERE exercise_id = $loserId',
+      );
+      await _db.customStatement(
+        'INSERT OR IGNORE INTO "$_tableExerciseTargetMuscles" '
+        '(exercise_id, target_muscle, muscle_region, role) '
+        'SELECT $winnerId, target_muscle, muscle_region, role '
+        'FROM "$_tableExerciseTargetMuscles" WHERE exercise_id = $loserId',
+      );
+    }
+  }
+
+  @override
+  Future<Result<Map<String, dynamic>>> loadEntityAttributes({
+    required BackupConflictType entityType,
+    required int entityId,
+  }) async {
+    final tableName = _runtimeConflictTable(entityType);
+    if (tableName == null) {
+      return const Failure(ValidationException('Entity type not supported.'));
+    }
+    try {
+      final rows = await _db
+          .customSelect(
+            'SELECT * FROM "$tableName" WHERE id = ?',
+            variables: [Variable<int>(entityId)],
+          )
+          .get();
+      if (rows.isEmpty) {
+        return const Failure(NotFoundException('Entity not found.'));
+      }
+      return Success(Map<String, dynamic>.from(rows.first.data));
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to load entity: $e'));
+    }
+  }
+
   Future<_CanonicalResolutionResult> _resolveCanonicalReferences({
     required _BackupParsedPayload payload,
     required BackupImportRequest request,
@@ -687,8 +930,10 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     final exerciseIdMap = <int, int>{};
     var unresolvedCount = 0;
 
-    final equipmentRefs = payload.catalogReferences[_catalogEquipments] ?? const [];
-    final exerciseRefs = payload.catalogReferences[_catalogExercises] ?? const [];
+    final equipmentRefs =
+        payload.catalogReferences[_catalogEquipments] ?? const [];
+    final exerciseRefs =
+        payload.catalogReferences[_catalogExercises] ?? const [];
 
     final verifiedEquipments = await _fetchVerifiedRows(_tableEquipments);
     final verifiedExercises = await _fetchVerifiedRows(_tableExercises);
@@ -743,11 +988,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     );
     if (byRemote.isNotEmpty) return _asInt(byRemote['id']);
 
-    final suggestions = _topFuzzyCandidates(
-      ref.name,
-      verifiedRows,
-      limit: 1,
-    );
+    final suggestions = _topFuzzyCandidates(ref.name, verifiedRows, limit: 1);
     final pendingId = 'missing_${entityType.name}_${ref.localId}';
     final resolution = request.pendingReviewResolutions[pendingId];
 
@@ -817,13 +1058,14 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         final existingIsVerified = _asBool(existing['is_verified']);
 
         if (importedIsVerified && existingIsVerified) {
-          final sameRemoteId = row['catalog_remote_id']?.toString().isNotEmpty ==
-                  true &&
+          final sameRemoteId =
+              row['catalog_remote_id']?.toString().isNotEmpty == true &&
               row['catalog_remote_id']?.toString() ==
                   existing['catalog_remote_id']?.toString();
           if (!sameRemoteId) {
             final pendingId = 'governance_${entityType.name}_$oldId';
-            final resolution = request.pendingReviewResolutions[pendingId] ??
+            final resolution =
+                request.pendingReviewResolutions[pendingId] ??
                 BackupPendingReviewResolution.skip;
             if (resolution == BackupPendingReviewResolution.skip) {
               await _enqueueGovernanceEvent(
@@ -835,7 +1077,8 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
                 payload: {
                   'imported': row,
                   'existing': existing,
-                  'reason': 'same_name_or_semantic_match_with_different_remote_id',
+                  'reason':
+                      'same_name_or_semantic_match_with_different_remote_id',
                 },
               );
               failedCount++;
@@ -861,7 +1104,8 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
 
         if (importedIsVerified != existingIsVerified) {
           final pendingId = 'verified_confirm_${entityType.name}_$oldId';
-          final resolution = request.pendingReviewResolutions[pendingId] ??
+          final resolution =
+              request.pendingReviewResolutions[pendingId] ??
               BackupPendingReviewResolution.createCustom;
           if (resolution == BackupPendingReviewResolution.linkSuggested) {
             idMap[oldId] = existingId;
@@ -888,7 +1132,9 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           // `createCustom` keeps both items by inserting imported as non-verified.
           final uniqueName = _buildUniqueName(
             name,
-            byNormalized.map((key, value) => MapEntry(key, _asInt(value['id'])!)),
+            byNormalized.map(
+              (key, value) => MapEntry(key, _asInt(value['id'])!),
+            ),
           );
           final nextRow = Map<String, dynamic>.from(row)
             ..[nameField] = uniqueName
@@ -925,7 +1171,8 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         }
 
         final pendingId = '${pendingPrefix}_$oldId';
-        final pendingResolution = request.pendingReviewResolutions[pendingId] ??
+        final pendingResolution =
+            request.pendingReviewResolutions[pendingId] ??
             BackupPendingReviewResolution.createCustom;
         if (pendingResolution == BackupPendingReviewResolution.linkSuggested) {
           idMap[oldId] = existingId;
@@ -940,9 +1187,11 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         final fuzzy = _topFuzzyCandidates(name, existingRows, limit: 1);
         if (fuzzy.isNotEmpty && fuzzy.first['score'] >= _fuzzyThreshold) {
           final pendingId = '${pendingPrefix}_$oldId';
-          final pendingResolution = request.pendingReviewResolutions[pendingId] ??
+          final pendingResolution =
+              request.pendingReviewResolutions[pendingId] ??
               BackupPendingReviewResolution.createCustom;
-          if (pendingResolution == BackupPendingReviewResolution.linkSuggested) {
+          if (pendingResolution ==
+              BackupPendingReviewResolution.linkSuggested) {
             final suggestedId = _asInt(fuzzy.first['id']);
             if (suggestedId != null) {
               idMap[oldId] = suggestedId;
@@ -957,11 +1206,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         }
       }
 
-      final newId = await _insertRow(
-        tableName,
-        row,
-        excludeKeys: const {'id'},
-      );
+      final newId = await _insertRow(tableName, row, excludeKeys: const {'id'});
       idMap[oldId] = newId;
       final insertedRow = Map<String, dynamic>.from(row)..['id'] = newId;
       existingRows.add(insertedRow);
@@ -1002,8 +1247,10 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
             BackupImportConflict(
               conflictId: 'profile:$key',
               type: BackupConflictType.profile,
-              existingLabel: '${_profileFieldLabel(key)}: ${_formatProfileConflictValue(existingValue)}',
-              importedLabel: '${_profileFieldLabel(key)}: ${_formatProfileConflictValue(importedValue)}',
+              existingLabel:
+                  '${_profileFieldLabel(key)}: ${_formatProfileConflictValue(existingValue)}',
+              importedLabel:
+                  '${_profileFieldLabel(key)}: ${_formatProfileConflictValue(importedValue)}',
               allowedResolutions: const [
                 BackupConflictResolution.keepExisting,
                 BackupConflictResolution.overwriteExisting,
@@ -1175,46 +1422,64 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     final verifiedEquipments = await _fetchVerifiedRows(_tableEquipments);
     final verifiedExercises = await _fetchVerifiedRows(_tableExercises);
 
-    final equipmentRefs = payload.catalogReferences[_catalogEquipments] ?? const [];
+    final equipmentRefs =
+        payload.catalogReferences[_catalogEquipments] ?? const [];
     for (final ref in equipmentRefs) {
       final byRemote = verifiedEquipments.any(
         (row) => row['catalog_remote_id']?.toString() == ref.catalogRemoteId,
       );
       if (byRemote) continue;
 
-      final suggestion = _topFuzzyCandidates(ref.name, verifiedEquipments, limit: 1);
+      final suggestion = _topFuzzyCandidates(
+        ref.name,
+        verifiedEquipments,
+        limit: 1,
+      );
       pending.add(
         BackupPendingReview(
           reviewId: 'missing_equipment_${ref.localId}',
           type: BackupPendingReviewType.missingCanonicalReference,
+          decisionScope: BackupConflictDecisionScope.userLocal,
+          detectedFrom: BackupConflictDetectedFrom.importPreview,
           entityType: BackupConflictType.equipment,
           importedLabel: ref.name,
-          suggestedLabel:
-              suggestion.isNotEmpty ? suggestion.first['name'] as String? : null,
-          similarityScore:
-              suggestion.isNotEmpty ? suggestion.first['score'] as double : null,
+          suggestedLabel: suggestion.isNotEmpty
+              ? suggestion.first['name'] as String?
+              : null,
+          similarityScore: suggestion.isNotEmpty
+              ? suggestion.first['score'] as double
+              : null,
         ),
       );
     }
 
-    final exerciseRefs = payload.catalogReferences[_catalogExercises] ?? const [];
+    final exerciseRefs =
+        payload.catalogReferences[_catalogExercises] ?? const [];
     for (final ref in exerciseRefs) {
       final byRemote = verifiedExercises.any(
         (row) => row['catalog_remote_id']?.toString() == ref.catalogRemoteId,
       );
       if (byRemote) continue;
 
-      final suggestion = _topFuzzyCandidates(ref.name, verifiedExercises, limit: 1);
+      final suggestion = _topFuzzyCandidates(
+        ref.name,
+        verifiedExercises,
+        limit: 1,
+      );
       pending.add(
         BackupPendingReview(
           reviewId: 'missing_exercise_${ref.localId}',
           type: BackupPendingReviewType.missingCanonicalReference,
+          decisionScope: BackupConflictDecisionScope.userLocal,
+          detectedFrom: BackupConflictDetectedFrom.importPreview,
           entityType: BackupConflictType.exercise,
           importedLabel: ref.name,
-          suggestedLabel:
-              suggestion.isNotEmpty ? suggestion.first['name'] as String? : null,
-          similarityScore:
-              suggestion.isNotEmpty ? suggestion.first['score'] as double : null,
+          suggestedLabel: suggestion.isNotEmpty
+              ? suggestion.first['name'] as String?
+              : null,
+          similarityScore: suggestion.isNotEmpty
+              ? suggestion.first['score'] as double
+              : null,
         ),
       );
     }
@@ -1272,6 +1537,8 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           BackupPendingReview(
             reviewId: '${fuzzyPrefix}_$oldId',
             type: BackupPendingReviewType.fuzzyMatchCandidate,
+            decisionScope: BackupConflictDecisionScope.userLocal,
+            detectedFrom: BackupConflictDetectedFrom.importPreview,
             entityType: entityType,
             importedLabel: name,
             suggestedLabel: suggestion.first['name'] as String?,
@@ -1291,6 +1558,8 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           BackupPendingReview(
             reviewId: 'verified_confirm_${entityType.name}_$oldId',
             type: BackupPendingReviewType.verifiedVsCustomConfirmation,
+            decisionScope: BackupConflictDecisionScope.userLocal,
+            detectedFrom: BackupConflictDetectedFrom.importPreview,
             entityType: entityType,
             importedLabel: name,
             existingLabel: existingName,
@@ -1311,6 +1580,8 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
             BackupPendingReview(
               reviewId: 'governance_${entityType.name}_$oldId',
               type: BackupPendingReviewType.governanceConflict,
+              decisionScope: BackupConflictDecisionScope.catalogGovernance,
+              detectedFrom: BackupConflictDetectedFrom.importPreview,
               entityType: entityType,
               importedLabel: name,
               existingLabel: existingName,
@@ -1327,6 +1598,8 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           BackupPendingReview(
             reviewId: '${fuzzyPrefix}_$oldId',
             type: BackupPendingReviewType.fuzzyMatchCandidate,
+            decisionScope: BackupConflictDecisionScope.userLocal,
+            detectedFrom: BackupConflictDetectedFrom.importPreview,
             entityType: entityType,
             importedLabel: name,
             existingLabel: existingName,
@@ -1363,6 +1636,8 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         BackupPendingReview(
           reviewId: 'fuzzy_workout_$oldId',
           type: BackupPendingReviewType.fuzzyMatchCandidate,
+          decisionScope: BackupConflictDecisionScope.userLocal,
+          detectedFrom: BackupConflictDetectedFrom.importPreview,
           entityType: BackupConflictType.workout,
           importedLabel: name,
           suggestedLabel: suggestion.first['name'] as String?,
@@ -1371,6 +1646,292 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       );
     }
     return pending;
+  }
+
+  Future<List<BackupPendingReview>> _scanRuntimeDuplicatesForTable({
+    required String tableName,
+    required BackupConflictType entityType,
+    required String reviewPrefix,
+  }) async {
+    final rows = await _fetchTableRows(tableName);
+    final candidates = rows
+        .map(
+          (row) => _toRuntimeDuplicateCandidate(tableName: tableName, row: row),
+        )
+        .whereType<_RuntimeDuplicateCandidate>()
+        .toList();
+
+    final reviews = <BackupPendingReview>[];
+    final seenPairs = <String>{};
+
+    for (var i = 0; i < candidates.length; i++) {
+      final current = candidates[i];
+
+      _RuntimeDuplicateCandidate? bestMatch;
+      double bestScore = 0;
+
+      for (var j = 0; j < candidates.length; j++) {
+        if (i == j) continue;
+        final other = candidates[j];
+        final score = _runtimeDuplicateScore(current, other);
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = other;
+        }
+      }
+
+      if (bestMatch == null || bestScore < _fuzzyThreshold) continue;
+      if (!_canBeRuntimeDuplicate(current, bestMatch)) continue;
+
+      final minId = math.min(current.id, bestMatch.id);
+      final maxId = math.max(current.id, bestMatch.id);
+      final pairKey = '$tableName:$minId:$maxId';
+      if (!seenPairs.add(pairKey)) continue;
+
+      final leftFingerprint = _buildDuplicateFingerprint(
+        tableName: tableName,
+        label: current.rawName,
+      );
+      final rightFingerprint = _buildDuplicateFingerprint(
+        tableName: tableName,
+        label: bestMatch.rawName,
+      );
+      final suppressed = await _isRuntimePairSuppressed(
+        entityType: entityType,
+        leftFingerprint: leftFingerprint,
+        rightFingerprint: rightFingerprint,
+      );
+      if (suppressed) continue;
+
+      reviews.add(
+        BackupPendingReview(
+          reviewId: '${reviewPrefix}_${minId}_$maxId',
+          type: BackupPendingReviewType.fuzzyMatchCandidate,
+          decisionScope: BackupConflictDecisionScope.userLocal,
+          detectedFrom: BackupConflictDetectedFrom.runtimeScan,
+          entityType: entityType,
+          importedLabel: current.rawName,
+          existingLabel: bestMatch.rawName,
+          suggestedLabel: bestMatch.rawName,
+          similarityScore: bestScore,
+          leftEntityId: current.id,
+          rightEntityId: bestMatch.id,
+          isLeftVerified: current.isVerified,
+          isRightVerified: bestMatch.isVerified,
+        ),
+      );
+    }
+
+    return reviews;
+  }
+
+  _RuntimeDuplicateCandidate? _toRuntimeDuplicateCandidate({
+    required String tableName,
+    required Map<String, dynamic> row,
+  }) {
+    final id = _asInt(row['id']);
+    final rawName = (row['name'] as String?)?.trim();
+    if (id == null || rawName == null || rawName.isEmpty) return null;
+
+    final normalizedName = _normalizeComparableName(rawName);
+    final normalizedFromCanonical = _normalizeComparableName(
+      _canonicalComparableName(tableName: tableName, candidate: rawName),
+    );
+    final canonicalKey = _canonicalKeyFor(
+      tableName: tableName,
+      candidate: rawName,
+    );
+    final tokens = <String>{
+      ..._tokenize(normalizedName),
+      ..._tokenize(normalizedFromCanonical),
+    };
+
+    return _RuntimeDuplicateCandidate(
+      id: id,
+      rawName: rawName,
+      normalizedName: normalizedName,
+      normalizedFromCanonical: normalizedFromCanonical,
+      canonicalKey: canonicalKey,
+      tokens: tokens,
+      isVerified: _asBool(row['is_verified']),
+    );
+  }
+
+  String _canonicalComparableName({
+    required String tableName,
+    required String candidate,
+  }) {
+    final canonical = _canonicalKeyFor(
+      tableName: tableName,
+      candidate: candidate,
+    );
+    return _splitCamelCase(canonical);
+  }
+
+  String _canonicalKeyFor({
+    required String tableName,
+    required String candidate,
+  }) {
+    if (tableName == _tableEquipments) {
+      return _domainLabelResolver.toCanonicalName(
+        kind: DomainLabelKind.equipment,
+        candidate: candidate,
+      );
+    }
+    if (tableName == _tableExercises) {
+      return _domainLabelResolver.toCanonicalName(
+        kind: DomainLabelKind.exercise,
+        candidate: candidate,
+      );
+    }
+    return candidate;
+  }
+
+  double _runtimeDuplicateScore(
+    _RuntimeDuplicateCandidate current,
+    _RuntimeDuplicateCandidate other,
+  ) {
+    if (current.canonicalKey == other.canonicalKey &&
+        (current.canonicalKey != current.rawName ||
+            other.canonicalKey != other.rawName)) {
+      // If both labels map to the same known canonical key, treat as a strong match.
+      return 1;
+    }
+
+    final scoreByRaw = _similarity(
+      current.normalizedName,
+      other.normalizedName,
+    );
+    final scoreByCanonical = _similarity(
+      current.normalizedFromCanonical,
+      other.normalizedFromCanonical,
+    );
+    return math.max(scoreByRaw, scoreByCanonical);
+  }
+
+  bool _canBeRuntimeDuplicate(
+    _RuntimeDuplicateCandidate current,
+    _RuntimeDuplicateCandidate other,
+  ) {
+    if (current.canonicalKey == other.canonicalKey &&
+        (current.canonicalKey != current.rawName ||
+            other.canonicalKey != other.rawName)) {
+      return true;
+    }
+
+    final overlap = _tokenOverlapRatio(current.tokens, other.tokens);
+    return overlap >= 0.75;
+  }
+
+  double _tokenOverlapRatio(Set<String> left, Set<String> right) {
+    if (left.isEmpty || right.isEmpty) return 0;
+    final intersection = left.intersection(right).length;
+    final maxSize = math.max(left.length, right.length);
+    return intersection / maxSize;
+  }
+
+  Set<String> _tokenize(String value) {
+    if (value.isEmpty) return const {};
+    return value
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where((token) => token.isNotEmpty)
+        .toSet();
+  }
+
+  String _normalizeComparableName(String value) {
+    return _normalizeName(_splitCamelCase(value));
+  }
+
+  String _splitCamelCase(String value) {
+    return value
+        .replaceAllMapped(
+          RegExp(r'([a-z0-9])([A-Z])'),
+          (m) => '${m[1]} ${m[2]}',
+        )
+        .replaceAll('_', ' ')
+        .trim();
+  }
+
+  String? _runtimeConflictTable(BackupConflictType entityType) {
+    return switch (entityType) {
+      BackupConflictType.equipment => _tableEquipments,
+      BackupConflictType.exercise => _tableExercises,
+      BackupConflictType.profile || BackupConflictType.workout => null,
+    };
+  }
+
+  String _buildDuplicateFingerprint({
+    required String tableName,
+    required String label,
+  }) {
+    final canonical = _canonicalKeyFor(tableName: tableName, candidate: label);
+    return _normalizeComparableName(canonical);
+  }
+
+  Future<bool> _isRuntimePairSuppressed({
+    required BackupConflictType entityType,
+    required String leftFingerprint,
+    required String rightFingerprint,
+  }) async {
+    final ordered = _orderedFingerprints(leftFingerprint, rightFingerprint);
+    final rows = await _db
+        .customSelect(
+          '''
+          SELECT id
+          FROM $_tableLocalDuplicateFeedback
+          WHERE entity_type = ?
+            AND left_fingerprint = ?
+            AND right_fingerprint = ?
+            AND decision = 'not_duplicate'
+          LIMIT 1
+          ''',
+          variables: [
+            Variable<String>(entityType.name),
+            Variable<String>(ordered.$1),
+            Variable<String>(ordered.$2),
+          ],
+        )
+        .get();
+    return rows.isNotEmpty;
+  }
+
+  Future<void> _saveRuntimePairSuppression({
+    required BackupConflictType entityType,
+    required String leftFingerprint,
+    required String rightFingerprint,
+  }) async {
+    final ordered = _orderedFingerprints(leftFingerprint, rightFingerprint);
+    await _insertRow(_tableLocalDuplicateFeedback, {
+      'entity_type': entityType.name,
+      'left_fingerprint': ordered.$1,
+      'right_fingerprint': ordered.$2,
+      'decision': 'not_duplicate',
+    }, orIgnore: true);
+  }
+
+  Future<void> _deleteRuntimePairSuppression({
+    required BackupConflictType entityType,
+    required String leftFingerprint,
+    required String rightFingerprint,
+  }) async {
+    final ordered = _orderedFingerprints(leftFingerprint, rightFingerprint);
+    await _db.customUpdate(
+      '''
+      DELETE FROM $_tableLocalDuplicateFeedback
+      WHERE entity_type = ?
+        AND left_fingerprint = ?
+        AND right_fingerprint = ?
+      ''',
+      variables: [
+        Variable<String>(entityType.name),
+        Variable<String>(ordered.$1),
+        Variable<String>(ordered.$2),
+      ],
+    );
+  }
+
+  (String, String) _orderedFingerprints(String left, String right) {
+    return left.compareTo(right) <= 0 ? (left, right) : (right, left);
   }
 
   _BackupParsedPayload _parsePayload(String jsonContent) {
@@ -1399,7 +1960,9 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
 
     final tablesNode = parsed['tables'];
     if (tablesNode is! Map<String, dynamic>) {
-      throw const ValidationException('Backup payload does not contain tables.');
+      throw const ValidationException(
+        'Backup payload does not contain tables.',
+      );
     }
 
     final tableNames = <String>[
@@ -1432,10 +1995,12 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       _catalogExercises: const [],
     };
     if (refsNode is Map<String, dynamic>) {
-      catalogRefs[_catalogEquipments] =
-          _readCatalogRefs(refsNode[_catalogEquipments]);
-      catalogRefs[_catalogExercises] =
-          _readCatalogRefs(refsNode[_catalogExercises]);
+      catalogRefs[_catalogEquipments] = _readCatalogRefs(
+        refsNode[_catalogEquipments],
+      );
+      catalogRefs[_catalogExercises] = _readCatalogRefs(
+        refsNode[_catalogExercises],
+      );
     }
 
     return _BackupParsedPayload(
@@ -1488,9 +2053,9 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
   ) async {
     if (customExerciseIds.isEmpty) return const [];
     final ids = customExerciseIds.join(', ');
-    final rows = await _db.customSelect(
-      'SELECT * FROM $tableName WHERE exercise_id IN ($ids)',
-    ).get();
+    final rows = await _db
+        .customSelect('SELECT * FROM $tableName WHERE exercise_id IN ($ids)')
+        .get();
     return rows.map((row) => Map<String, dynamic>.from(row.data)).toList();
   }
 
@@ -1499,13 +2064,17 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
   ) async {
     if (customExerciseIds.isEmpty) return const [];
     final ids = customExerciseIds.join(', ');
-    final rows = await _db.customSelect(
-      'SELECT * FROM $_tableExerciseVariations WHERE exercise_id IN ($ids) OR variation_id IN ($ids)',
-    ).get();
+    final rows = await _db
+        .customSelect(
+          'SELECT * FROM $_tableExerciseVariations WHERE exercise_id IN ($ids) OR variation_id IN ($ids)',
+        )
+        .get();
     return rows.map((row) => Map<String, dynamic>.from(row.data)).toList();
   }
 
-  Future<List<Map<String, dynamic>>> _fetchVerifiedRows(String tableName) async {
+  Future<List<Map<String, dynamic>>> _fetchVerifiedRows(
+    String tableName,
+  ) async {
     final rows = await _db
         .customSelect('SELECT * FROM $tableName WHERE is_verified = 1')
         .get();
@@ -1518,25 +2087,31 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
   }
 
   Future<int?> _findVerifiedEquipmentIdByLocalId(int localId) async {
-    final rows = await _db.customSelect(
-      'SELECT id FROM $_tableEquipments WHERE id = ? AND is_verified = 1 LIMIT 1',
-      variables: [Variable<int>(localId)],
-    ).get();
+    final rows = await _db
+        .customSelect(
+          'SELECT id FROM $_tableEquipments WHERE id = ? AND is_verified = 1 LIMIT 1',
+          variables: [Variable<int>(localId)],
+        )
+        .get();
     if (rows.isEmpty) return null;
     return _asInt(rows.first.data['id']);
   }
 
   Future<int?> _findVerifiedExerciseIdByLocalId(int localId) async {
-    final rows = await _db.customSelect(
-      'SELECT id FROM $_tableExercises WHERE id = ? AND is_verified = 1 LIMIT 1',
-      variables: [Variable<int>(localId)],
-    ).get();
+    final rows = await _db
+        .customSelect(
+          'SELECT id FROM $_tableExercises WHERE id = ? AND is_verified = 1 LIMIT 1',
+          variables: [Variable<int>(localId)],
+        )
+        .get();
     if (rows.isEmpty) return null;
     return _asInt(rows.first.data['id']);
   }
 
   Future<Map<String, int>> _fetchNamedIds(String tableName) async {
-    final rows = await _db.customSelect('SELECT id, name FROM $tableName').get();
+    final rows = await _db
+        .customSelect('SELECT id, name FROM $tableName')
+        .get();
     final namedIds = <String, int>{};
     for (final row in rows) {
       final id = _asInt(row.data['id']);
@@ -1678,7 +2253,8 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         continue;
       }
       final existingNormalized = _normalizeName(existingName);
-      final containsMatch = importedNormalized.contains(existingNormalized) ||
+      final containsMatch =
+          importedNormalized.contains(existingNormalized) ||
           existingNormalized.contains(importedNormalized);
       final score = containsMatch
           ? 0.98
@@ -1752,7 +2328,8 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     for (final row in rows) {
       final id = _asInt(row['id']);
       final name = (row['name'] as String?)?.trim();
-      if (id == null || id == winnerId || name == null || name.isEmpty) continue;
+      if (id == null || id == winnerId || name == null || name.isEmpty)
+        continue;
       if (_asBool(row['is_verified'])) continue;
       if (_normalizeName(name) == normalizedName) return id;
     }
@@ -1843,19 +2420,15 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     String? catalogRemoteId,
     required Map<String, dynamic> payload,
   }) async {
-    await _insertRow(
-      _tableCatalogGovernanceEvents,
-      {
-        'event_uuid': eventUuid,
-        'event_type': eventType,
-        'entity_type': entityType,
-        'local_entity_id': localEntityId,
-        'catalog_remote_id': catalogRemoteId,
-        'payload_json': jsonEncode(payload),
-        'status': 'pending',
-      },
-      orIgnore: true,
-    );
+    await _insertRow(_tableCatalogGovernanceEvents, {
+      'event_uuid': eventUuid,
+      'event_type': eventType,
+      'entity_type': entityType,
+      'local_entity_id': localEntityId,
+      'catalog_remote_id': catalogRemoteId,
+      'payload_json': jsonEncode(payload),
+      'status': 'pending',
+    }, orIgnore: true);
   }
 
   List<Map<String, dynamic>> _topFuzzyCandidates(
@@ -1889,10 +2462,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
   int _levenshtein(String a, String b) {
     final m = a.length;
     final n = b.length;
-    final matrix = List.generate(
-      m + 1,
-      (_) => List<int>.filled(n + 1, 0),
-    );
+    final matrix = List.generate(m + 1, (_) => List<int>.filled(n + 1, 0));
     for (var i = 0; i <= m; i++) {
       matrix[i][0] = i;
     }
@@ -1903,10 +2473,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       for (var j = 1; j <= n; j++) {
         final cost = a[i - 1] == b[j - 1] ? 0 : 1;
         matrix[i][j] = math.min(
-          math.min(
-            matrix[i - 1][j] + 1,
-            matrix[i][j - 1] + 1,
-          ),
+          math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1),
           matrix[i - 1][j - 1] + cost,
         );
       }
@@ -1934,7 +2501,8 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     if (value is int) return Variable<int>(value) as Variable<Object>;
     if (value is double) return Variable<double>(value) as Variable<Object>;
     if (value is num) {
-      if (value % 1 == 0) return Variable<int>(value.toInt()) as Variable<Object>;
+      if (value % 1 == 0)
+        return Variable<int>(value.toInt()) as Variable<Object>;
       return Variable<double>(value.toDouble()) as Variable<Object>;
     }
     if (value is DateTime) return Variable<DateTime>(value) as Variable<Object>;
@@ -1953,6 +2521,26 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     }
     return candidate;
   }
+}
+
+class _RuntimeDuplicateCandidate {
+  final int id;
+  final String rawName;
+  final String normalizedName;
+  final String normalizedFromCanonical;
+  final String canonicalKey;
+  final Set<String> tokens;
+  final bool isVerified;
+
+  const _RuntimeDuplicateCandidate({
+    required this.id,
+    required this.rawName,
+    required this.normalizedName,
+    required this.normalizedFromCanonical,
+    required this.canonicalKey,
+    required this.tokens,
+    required this.isVerified,
+  });
 }
 
 class _BackupParsedPayload {

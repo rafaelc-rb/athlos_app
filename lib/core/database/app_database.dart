@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'tables/catalog_governance_applied_rules_table.dart';
 import 'tables/catalog_governance_events_table.dart';
+import 'tables/local_duplicate_feedback_table.dart';
 import '../../features/profile/data/datasources/daos/user_profile_dao.dart';
 import '../../features/profile/data/datasources/tables/user_profiles_table.dart';
 import '../../features/profile/domain/enums/body_aesthetic.dart';
@@ -62,6 +63,7 @@ const _skipDevSeed = bool.fromEnvironment('SKIP_DEV_SEED');
     UserEquipments,
     CatalogGovernanceEvents,
     CatalogGovernanceAppliedRules,
+    LocalDuplicateFeedback,
     // Profile
     UserProfiles,
   ],
@@ -78,58 +80,58 @@ class AppDatabase extends _$AppDatabase {
   final bool _enableDevSeed;
 
   AppDatabase({bool enableDevSeed = true})
-      : _enableDevSeed = enableDevSeed,
-        super(driftDatabase(name: 'athlos'));
+    : _enableDevSeed = enableDevSeed,
+      super(driftDatabase(name: 'athlos'));
 
   AppDatabase.forTesting(super.executor, {bool enableDevSeed = false})
-      : _enableDevSeed = enableDevSeed,
-        super();
+    : _enableDevSeed = enableDevSeed,
+      super();
 
   bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed && _enableDevSeed;
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async {
-          await m.createAll();
-          await seedEquipments(this);
-          await seedExercises(this);
-          if (_shouldSeedDevData) await seedDevData(this);
-        },
-        onUpgrade: (m, from, to) async {
-          if (_shouldSeedDevData && from >= 3 && from <= 12) {
-            for (final table in allTables) {
-              await m.deleteTable(table.actualTableName);
-            }
-            await m.createAll();
-            await seedEquipments(this);
-            await seedExercises(this);
-            await seedDevData(this);
-            return;
-          }
+    onCreate: (m) async {
+      await m.createAll();
+      await seedEquipments(this);
+      await seedExercises(this);
+      if (_shouldSeedDevData) await seedDevData(this);
+    },
+    onUpgrade: (m, from, to) async {
+      if (_shouldSeedDevData && from >= 3 && from <= 13) {
+        for (final table in allTables) {
+          await m.deleteTable(table.actualTableName);
+        }
+        await m.createAll();
+        await seedEquipments(this);
+        await seedExercises(this);
+        await seedDevData(this);
+        return;
+      }
 
-          if (from < 2) {
-            // Rename restSeconds → rest
-            await customStatement(
-              'ALTER TABLE workout_exercises RENAME COLUMN rest_seconds TO rest',
-            );
+      if (from < 2) {
+        // Rename restSeconds → rest
+        await customStatement(
+          'ALTER TABLE workout_exercises RENAME COLUMN rest_seconds TO rest',
+        );
 
-            // New column: exercises.type (default 'strength')
-            await customStatement(
-              "ALTER TABLE exercises ADD COLUMN type TEXT NOT NULL DEFAULT '${ExerciseType.strength.name}'",
-            );
+        // New column: exercises.type (default 'strength')
+        await customStatement(
+          "ALTER TABLE exercises ADD COLUMN type TEXT NOT NULL DEFAULT '${ExerciseType.strength.name}'",
+        );
 
-            // New column: workout_exercises.duration (nullable int)
-            await customStatement(
-              'ALTER TABLE workout_exercises ADD COLUMN duration INTEGER',
-            );
+        // New column: workout_exercises.duration (nullable int)
+        await customStatement(
+          'ALTER TABLE workout_exercises ADD COLUMN duration INTEGER',
+        );
 
-            // Make workout_exercises.reps nullable via table recreation.
-            // SQLite doesn't support ALTER COLUMN to drop NOT NULL, so we
-            // recreate the table preserving data.
-            await customStatement('''
+        // Make workout_exercises.reps nullable via table recreation.
+        // SQLite doesn't support ALTER COLUMN to drop NOT NULL, so we
+        // recreate the table preserving data.
+        await customStatement('''
               CREATE TABLE workout_exercises_tmp (
                 workout_id INTEGER NOT NULL REFERENCES workouts(id),
                 exercise_id INTEGER NOT NULL REFERENCES exercises(id),
@@ -142,20 +144,20 @@ class AppDatabase extends _$AppDatabase {
                 PRIMARY KEY (workout_id, exercise_id)
               )
             ''');
-            await customStatement('''
+        await customStatement('''
               INSERT INTO workout_exercises_tmp
                 (workout_id, exercise_id, "order", sets, reps, rest, group_id)
               SELECT workout_id, exercise_id, "order", sets, reps, rest, group_id
               FROM workout_exercises
             ''');
-            await customStatement('DROP TABLE workout_exercises');
-            await customStatement(
-              'ALTER TABLE workout_exercises_tmp RENAME TO workout_exercises',
-            );
+        await customStatement('DROP TABLE workout_exercises');
+        await customStatement(
+          'ALTER TABLE workout_exercises_tmp RENAME TO workout_exercises',
+        );
 
-            // Make execution_sets.planned_reps and reps nullable, add
-            // duration and distance columns via table recreation.
-            await customStatement('''
+        // Make execution_sets.planned_reps and reps nullable, add
+        // duration and distance columns via table recreation.
+        await customStatement('''
               CREATE TABLE execution_sets_tmp (
                 id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
                 execution_id INTEGER NOT NULL REFERENCES workout_executions(id),
@@ -171,7 +173,7 @@ class AppDatabase extends _$AppDatabase {
                 notes TEXT
               )
             ''');
-            await customStatement('''
+        await customStatement('''
               INSERT INTO execution_sets_tmp
                 (id, execution_id, exercise_id, set_number, planned_reps,
                  planned_weight, reps, weight, is_completed, notes)
@@ -179,108 +181,114 @@ class AppDatabase extends _$AppDatabase {
                      planned_weight, reps, weight, is_completed, notes
               FROM execution_sets
             ''');
-            await customStatement('DROP TABLE execution_sets');
-            await customStatement(
-              'ALTER TABLE execution_sets_tmp RENAME TO execution_sets',
-            );
+        await customStatement('DROP TABLE execution_sets');
+        await customStatement(
+          'ALTER TABLE execution_sets_tmp RENAME TO execution_sets',
+        );
 
-            // Seed new equipment and exercises
-            await seedEquipmentsV2(this);
-            await seedExercisesV2(this);
-          }
+        // Seed new equipment and exercises
+        await seedEquipmentsV2(this);
+        await seedExercisesV2(this);
+      }
 
-          if (from < 3) {
-            await customStatement(
-              "ALTER TABLE exercise_target_muscles ADD COLUMN role TEXT NOT NULL DEFAULT 'primary'",
-            );
-            await customStatement(
-              'ALTER TABLE exercises ADD COLUMN movement_pattern TEXT',
-            );
-            await seedEquipmentsV3(this);
-            await seedExercisesV3(this);
-          }
+      if (from < 3) {
+        await customStatement(
+          "ALTER TABLE exercise_target_muscles ADD COLUMN role TEXT NOT NULL DEFAULT 'primary'",
+        );
+        await customStatement(
+          'ALTER TABLE exercises ADD COLUMN movement_pattern TEXT',
+        );
+        await seedEquipmentsV3(this);
+        await seedExercisesV3(this);
+      }
 
-          if (from < 4) {
-            await customStatement(
-              'ALTER TABLE user_profiles ADD COLUMN experience_level TEXT',
-            );
-            await customStatement(
-              'ALTER TABLE user_profiles ADD COLUMN training_frequency INTEGER',
-            );
-            await customStatement(
-              'ALTER TABLE user_profiles ADD COLUMN trains_at_gym INTEGER',
-            );
-            await customStatement(
-              'ALTER TABLE user_profiles ADD COLUMN injuries TEXT',
-            );
-            await customStatement(
-              'ALTER TABLE user_profiles ADD COLUMN bio TEXT',
-            );
-          }
+      if (from < 4) {
+        await customStatement(
+          'ALTER TABLE user_profiles ADD COLUMN experience_level TEXT',
+        );
+        await customStatement(
+          'ALTER TABLE user_profiles ADD COLUMN training_frequency INTEGER',
+        );
+        await customStatement(
+          'ALTER TABLE user_profiles ADD COLUMN trains_at_gym INTEGER',
+        );
+        await customStatement(
+          'ALTER TABLE user_profiles ADD COLUMN injuries TEXT',
+        );
+        await customStatement('ALTER TABLE user_profiles ADD COLUMN bio TEXT');
+      }
 
-          if (from < 5) {
-            await customStatement(
-              'ALTER TABLE user_profiles ADD COLUMN gender TEXT',
-            );
-          }
+      if (from < 5) {
+        await customStatement(
+          'ALTER TABLE user_profiles ADD COLUMN gender TEXT',
+        );
+      }
 
-          if (from < 6) {
-            await m.createTable(cycleSteps);
-            // Seed cycle from current active workouts order so behaviour is unchanged until user edits.
-            final active = await (select(workouts)
-                  ..where((w) =>
-                      w.isArchived.equals(false) & w.sortOrder.isNotNull())
+      if (from < 6) {
+        await m.createTable(cycleSteps);
+        // Seed cycle from current active workouts order so behaviour is unchanged until user edits.
+        final active =
+            await (select(workouts)
+                  ..where(
+                    (w) => w.isArchived.equals(false) & w.sortOrder.isNotNull(),
+                  )
                   ..orderBy([(w) => OrderingTerm.asc(w.sortOrder)]))
                 .get();
-            for (var i = 0; i < active.length; i++) {
-              await into(cycleSteps).insert(CycleStepsCompanion.insert(
-                    orderIndex: i,
-                    stepType: 'workout',
-                    workoutId: Value(active[i].id),
-                  ));
-            }
-          }
+        for (var i = 0; i < active.length; i++) {
+          await into(cycleSteps).insert(
+            CycleStepsCompanion.insert(
+              orderIndex: i,
+              stepType: 'workout',
+              workoutId: Value(active[i].id),
+            ),
+          );
+        }
+      }
 
-          if (from < 7) {
-            await customStatement(
-              'ALTER TABLE user_profiles ADD COLUMN available_workout_minutes INTEGER',
-            );
-          }
+      if (from < 7) {
+        await customStatement(
+          'ALTER TABLE user_profiles ADD COLUMN available_workout_minutes INTEGER',
+        );
+      }
 
-          if (from < 8) {
-            await customStatement(
-              'ALTER TABLE workout_exercises ADD COLUMN notes TEXT',
-            );
-            await seedEquipmentsV4(this);
-            await seedExercisesV4(this);
-          }
+      if (from < 8) {
+        await customStatement(
+          'ALTER TABLE workout_exercises ADD COLUMN notes TEXT',
+        );
+        await seedEquipmentsV4(this);
+        await seedExercisesV4(this);
+      }
 
-          if (from < 9) {
-            await customStatement(
-              'ALTER TABLE workout_exercises ADD COLUMN is_unilateral INTEGER NOT NULL DEFAULT 0',
-            );
-          }
+      if (from < 9) {
+        await customStatement(
+          'ALTER TABLE workout_exercises ADD COLUMN is_unilateral INTEGER NOT NULL DEFAULT 0',
+        );
+      }
 
-          if (from < 10) {
-            await customStatement(
-              'ALTER TABLE equipments ADD COLUMN catalog_remote_id TEXT',
-            );
-            await customStatement(
-              'ALTER TABLE exercises ADD COLUMN catalog_remote_id TEXT',
-            );
-          }
+      if (from < 10) {
+        await customStatement(
+          'ALTER TABLE equipments ADD COLUMN catalog_remote_id TEXT',
+        );
+        await customStatement(
+          'ALTER TABLE exercises ADD COLUMN catalog_remote_id TEXT',
+        );
+      }
 
-          if (from < 11) {
-            await seedEquipmentsV5(this);
-            await seedExercisesV5(this);
-          }
+      if (from < 11) {
+        await seedEquipmentsV5(this);
+        await seedExercisesV5(this);
+      }
 
-          if (from < 12) {
-            await m.createTable(catalogGovernanceEvents);
-            await m.createTable(catalogGovernanceAppliedRules);
-          }
-        },
-      );
+      if (from < 12) {
+        await m.createTable(catalogGovernanceEvents);
+        await m.createTable(catalogGovernanceAppliedRules);
+      }
+
+      if (from < 13) {
+        await m.createTable(localDuplicateFeedback);
+      }
+    },
+  );
 }
 
 @Riverpod(keepAlive: true)

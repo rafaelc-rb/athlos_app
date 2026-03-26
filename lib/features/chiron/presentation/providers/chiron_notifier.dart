@@ -44,6 +44,7 @@ class ChironNotifier extends _$ChironNotifier {
     state = state.copyWith(
       messages: [...state.messages, userMsg, assistantMsg],
       isStreaming: true,
+      hasError: false,
       lastResponseToolFeedback: [],
       clearCreatedWorkoutId: true,
     );
@@ -108,7 +109,7 @@ class ChironNotifier extends _$ChironNotifier {
       final updated = List<ChironMessage>.from(state.messages);
       final String errorText = _errorMessage(e, _resolveL10n());
       updated[updated.length - 1] = updated.last.copyWith(content: errorText);
-      state = state.copyWith(messages: updated);
+      state = state.copyWith(messages: updated, hasError: true);
     } finally {
       _trace(
         'send:finish tools=${toolFeedback.length} workoutId=$createdWorkoutId',

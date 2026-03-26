@@ -52,6 +52,7 @@ class GeminiRestClient {
     required List<Map<String, dynamic>> toolDeclarations,
     int? maxOutputTokens,
     double? temperature,
+    int? thinkingBudget,
   }) async {
     final uri = Uri.parse('$_baseUrl/$modelId:generateContent').replace(
       queryParameters: {'key': _apiKey},
@@ -72,6 +73,11 @@ class GeminiRestClient {
     }
     if (temperature != null) {
       generationConfig['temperature'] = temperature;
+    }
+    if (thinkingBudget != null) {
+      generationConfig['thinkingConfig'] = {
+        'thinkingBudget': thinkingBudget,
+      };
     }
     if (generationConfig.isNotEmpty) {
       body['generationConfig'] = generationConfig;

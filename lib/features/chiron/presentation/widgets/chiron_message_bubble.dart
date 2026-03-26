@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:gap/gap.dart';
 
 import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
@@ -8,11 +9,13 @@ import '../../domain/entities/chiron_message.dart';
 class ChironMessageBubble extends StatelessWidget {
   final ChironMessage message;
   final bool isStreaming;
+  final bool isError;
 
   const ChironMessageBubble({
     super.key,
     required this.message,
     this.isStreaming = false,
+    this.isError = false,
   });
 
   @override
@@ -20,8 +23,24 @@ class ChironMessageBubble extends StatelessWidget {
     final isUser = message.role == ChironRole.user;
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final textColor =
-        isUser ? colorScheme.onPrimaryContainer : colorScheme.onSurface;
+
+    // Don't render empty assistant bubbles — the thinking indicator
+    // in the bottom sheet handles the loading state.
+    if (!isUser && message.content.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final bgColor = isError
+        ? colorScheme.errorContainer
+        : isUser
+            ? colorScheme.primaryContainer
+            : colorScheme.surfaceContainerHighest;
+
+    final textColor = isError
+        ? colorScheme.onErrorContainer
+        : isUser
+            ? colorScheme.onPrimaryContainer
+            : colorScheme.onSurface;
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -34,9 +53,7 @@ class ChironMessageBubble extends StatelessWidget {
           vertical: AthlosSpacing.sm,
         ),
         decoration: BoxDecoration(
-          color: isUser
-              ? colorScheme.primaryContainer
-              : colorScheme.surfaceContainerHighest,
+          color: bgColor,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(AthlosRadius.md),
             topRight: const Radius.circular(AthlosRadius.md),
@@ -46,14 +63,24 @@ class ChironMessageBubble extends StatelessWidget {
                 isUser ? Radius.zero : const Radius.circular(AthlosRadius.md),
           ),
         ),
-        child: message.content.isEmpty && isStreaming
-            ? SizedBox(
-                width: AthlosSpacing.md,
-                height: AthlosSpacing.md,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: colorScheme.onSurfaceVariant,
-                ),
+        child: isError
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 18,
+                    color: colorScheme.error,
+                  ),
+                  const Gap(AthlosSpacing.sm),
+                  Flexible(
+                    child: Text(
+                      message.content,
+                      style: textTheme.bodyMedium?.copyWith(color: textColor),
+                    ),
+                  ),
+                ],
               )
             : isUser
                 ? Text(

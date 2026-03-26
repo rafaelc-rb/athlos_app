@@ -1907,6 +1907,8 @@
   "chironToolFeedbackRegisterEquipment": "Equipamento registado",
   "chironToolFeedbackRemoveEquipment": "Equipamento removido",
   "chironToolFeedbackSetCycle": "Ciclo atualizado",
+  "chironToolFeedbackRequestExtendedHistory": "Analisando histórico…",
+  "chironToolFeedbackGetTrainingState": "Verificando treinos…",
   "chironThinking": "Quíron está pensando…",
   "@chironThinking": {
     "description": "Label shown while Chiron is processing"

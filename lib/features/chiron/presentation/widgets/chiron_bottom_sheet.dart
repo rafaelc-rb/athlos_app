@@ -136,26 +136,36 @@ class _ChironSheetState extends ConsumerState<_ChironSheet> {
                               final message =
                                   chatState.messages[reverseIndex];
                               final isNewest = index == 0;
+                              final isLastError = isNewest &&
+                                  !chatState.isStreaming &&
+                                  chatState.hasError;
                               return ChironMessageBubble(
                                 key: ValueKey(reverseIndex),
                                 message: message,
                                 isStreaming:
                                     isNewest && chatState.isStreaming,
+                                isError: isLastError,
                               );
                             },
                           ),
                         ),
-                        if (chatState.lastResponseToolFeedback.isNotEmpty)
+                        if (chatState.isStreaming) ...[
+                          if (chatState.lastResponseToolFeedback.isNotEmpty)
+                            _buildToolFeedbackChips(
+                              l10n,
+                              colorScheme,
+                              chatState.lastResponseToolFeedback,
+                            ),
+                          _buildThinkingIndicator(l10n, colorScheme),
+                        ] else if (chatState.lastResponseToolFeedback
+                            .any(_isMutationTool))
                           _buildToolFeedbackChips(
                             l10n,
                             colorScheme,
-                            chatState.lastResponseToolFeedback,
+                            chatState.lastResponseToolFeedback
+                                .where(_isMutationTool)
+                                .toList(),
                           ),
-                        if (chatState.isStreaming &&
-                            chatState.lastResponseToolFeedback.isEmpty &&
-                            (chatState.messages.isEmpty ||
-                                chatState.messages.last.content.isEmpty))
-                          _buildThinkingIndicator(l10n, colorScheme),
                       ],
                     ),
             ),
@@ -207,6 +217,14 @@ class _ChironSheetState extends ConsumerState<_ChironSheet> {
     );
   }
 
+  static const _readOnlyTools = {
+    'requestExtendedHistory',
+    'getTrainingState',
+  };
+
+  static bool _isMutationTool(ChironToolFeedback f) =>
+      f.success && !_readOnlyTools.contains(f.toolName);
+
   String _toolFeedbackLabel(AppLocalizations l10n, String toolName) {
     switch (toolName) {
       case 'createWorkout':
@@ -235,6 +253,10 @@ class _ChironSheetState extends ConsumerState<_ChironSheet> {
         return l10n.chironToolFeedbackRegisterEquipment;
       case 'removeEquipment':
         return l10n.chironToolFeedbackRemoveEquipment;
+      case 'requestExtendedHistory':
+        return l10n.chironToolFeedbackRequestExtendedHistory;
+      case 'getTrainingState':
+        return l10n.chironToolFeedbackGetTrainingState;
       default:
         return toolName;
     }
@@ -253,8 +275,8 @@ class _ChironSheetState extends ConsumerState<_ChironSheet> {
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: 14,
-            height: 14,
+            width: 16,
+            height: 16,
             child: CircularProgressIndicator(
               strokeWidth: 2,
               color: colorScheme.primary,
@@ -264,8 +286,9 @@ class _ChironSheetState extends ConsumerState<_ChironSheet> {
           Text(
             l10n.chironThinking,
             style: TextStyle(
-              fontSize: 12,
-              color: colorScheme.onSurfaceVariant,
+              fontSize: 13,
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],

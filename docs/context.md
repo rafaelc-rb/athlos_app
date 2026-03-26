@@ -13,11 +13,14 @@ The app is designed as a **hub-based** system: a central screen (the Hub) provid
 ## Current Implementation Snapshot
 
 - Local-first remains the default runtime mode (Drift on-device), with optional Supabase catalog sync.
-- Backup is implemented as JSON **export/import with merge** (not destructive restore).
+- Backup is implemented as JSON **export/import with merge** (not destructive restore). Export and Import live in **Profile > Dados**.
 - Import conflict handling is item-by-item for workouts/catalog and field-by-field for profile data.
-- Catalog reconciliation is implemented with governance workflow (`catalog_governance_events` / `catalog_governance_rules`) and idempotent multi-device rule application.
+- **Conflict Center** (Profile > Dados > Central de Conflitos) handles runtime duplicate detection for local data:
+  - **Local x Verified** pair: user can mark "not duplicate" (suppressed) or "confirmed duplicate" (verified item wins; local is remapped and deleted).
+  - **Local x Local** pair: user can mark "not duplicate", "keep A", "keep B", or **attribute-by-attribute merge** (user picks each field, associations are unified, loser is remapped and deleted).
+- Global catalog governance (verified x verified conflicts, rule application across devices) is **out of scope for this project** and will be handled in a separate maintenance project.
 - The local database currently runs with schema version **12**.
-- Automated tests are in place for core backup flows, training/profile repositories, use cases, provider wiring, and error/result contracts.
+- Automated tests are in place for core backup flows (including duplicate resolution: suppression, confirmDuplicate, mergeAttributes), training/profile repositories, use cases, provider wiring, and error/result contracts.
 
 ## Modules
 
@@ -72,7 +75,7 @@ Athlos follows a **freemium** model:
 - Chiron AI assistant via Gemini free tier (personalized suggestions, Q&A chat)
 - Diet module with all features (food registration, meal builder, caloric control)
 - Exercise and food catalogs (pre-loaded)
-- Verified catalog reconciliation via Supabase sync (catalog consistency/governance only)
+- Local duplicate detection and user-driven conflict resolution (Conflict Center)
 - Full local history
 - Manual data export/import (backup)
 

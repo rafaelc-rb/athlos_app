@@ -1897,7 +1897,10 @@
     "description": "Tool feedback when Chiron archives a workout"
   },
   "chironToolFeedbackUpdateBio": "Perfil atualizado",
-  "chironToolFeedbackUpdateInjuries": "Lesões atualizadas",
+  "chironToolFeedbackSetInjuries": "Lesões atualizadas",
+  "chironToolFeedbackUpdateWorkout": "Treino atualizado",
+  "chironToolFeedbackUpdateTrainsAtGym": "Local de treino atualizado",
+  "chironToolFeedbackUpdateAvailableMinutes": "Tempo de treino atualizado",
   "chironToolFeedbackUpdateExperienceLevel": "Experiência atualizada",
   "chironToolFeedbackUpdateGender": "Gênero atualizado",
   "chironToolFeedbackUpdateTrainingFrequency": "Frequência atualizada",

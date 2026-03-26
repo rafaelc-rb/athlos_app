@@ -246,14 +246,18 @@ List<Map<String, dynamic>> getChironToolDeclarations() {
       ),
     },
     {
-      'name': 'updateInjuries',
+      'name': 'setInjuries',
       'description':
-          'Append injury or limitation to profile. '
-              'Concatenates with "; " separator — never overwrites. '
-              'Use when user mentions pain, injury, or physical limitation.',
+          'Set the full injuries/limitations text, replacing any previous value. '
+              'Read existing injuries from context first, then write the '
+              'complete updated text (add new, remove recovered, keep current). '
+              'Pass empty string to clear all injuries.',
       'parameters': _schema(
         properties: {
-          'injuries': _propString('Injury text to append'),
+          'injuries': _propString(
+            'Complete injuries text (replaces existing). '
+            'Empty string to clear.',
+          ),
         },
         required: ['injuries'],
       ),
@@ -302,12 +306,41 @@ List<Map<String, dynamic>> getChironToolDeclarations() {
       ),
     },
     {
+      'name': 'updateTrainsAtGym',
+      'description':
+          'Set whether the user trains at a gym. '
+              'If true, assume standard gym equipment when building workouts. '
+              'Ask naturally if missing from context.',
+      'parameters': _schema(
+        properties: {
+          'trainsAtGym': {
+            'type': 'boolean',
+            'description': 'true if user trains at a gym, false for home',
+          },
+        },
+        required: ['trainsAtGym'],
+      ),
+    },
+    {
+      'name': 'updateAvailableMinutes',
+      'description':
+          'Set how many minutes the user has per workout session. '
+              'Used to size workouts appropriately. '
+              'Ask naturally if missing from context.',
+      'parameters': _schema(
+        properties: {
+          'minutes': _propInteger('Minutes available per session (e.g. 45, 60, 90)'),
+        },
+        required: ['minutes'],
+      ),
+    },
+    {
       'name': 'registerEquipment',
       'description':
-          'Register equipment confirmed by the user. '
-              'Only call after user confirms they have the item. '
-              'When building workouts, use only registered equipment; '
-              'if a needed item is missing, ask "Você tem [X]?" first.',
+          'Register equipment the user has at home. '
+              'Only relevant for home gym users. '
+              'If "Trains at gym: Yes" in profile, skip — assume '
+              'standard gym equipment is available.',
       'parameters': _schema(
         properties: {
           'equipmentName': _propString('Equipment name to register'),
@@ -329,11 +362,11 @@ List<Map<String, dynamic>> getChironToolDeclarations() {
     {
       'name': 'createWorkout',
       'description':
-          'Create a workout with ordered exercises from the catalog. '
+          'Create a new workout with ordered exercises from the catalog. '
               'Use exercise names from the Catalog section in context. '
               'Does NOT update the cycle — you MUST call setCycle after '
               'with all active workouts, then getTrainingState to verify. '
-              'There is no edit — to replace, create new then archive old.',
+              'To modify an existing workout, use updateWorkout instead.',
       'parameters': _schema(
         properties: {
           'name': _propString('Workout name'),
@@ -372,6 +405,49 @@ List<Map<String, dynamic>> getChironToolDeclarations() {
           },
         },
         required: ['name', 'exercises'],
+      ),
+    },
+    {
+      'name': 'updateWorkout',
+      'description':
+          'Update an existing workout: rename, change description, '
+              'and/or replace the full exercise list. '
+              'Use workout ID from Active Workouts in context (id=X). '
+              'When changing exercises, send the COMPLETE new list — '
+              'it replaces all existing exercises.',
+      'parameters': _schema(
+        properties: {
+          'workoutId': _propInteger('Workout ID to update (from context)'),
+          'name': _propString('New workout name', nullable: true),
+          'description': _propString('New description', nullable: true),
+          'exercises': {
+            'type': 'array',
+            'nullable': true,
+            'description':
+                'New full exercise list (replaces existing). '
+                'Omit to keep current exercises.',
+            'items': _schema(
+              properties: {
+                'exerciseName': _propString(
+                  'Exercise name from the Catalog section in context',
+                ),
+                'sets': _propInteger('Number of sets'),
+                'reps': _propInteger('Reps per set', nullable: true),
+                'restSeconds': _propInteger(
+                  'Rest between sets in seconds',
+                  nullable: true,
+                ),
+                'durationSeconds': _propInteger(
+                  'Duration per set in seconds',
+                  nullable: true,
+                ),
+                'notes': _propString('Execution cues', nullable: true),
+              },
+              required: ['exerciseName', 'sets'],
+            ),
+          },
+        },
+        required: ['workoutId'],
       ),
     },
     {

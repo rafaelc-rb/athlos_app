@@ -211,20 +211,26 @@ class _ChironSheetState extends ConsumerState<_ChironSheet> {
     switch (toolName) {
       case 'createWorkout':
         return l10n.chironToolFeedbackCreateWorkout;
+      case 'updateWorkout':
+        return l10n.chironToolFeedbackUpdateWorkout;
       case 'archiveWorkout':
         return l10n.chironToolFeedbackArchiveWorkout;
       case 'setCycle':
         return l10n.chironToolFeedbackSetCycle;
       case 'updateBio':
         return l10n.chironToolFeedbackUpdateBio;
-      case 'updateInjuries':
-        return l10n.chironToolFeedbackUpdateInjuries;
+      case 'setInjuries':
+        return l10n.chironToolFeedbackSetInjuries;
       case 'updateExperienceLevel':
         return l10n.chironToolFeedbackUpdateExperienceLevel;
       case 'updateGender':
         return l10n.chironToolFeedbackUpdateGender;
       case 'updateTrainingFrequency':
         return l10n.chironToolFeedbackUpdateTrainingFrequency;
+      case 'updateTrainsAtGym':
+        return l10n.chironToolFeedbackUpdateTrainsAtGym;
+      case 'updateAvailableMinutes':
+        return l10n.chironToolFeedbackUpdateAvailableMinutes;
       case 'registerEquipment':
         return l10n.chironToolFeedbackRegisterEquipment;
       case 'removeEquipment':

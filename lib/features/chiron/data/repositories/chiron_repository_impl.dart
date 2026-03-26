@@ -85,39 +85,49 @@ class ChironRepositoryImpl implements ChironRepository {
   final _timestamps = <DateTime>[];
 
   static const _systemPrompt =
-      r'''You are Quiron, the Athlos AI training coach. Persona: concise, motivational mentor.
+      r'''You are Quíron — THE Chiron, the immortal centaur of Greek mythology, greatest mentor of heroes. You trained Achilles, Heracles, Jason, and Asclepius. Now you train modern-day heroes through the Athlos app.
+
+PERSONA
+- You speak as the mythological Chiron himself — wise, patient, encouraging, with a touch of ancient gravitas but fully adapted to modern language.
+- Address the user as your pupil/hero. Use terms like "herói", "heroína", "jovem guerreiro(a)", "meu(minha) pupilo(a)", "meio-sangue" — adapt to the user's gender from profile context when available.
+- You've seen millennia of warriors train. You speak from experience, not theory. Drop occasional subtle mythological references (not forced), as if comparing the user's journey to those of legendary heroes.
+- You are proud of your students. Celebrate victories, push through plateaus, be direct but never harsh. You know greatness takes time.
+- Keep it natural and conversational — you're ancient, not formal. Think wise mentor who sends WhatsApp messages.
 
 LANGUAGE & STYLE
 - Always answer in Brazilian Portuguese.
-- Maximum 2-3 short paragraphs. Use WhatsApp-style: 1-2 sentences per block, separated by blank lines.
-- Never give medical advice — recommend a professional when needed.
+- Maximum 2-3 short paragraphs. WhatsApp-style: 1-2 sentences per block, separated by blank lines.
+- Never give medical advice — recommend a professional ("um curandeiro dos tempos modernos" / profissional de saúde).
 - Never expose internal IDs or database keys to the user.
 
 PROFILE
-- If gender, injuries, experienceLevel, or trainingFrequency are missing, ask naturally (one at a time, not interrogation) and save with the appropriate tool.
+- If gender, experienceLevel, trainingFrequency, trainsAtGym, or availableWorkoutMinutes are missing, ask naturally (one at a time, not interrogation) and save with the appropriate tool.
+- For injuries, use setInjuries with the COMPLETE updated text (not append). Read existing injuries from context before writing.
 - Enrich bio over time with updateBio (append, never overwrite).
 
 WORKOUTS
-- Use only registered equipment. If needed equipment is missing, ask the user and register if confirmed.
+- If "Trains at gym: Yes" in profile, assume all standard gym equipment is available — just build the workout without asking. Only ask about equipment for home users or unusual items.
 - createWorkout and archiveWorkout do NOT update the cycle. You MUST call setCycle afterward with all active workout IDs, then getTrainingState to verify.
 - Respect "Available workout time" from context when building workouts.
 - Use execution history to suggest progression (compare weights/reps across sessions).
 
 <examples>
 User: "Monta um treino de peito"
-Assistant: "Montei um treino de peito com 5 exercícios e adicionei ao ciclo. Dá uma olhada e me diz o que achou! 💪"
+Assistant: "Pronto, guerreiro! Montei um treino de peito com 5 exercícios dignos de um semideus. Já tá no teu ciclo.
+
+Dá uma olhada e me diz se tá à altura do desafio! ⚔️"
 
 User: "O que acha do meu treino?"
-Assistant: "Teu treino tá bem montado pra peito e costas.
+Assistant: "Teu treino tá sólido, herói. Peito e costas bem equilibrados — lembra a preparação do Aquiles antes de Troia.
 
-Só aumentaria o descanso no supino pra 90s — tá pouco pra carga pesada.
+Só aumentaria o descanso no supino pra 90s. Carga pesada exige paciência — até Heracles descansava entre os trabalhos.
 
 Quer que eu ajuste?"
 
 User: "Quero trocar meu treino"
-Assistant: "Entendi! Vou criar o novo treino e arquivar o atual.
+Assistant: "Todo herói precisa renovar sua estratégia de tempos em tempos.
 
-Qual foco tu quer pro novo?"
+Me diz o foco do novo treino que eu monto pra ti! 💪"
 </examples>
 ''';
   static final RegExp _extendedContextPattern = RegExp(
@@ -237,7 +247,10 @@ Qual foco tu quer pro novo?"
     r'masculino|feminino|homem|mulher|'
     r'vezes\s*(por|na)\s*semana|\dx\s*semana|'
     r'tenho\s+\d+\s*(anos?|kg|cm)|'
-    r'me\s+machuc|dor\s+(n[oa]|d[eo])|operad[oa]|cirurgia)',
+    r'me\s+machuc|dor\s+(n[oa]|d[eo])|operad[oa]|cirurgia|'
+    r'academia|em\s*casa|home\s*gym|'
+    r'minutos?\s*(de\s+treino|por\s+treino|dispon)|tempo\s*(de|pro)\s*treino|'
+    r'melhor(ou|ando|ei)|cur(ou|ei|ado)|recuper)',
     caseSensitive: false,
   );
 
@@ -262,6 +275,7 @@ Qual foco tu quer pro novo?"
 
     const workoutOnly = {
       'createWorkout',
+      'updateWorkout',
       'archiveWorkout',
       'setCycle',
       'getTrainingState',
@@ -382,12 +396,12 @@ Qual foco tu quer pro novo?"
           return {'success': false, 'error': 'bio is required'};
         }
         return _handleUpdateBio(bio);
-      case 'updateInjuries':
+      case 'setInjuries':
         final injuries = args['injuries']?.toString();
-        if (injuries == null || injuries.isEmpty) {
+        if (injuries == null) {
           return {'success': false, 'error': 'injuries is required'};
         }
-        return _handleUpdateInjuries(injuries);
+        return _handleSetInjuries(injuries);
       case 'updateExperienceLevel':
         final level = args['level']?.toString();
         if (level == null || level.isEmpty) {
@@ -408,6 +422,34 @@ Qual foco tu quer pro novo?"
           return {'success': false, 'error': 'gender is required'};
         }
         return _handleUpdateGender(gender);
+      case 'updateTrainsAtGym':
+        final value = args['trainsAtGym'];
+        if (value == null) {
+          return {'success': false, 'error': 'trainsAtGym is required'};
+        }
+        final boolValue = value is bool
+            ? value
+            : value.toString().toLowerCase() == 'true';
+        return _handleUpdateTrainsAtGym(boolValue);
+      case 'updateAvailableMinutes':
+        final minutes = args['minutes'];
+        if (minutes == null) {
+          return {'success': false, 'error': 'minutes is required'};
+        }
+        return _handleUpdateAvailableMinutes(
+          minutes is int ? minutes : int.parse(minutes.toString()),
+        );
+      case 'updateWorkout':
+        return _handleUpdateWorkout(
+          args['workoutId'] != null
+              ? (args['workoutId'] is int
+                    ? args['workoutId'] as int
+                    : int.tryParse(args['workoutId'].toString()))
+              : null,
+          args['name']?.toString(),
+          args['description']?.toString(),
+          args['exercises'] is List ? args['exercises'] as List? : null,
+        );
       case 'registerEquipment':
         final equipName = args['equipmentName']?.toString();
         if (equipName == null || equipName.isEmpty) {
@@ -669,18 +711,16 @@ Qual foco tu quer pro novo?"
         : {'success': false, 'error': 'Failed to update bio'};
   }
 
-  Future<Map<String, Object?>> _handleUpdateInjuries(String newInjuries) async {
+  Future<Map<String, Object?>> _handleSetInjuries(String injuries) async {
     final profile = await _getProfile();
     if (profile == null) return {'success': false, 'error': 'No profile'};
 
-    final existing = profile.injuries ?? '';
-    final combined = existing.isEmpty ? newInjuries : '$existing; $newInjuries';
-
+    final value = injuries.trim().isEmpty ? null : injuries.trim();
     final result = await _profileRepo.update(
-      profile.copyWith(injuries: () => combined),
+      profile.copyWith(injuries: () => value),
     );
     return result.isSuccess
-        ? {'success': true, 'injuries': combined}
+        ? {'success': true, 'injuries': value ?? ''}
         : {'success': false, 'error': 'Failed to update injuries'};
   }
 
@@ -755,6 +795,143 @@ Qual foco tu quer pro novo?"
     return result.isSuccess
         ? {'success': true, 'removed': canonicalName}
         : {'success': false, 'error': 'Failed to remove equipment'};
+  }
+
+  Future<Map<String, Object?>> _handleUpdateTrainsAtGym(bool value) async {
+    final profile = await _getProfile();
+    if (profile == null) return {'success': false, 'error': 'No profile'};
+
+    final result = await _profileRepo.update(
+      profile.copyWith(trainsAtGym: () => value),
+    );
+    return result.isSuccess
+        ? {'success': true, 'trainsAtGym': value}
+        : {'success': false, 'error': 'Failed to update trainsAtGym'};
+  }
+
+  Future<Map<String, Object?>> _handleUpdateAvailableMinutes(
+    int minutes,
+  ) async {
+    final profile = await _getProfile();
+    if (profile == null) return {'success': false, 'error': 'No profile'};
+
+    final clamped = minutes.clamp(10, 300);
+    final result = await _profileRepo.update(
+      profile.copyWith(availableWorkoutMinutes: () => clamped),
+    );
+    return result.isSuccess
+        ? {'success': true, 'availableMinutes': clamped}
+        : {'success': false, 'error': 'Failed to update available minutes'};
+  }
+
+  Future<Map<String, Object?>> _handleUpdateWorkout(
+    int? workoutId,
+    String? newName,
+    String? newDescription,
+    List? exercisesList,
+  ) async {
+    if (workoutId == null || workoutId <= 0) {
+      return {'success': false, 'error': 'Invalid workoutId'};
+    }
+
+    final existingResult = await _workoutRepo.getById(workoutId);
+    if (!existingResult.isSuccess) {
+      return {'success': false, 'error': 'Failed to load workout'};
+    }
+    final existing = existingResult.getOrThrow();
+    if (existing == null) {
+      return {'success': false, 'error': 'Workout not found: $workoutId'};
+    }
+
+    final name = (newName != null && newName.trim().isNotEmpty)
+        ? newName.trim()
+        : existing.name;
+    final description = newDescription?.trim();
+
+    List<domain_we.WorkoutExercise> workoutExercises;
+    if (exercisesList != null && exercisesList.isNotEmpty) {
+      workoutExercises = <domain_we.WorkoutExercise>[];
+      for (var i = 0; i < exercisesList.length; i++) {
+        final item = exercisesList[i];
+        if (item is! Map) continue;
+        final map = item;
+        final exerciseName = map['exerciseName']?.toString().trim();
+        if (exerciseName == null || exerciseName.isEmpty) continue;
+
+        final sets = _parseInt(map['sets'], 3);
+        final reps = map['reps'] != null ? _parseInt(map['reps'], 10) : null;
+        final restSeconds = map['restSeconds'] != null
+            ? _parseInt(map['restSeconds'], 90)
+            : 90;
+        final durationSeconds = map['durationSeconds'] != null
+            ? _parseInt(map['durationSeconds'], 0)
+            : null;
+        final notes = map['notes']?.toString().trim();
+
+        final exResult = await _exerciseRepo.findByNameFuzzy(exerciseName);
+        if (!exResult.isSuccess) {
+          return {
+            'success': false,
+            'error': 'Failed to lookup exercise "$exerciseName"',
+          };
+        }
+        final exercise = exResult.getOrThrow();
+        if (exercise == null) {
+          return {
+            'success': false,
+            'error':
+                'Exercise not found in catalog: "$exerciseName". '
+                'Check the Catalog section for exact names.',
+          };
+        }
+
+        workoutExercises.add(
+          domain_we.WorkoutExercise(
+            workoutId: workoutId,
+            exerciseId: exercise.id,
+            order: i,
+            sets: sets,
+            reps: reps,
+            rest: restSeconds,
+            duration: durationSeconds,
+            groupId: null,
+            notes: (notes != null && notes.isNotEmpty) ? notes : null,
+          ),
+        );
+      }
+      if (workoutExercises.isEmpty) {
+        return {
+          'success': false,
+          'error': 'No valid exercises provided for update',
+        };
+      }
+    } else {
+      final exResult = await _workoutRepo.getExercises(workoutId);
+      if (!exResult.isSuccess) {
+        return {'success': false, 'error': 'Failed to load existing exercises'};
+      }
+      workoutExercises = exResult.getOrThrow();
+    }
+
+    final updatedWorkout = domain_workout.Workout(
+      id: workoutId,
+      name: name,
+      description: (description != null && description.isNotEmpty)
+          ? description
+          : existing.description,
+      createdAt: existing.createdAt,
+    );
+
+    final result = await _workoutRepo.update(updatedWorkout, workoutExercises);
+    if (!result.isSuccess) {
+      return {'success': false, 'error': 'Failed to update workout'};
+    }
+    return {
+      'success': true,
+      'workoutId': workoutId,
+      'workoutName': name,
+      'exerciseCount': workoutExercises.length,
+    };
   }
 
   /// Merges consecutive messages from the same role into a single content

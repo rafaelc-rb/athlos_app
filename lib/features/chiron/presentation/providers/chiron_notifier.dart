@@ -130,6 +130,7 @@ class ChironNotifier extends _$ChironNotifier {
         final touchedTraining = toolNames.any(
           (n) =>
               n == 'createWorkout' ||
+              n == 'updateWorkout' ||
               n == 'archiveWorkout' ||
               n == 'setCycle',
         );

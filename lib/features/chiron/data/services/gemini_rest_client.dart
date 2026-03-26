@@ -337,13 +337,15 @@ List<Map<String, dynamic>> getChironToolDeclarations() {
     {
       'name': 'registerEquipment',
       'description':
-          'Register equipment the user has at home. '
-              'Only relevant for home gym users. '
-              'If "Trains at gym: Yes" in profile, skip — assume '
-              'standard gym equipment is available.',
+          'Register equipment the user owns (home training). '
+              'Call once per piece of equipment. '
+              'Only for home users (Trains at gym: No). '
+              'Gym users already have standard equipment — skip.',
       'parameters': _schema(
         properties: {
-          'equipmentName': _propString('Equipment name to register'),
+          'equipmentName': _propString(
+            'Equipment name (e.g. "halteres", "barra", "elástico")',
+          ),
         },
         required: ['equipmentName'],
       ),

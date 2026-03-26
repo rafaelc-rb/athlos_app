@@ -73,11 +73,14 @@ class PromptBuilder {
 
     final sections = <String>[];
 
+    final profile = profileResult.isSuccess ? profileResult.getOrThrow() : null;
+
     // --- Profile ---
     _buildProfile(profileResult, sections);
 
     // --- Equipment ---
-    _buildEquipment(equipResult, sections);
+    final isHomeUser = profile?.trainsAtGym == false;
+    _buildEquipment(equipResult, sections, isHomeUser: isHomeUser);
 
     // --- Active Workouts (with exercises, no N+1) ---
     await _buildWorkouts(
@@ -154,8 +157,9 @@ class PromptBuilder {
 
   void _buildEquipment(
     Result<List<Equipment>> equipResult,
-    List<String> sections,
-  ) {
+    List<String> sections, {
+    bool isHomeUser = false,
+  }) {
     if (!equipResult.isSuccess) return;
     final equipment = equipResult.getOrThrow();
     if (equipment.isNotEmpty) {
@@ -168,6 +172,11 @@ class PromptBuilder {
           )
           .join(', ');
       sections.add('## Registered Equipment\n$names');
+    } else if (isHomeUser) {
+      sections.add(
+        '## Registered Equipment\n'
+        'No equipment registered. User trains at home — ask what they have.',
+      );
     } else {
       sections.add('## Registered Equipment\nNo equipment registered.');
     }

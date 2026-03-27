@@ -2202,5 +2202,35 @@
   "prHistoryTitle": "Recordes pessoais",
   "prHistoryEmpty": "Nenhum recorde pessoal registado. Complete treinos para detectar PRs automaticamente.",
 
-  "volumeTrendTitle": "Volume semanal por grupo muscular"
+  "volumeTrendTitle": "Volume semanal por grupo muscular",
+
+  "programCompletedTitle": "Programa concluído!",
+  "programCompletedMessage": "Completou todas as sessões planeadas de \"{programName}\". Quer arquivar o programa ou continuar a treinar?",
+  "@programCompletedMessage": {
+    "placeholders": {
+      "programName": { "type": "String" }
+    }
+  },
+  "programCompletedArchive": "Arquivar",
+  "programCompletedContinue": "Continuar",
+
+  "suggestedWeightIncrease": "Sugestão: aumentar carga para {weight} kg",
+  "@suggestedWeightIncrease": {
+    "placeholders": {
+      "weight": { "type": "String" }
+    }
+  },
+
+  "warmupSuggestionTitle": "Aquecimento sugerido",
+  "warmupSets": "{count} séries de aquecimento",
+  "@warmupSets": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "leftSideLabel": "Lado esquerdo",
+  "rightSideLabel": "Lado direito",
+  "leftAbbr": "E",
+  "rightAbbr": "D"
 }

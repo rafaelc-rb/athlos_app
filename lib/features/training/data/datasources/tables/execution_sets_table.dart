@@ -40,4 +40,16 @@ class ExecutionSets extends Table {
 
   /// Per-set user notes (e.g. "felt easy", "pain in shoulder").
   TextColumn get notes => text().nullable()();
+
+  /// Reps performed with the left side (unilateral exercises only).
+  IntColumn get leftReps => integer().nullable()();
+
+  /// Weight used for the left side (unilateral exercises only).
+  RealColumn get leftWeight => real().nullable()();
+
+  /// Reps performed with the right side (unilateral exercises only).
+  IntColumn get rightReps => integer().nullable()();
+
+  /// Weight used for the right side (unilateral exercises only).
+  RealColumn get rightWeight => real().nullable()();
 }

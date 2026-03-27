@@ -35,6 +35,7 @@ class ActiveExecution extends _$ActiveExecution {
     int? programId,
     DeloadConfig? deloadConfig,
     List<ProgressionRule> progressionRules = const [],
+    int defaultRestSeconds = 0,
   }) async {
     final repo = ref.read(workoutExecutionRepositoryProvider);
     final result = await repo.start(workoutId, programId: programId);
@@ -109,6 +110,7 @@ class ActiveExecution extends _$ActiveExecution {
       exerciseSets: exerciseSets,
       exercises: exercises,
       isDeload: deloadConfig != null,
+      defaultRestSeconds: defaultRestSeconds,
     );
   }
 
@@ -236,7 +238,9 @@ class ActiveExecution extends _$ActiveExecution {
   /// Mark a set as completed and persist it to the database.
   /// Returns the rest time (seconds) for the exercise so the caller can start
   /// the timer.
-  Future<int> completeSet(
+  /// Returns (restSeconds, suggestedNextWeight) — suggestedNextWeight is non-null
+  /// when all working sets hit maxReps and no progression rule is defined.
+  Future<(int, double?)> completeSet(
     int exerciseId,
     int setNumber, {
     int? reps,
@@ -247,12 +251,16 @@ class ActiveExecution extends _$ActiveExecution {
     int? rpe,
     String? notes,
     List<SegmentEntry>? segments,
+    int? leftReps,
+    double? leftWeight,
+    int? rightReps,
+    double? rightWeight,
   }) async {
     final current = state;
-    if (current == null) return 0;
+    if (current == null) return (0, null);
 
     final sets = current.exerciseSets[exerciseId];
-    if (sets == null) return 0;
+    if (sets == null) return (0, null);
 
     final entry = sets.firstWhere((s) => s.setNumber == setNumber);
     final effectiveSegments = segments ?? entry.segments;
@@ -272,6 +280,10 @@ class ActiveExecution extends _$ActiveExecution {
       isWarmup: isWarmup,
       rpe: rpe,
       notes: notes,
+      leftReps: leftReps,
+      leftWeight: leftWeight,
+      rightReps: rightReps,
+      rightWeight: rightWeight,
     );
 
     final domainSegments = effectiveSegments
@@ -303,6 +315,10 @@ class ActiveExecution extends _$ActiveExecution {
             isWarmup: isWarmup,
             rpe: () => rpe,
             notes: () => notes,
+            leftReps: () => leftReps,
+            leftWeight: () => leftWeight,
+            rightReps: () => rightReps,
+            rightWeight: () => rightWeight,
             segments: effectiveSegments,
           )
         else
@@ -316,7 +332,28 @@ class ActiveExecution extends _$ActiveExecution {
     final exercise = current.exercises.firstWhere(
       (e) => e.exerciseId == exerciseId,
     );
-    return exercise.rest;
+    final rest = exercise.rest > 0 ? exercise.rest : current.defaultRestSeconds;
+
+    double? suggestedWeight;
+    final maxReps = exercise.maxReps;
+    if (maxReps != null && maxReps > 0) {
+      final latestSets = state!.exerciseSets[exerciseId] ?? [];
+      final workingSets = latestSets.where((s) => !s.isWarmup);
+      final allComplete = workingSets.every((s) => s.isCompleted);
+      final allHitMax =
+          workingSets.every((s) => s.reps != null && s.reps! >= maxReps);
+      if (allComplete && allHitMax && workingSets.isNotEmpty) {
+        final currentWeight = workingSets
+            .map((s) => s.weight ?? 0.0)
+            .reduce((a, b) => a > b ? a : b);
+        if (currentWeight > 0) {
+          suggestedWeight =
+              (currentWeight * 1.025 * 4).roundToDouble() / 4;
+        }
+      }
+    }
+
+    return (rest, suggestedWeight);
   }
 
   /// Finish the active execution, persisting finishedAt.

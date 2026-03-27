@@ -60,6 +60,10 @@ class _WorkoutExecutionScreenState
   int _focusedSetNumber = 1;
   double _currentWeight = 0;
   int _currentReps = 0;
+  int _leftReps = 0;
+  double _leftWeight = 0;
+  int _rightReps = 0;
+  double _rightWeight = 0;
   int _currentDuration = 0;
   double _currentDistance = 0;
   int? _selectedRpe;
@@ -139,6 +143,8 @@ class _WorkoutExecutionScreenState
                 programId: programId,
                 deloadConfig: deloadConfig,
                 progressionRules: progressionRules,
+                defaultRestSeconds:
+                    activeProgram?.defaultRestSeconds ?? 0,
               );
         } on Exception catch (_) {
           messenger.showSnackBar(
@@ -391,6 +397,11 @@ class _WorkoutExecutionScreenState
           .skip(1)
           .map((s) => _DropSegmentInput(reps: s.reps, weight: s.weight ?? 0))
           .toList();
+
+      _leftReps = entry.leftReps ?? _currentReps;
+      _leftWeight = entry.leftWeight ?? _currentWeight;
+      _rightReps = entry.rightReps ?? _currentReps;
+      _rightWeight = entry.rightWeight ?? _currentWeight;
     });
   }
 
@@ -778,6 +789,73 @@ class _WorkoutExecutionScreenState
                     exercise.maxReps ?? 0,
                     exercise.isAmrap),
               ),
+
+              if (exercise.isUnilateral) ...[
+                const SizedBox(height: AthlosSpacing.lg),
+                Text(l10n.leftSideLabel,
+                    style: textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant)),
+                const SizedBox(height: AthlosSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _NumberInput(
+                        value: _leftReps.toDouble(),
+                        suffix: l10n.repsShort,
+                        step: 1,
+                        onChanged: (v) =>
+                            setState(() => _leftReps = v.toInt()),
+                        textTheme: textTheme,
+                        colorScheme: colorScheme,
+                      ),
+                    ),
+                    const SizedBox(width: AthlosSpacing.sm),
+                    Expanded(
+                      child: _NumberInput(
+                        value: _leftWeight,
+                        suffix: l10n.weightKgSuffix,
+                        step: 2.5,
+                        onChanged: (v) =>
+                            setState(() => _leftWeight = v),
+                        textTheme: textTheme,
+                        colorScheme: colorScheme,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AthlosSpacing.sm),
+                Text(l10n.rightSideLabel,
+                    style: textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant)),
+                const SizedBox(height: AthlosSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _NumberInput(
+                        value: _rightReps.toDouble(),
+                        suffix: l10n.repsShort,
+                        step: 1,
+                        onChanged: (v) =>
+                            setState(() => _rightReps = v.toInt()),
+                        textTheme: textTheme,
+                        colorScheme: colorScheme,
+                      ),
+                    ),
+                    const SizedBox(width: AthlosSpacing.sm),
+                    Expanded(
+                      child: _NumberInput(
+                        value: _rightWeight,
+                        suffix: l10n.weightKgSuffix,
+                        step: 2.5,
+                        onChanged: (v) =>
+                            setState(() => _rightWeight = v),
+                        textTheme: textTheme,
+                        colorScheme: colorScheme,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
 
               const SizedBox(height: AthlosSpacing.md),
 
@@ -1741,9 +1819,12 @@ class _WorkoutExecutionScreenState
                 .map((d) => SegmentEntry(reps: d.reps, weight: d.weight)),
           ];
 
+    final isUni = exercise.isUnilateral;
     final int rest;
+    final double? suggestedWeight;
     try {
-      rest = await ref.read(activeExecutionProvider.notifier).completeSet(
+      final result =
+          await ref.read(activeExecutionProvider.notifier).completeSet(
             exercise.exerciseId,
             _focusedSetNumber,
             reps: isCardio ? null : _currentReps,
@@ -1756,7 +1837,13 @@ class _WorkoutExecutionScreenState
             rpe: _selectedRpe,
             notes: _setNotes?.trim().isNotEmpty == true ? _setNotes!.trim() : null,
             segments: segments.isEmpty ? null : segments,
+            leftReps: isUni && _leftReps > 0 ? _leftReps : null,
+            leftWeight: isUni && _leftWeight > 0 ? _leftWeight : null,
+            rightReps: isUni && _rightReps > 0 ? _rightReps : null,
+            rightWeight: isUni && _rightWeight > 0 ? _rightWeight : null,
           );
+      rest = result.$1;
+      suggestedWeight = result.$2;
     } on Exception catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1769,6 +1856,16 @@ class _WorkoutExecutionScreenState
     }
 
     if (!mounted) return;
+
+    if (suggestedWeight != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!
+              .suggestedWeightIncrease(suggestedWeight.toStringAsFixed(1))),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
 
     final updatedExec = ref.read(activeExecutionProvider);
     if (updatedExec == null) return;
@@ -1802,7 +1899,7 @@ class _WorkoutExecutionScreenState
 
     final int rest;
     try {
-      rest = await ref.read(activeExecutionProvider.notifier).completeSet(
+      final (r, _) = await ref.read(activeExecutionProvider.notifier).completeSet(
             exercise.exerciseId,
             _focusedSetNumber,
             duration: _currentDuration > 0 ? _currentDuration : null,
@@ -1812,6 +1909,7 @@ class _WorkoutExecutionScreenState
             rpe: _selectedRpe,
             notes: _setNotes?.trim().isNotEmpty == true ? _setNotes!.trim() : null,
           );
+      rest = r;
     } on Exception catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1857,13 +1955,25 @@ class _WorkoutExecutionScreenState
           SnackBar(content: Text(l10n.workoutFinished)),
         );
 
+        final program = ref.read(activeProgramProvider).value;
+
         ref.invalidate(isDeloadDueProvider);
         final isDeloadDue =
             await ref.read(isDeloadDueProvider.future);
         if (isDeloadDue && context.mounted) {
-          final program = ref.read(activeProgramProvider).value;
           if (program != null) {
             await _showDeloadPrompt(context, program);
+          }
+        }
+
+        if (program != null && context.mounted) {
+          ref.invalidate(programSessionCountProvider(program.id));
+          ref.invalidate(programProgressProvider(program.id));
+          final progress = await ref.read(
+            programProgressProvider(program.id).future,
+          );
+          if (progress.isCompleted && context.mounted) {
+            await _showProgramCompletionPrompt(context, program);
           }
         }
 
@@ -1908,6 +2018,38 @@ class _WorkoutExecutionScreenState
       await ref
           .read(programActionsProvider.notifier)
           .enterDeload(program.id);
+    }
+  }
+
+  Future<void> _showProgramCompletionPrompt(
+      BuildContext context, TrainingProgram program) async {
+    final l10n = AppLocalizations.of(context)!;
+    final action = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        icon: Icon(Icons.emoji_events_rounded,
+            color: Theme.of(ctx).colorScheme.primary, size: 40),
+        title: Text(l10n.programCompletedTitle),
+        content: Text(l10n.programCompletedMessage(program.name)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'continue'),
+            child: Text(l10n.programCompletedContinue),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, 'archive'),
+            child: Text(l10n.programCompletedArchive),
+          ),
+        ],
+      ),
+    );
+
+    if (action == 'archive' && mounted) {
+      await ref
+          .read(programActionsProvider.notifier)
+          .archiveProgram(program.id);
+      ref.invalidate(activeProgramProvider);
     }
   }
 

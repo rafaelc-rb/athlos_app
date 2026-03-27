@@ -162,6 +162,10 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
           isWarmup: Value(set.isWarmup),
           rpe: Value(set.rpe),
           notes: Value(set.notes),
+          leftReps: Value(set.leftReps),
+          leftWeight: Value(set.leftWeight),
+          rightReps: Value(set.rightReps),
+          rightWeight: Value(set.rightWeight),
         ),
       );
       return Success(id);
@@ -305,6 +309,10 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
         isWarmup: row.isWarmup as bool,
         rpe: row.rpe as int?,
         notes: row.notes as String?,
+        leftReps: row.leftReps as int?,
+        leftWeight: row.leftWeight as double?,
+        rightReps: row.rightReps as int?,
+        rightWeight: row.rightWeight as double?,
       );
 
   domain.ExecutionSetSegment _segmentToDomain(dynamic row) =>

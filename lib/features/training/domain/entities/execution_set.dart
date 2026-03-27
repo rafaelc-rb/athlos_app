@@ -36,6 +36,18 @@ class ExecutionSet {
   /// Per-set user notes.
   final String? notes;
 
+  /// Reps performed with the left side (unilateral exercises).
+  final int? leftReps;
+
+  /// Weight used for the left side (unilateral exercises).
+  final double? leftWeight;
+
+  /// Reps performed with the right side (unilateral exercises).
+  final int? rightReps;
+
+  /// Weight used for the right side (unilateral exercises).
+  final double? rightWeight;
+
   /// Drop set segments. Empty for normal sets.
   final List<ExecutionSetSegment> segments;
 
@@ -54,6 +66,10 @@ class ExecutionSet {
     this.isWarmup = false,
     this.rpe,
     this.notes,
+    this.leftReps,
+    this.leftWeight,
+    this.rightReps,
+    this.rightWeight,
     this.segments = const [],
   });
 

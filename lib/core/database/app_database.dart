@@ -102,7 +102,7 @@ class AppDatabase extends _$AppDatabase {
   bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed && _enableDevSeed;
 
   @override
-  int get schemaVersion => 22;
+  int get schemaVersion => 23;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -439,6 +439,22 @@ class AppDatabase extends _$AppDatabase {
             recorded_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
           )
         ''');
+      }
+
+      if (from < 23) {
+        // L/R tracking for unilateral exercises.
+        await customStatement(
+          'ALTER TABLE execution_sets ADD COLUMN left_reps INTEGER',
+        );
+        await customStatement(
+          'ALTER TABLE execution_sets ADD COLUMN left_weight REAL',
+        );
+        await customStatement(
+          'ALTER TABLE execution_sets ADD COLUMN right_reps INTEGER',
+        );
+        await customStatement(
+          'ALTER TABLE execution_sets ADD COLUMN right_weight REAL',
+        );
       }
     },
   );

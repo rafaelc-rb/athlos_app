@@ -1,6 +1,6 @@
 # Training Periodization
 
-> Status: 📋 Planned — design phase.
+> Status: ✅ Implemented — all phases (1-10) complete, plus supplementary improvements.
 
 Evolution of the training module to support real-world periodization concepts, structured progression, and advanced training metrics — while keeping the experience simple for casual users.
 
@@ -216,10 +216,20 @@ Charts and records computed from existing execution data — zero additional use
 
 ## Future Considerations (low priority)
 
-These are real concepts in weight training but add complexity disproportionate to their value for most users. Documented here for future reference.
+- **Tempo / cadence** — prescribed speed per exercise phase (e.g. 3-1-2-0). Discarded: too much interaction overhead for most users.
+- **Chiron proactive** — Chiron initiating conversations based on events (program completion, PR, volume alerts). Mapped as future evolution.
 
-- **Tempo / cadence** — prescribed speed per exercise phase (e.g. 3-1-2-0: 3s eccentric, 1s pause, 2s concentric, 0s pause). Common in advanced hypertrophy programs. Would require a tempo field on `WorkoutExercise`.
-- **L/R tracking for unilateral exercises** — recording left and right sides separately to detect strength imbalances. The app has `isUnilateral` on `WorkoutExercise` but execution logs a single load value. Would require splitting `ExecutionSet` into per-side records or adding a `side` field.
+### Implemented supplementary improvements
+
+- **L/R tracking for unilateral exercises** — `leftReps`, `leftWeight`, `rightReps`, `rightWeight` on `ExecutionSet` (schema v23). UI in execution screen and history detail.
+- **Chiron read tools** — `getWeeklyVolume`, `getEstimated1RM` for data-driven recommendations.
+- **Chiron write tools** — `createProgram`, `archiveProgram`, `setDeloadActive` for full program management.
+- **Chiron warmup tool** — `suggestWarmup` generates warmup ramp based on working weight.
+- **`defaultRestSeconds` fallback** — program's default rest applied when exercise has no specific rest configured.
+- **Program completion prompt** — UI dialog when all planned sessions are completed, with option to archive.
+- **Automatic load suggestion** — snackbar suggesting weight increase when all working sets hit maxReps (no progression rule required).
+- **PR badge in execution history** — trophy icon on sets that match the exercise's current personal record.
+- **Set notes in Chiron context** — already included in prompt builder's execution history.
 
 ## Chiron Integration
 
@@ -233,12 +243,14 @@ With periodization, Chiron gains **proactive triggers**:
 - "Teu RPE tá abaixo de 7 nos últimos 3 treinos de supino. Hora de subir a carga."
 - "Bati pull-up 80kg (corpo + 10kg lastro) × 8. Novo PR! 1RM estimado: 101kg."
 
-New Chiron tools:
-- `createProgram` / `archiveProgram`
-- `triggerDeload` / `skipDeload`
-- `setProgressionRule`
-- `getWeeklyVolume`
-- `getEstimated1RM`
+Implemented Chiron tools:
+- `createProgram` / `archiveProgram` — full program lifecycle management
+- `setDeloadActive` — enter/exit deload mode
+- `setProgressionRules` — bulk replace progression rules for a program
+- `getWeeklyVolume` — read weekly working sets per muscle group
+- `getEstimated1RM` — read estimated 1RM for any exercise
+- `suggestWarmup` — generate warmup ramp from working weight
+- `getTrainingState` — enhanced with program details, deload config, progression rules, body weight timeline, defaultRestSeconds
 
 ## UX Principles
 

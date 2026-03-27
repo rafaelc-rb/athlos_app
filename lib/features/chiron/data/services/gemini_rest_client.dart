@@ -575,6 +575,111 @@ List<Map<String, dynamic>> getChironToolDeclarations() {
       ),
     },
     {
+      'name': 'createProgram',
+      'description':
+          'Create a training program (mesocycle) and activate it. '
+              'Archives any currently active program. '
+              'Optionally sets the workout cycle for the new program.',
+      'parameters': _schema(
+        properties: {
+          'name': _propString('Program name (e.g. "PPL Hipertrofia")'),
+          'focus': _propEnum(
+            ['hypertrophy', 'strength', 'endurance', 'custom'],
+            'Training focus',
+          ),
+          'durationMode': _propEnum(
+            ['sessions', 'rotations'],
+            'How duration is measured',
+          ),
+          'durationValue': _propInteger('Number of sessions or rotations'),
+          'defaultRestSeconds': _propInteger(
+            'Default rest between sets in seconds (auto-set from focus if omitted)',
+            nullable: true,
+          ),
+          'workoutIds': {
+            'type': 'array',
+            'description': 'Workout IDs for the cycle (from getTrainingState)',
+            'items': {'type': 'integer'},
+          },
+        },
+        required: ['name', 'focus', 'durationMode', 'durationValue'],
+      ),
+    },
+    {
+      'name': 'archiveProgram',
+      'description':
+          'Archive a program. Preserves execution history. '
+              'Call getTrainingState first to get the programId.',
+      'parameters': _schema(
+        properties: {
+          'programId': _propInteger('ID of the program to archive'),
+        },
+        required: ['programId'],
+      ),
+    },
+    {
+      'name': 'setDeloadActive',
+      'description':
+          'Activate or deactivate deload for a program. '
+              'When active, execution targets are reduced per the deload config. '
+              'Call getTrainingState first to check current deload status.',
+      'parameters': _schema(
+        properties: {
+          'programId': _propInteger('Program ID'),
+          'active': {
+            'type': 'boolean',
+            'description': 'true to enter deload, false to exit',
+          },
+        },
+        required: ['programId', 'active'],
+      ),
+    },
+    {
+      'name': 'getWeeklyVolume',
+      'description':
+          'Get total working sets per muscle group for the last 7 days. '
+              'Excludes warmup sets. Use to check if user is under/over volume.',
+      'parameters': _schema(
+        properties: {},
+        required: [],
+      ),
+    },
+    {
+      'name': 'getEstimated1RM',
+      'description':
+          'Get the estimated 1RM for a specific exercise. '
+              'Calculated from execution history using the Epley formula. '
+              'For bodyweight exercises, includes body weight in the calculation. '
+              'Use for percentage-based programming (e.g. "use 75% of 1RM").',
+      'parameters': _schema(
+        properties: {
+          'exerciseId': _propInteger(
+            'Exercise ID (from getTrainingState or context)',
+          ),
+        },
+        required: ['exerciseId'],
+      ),
+    },
+    {
+      'name': 'suggestWarmup',
+      'description':
+          'Calculate warmup sets for an exercise based on the working weight. '
+              'Returns a pyramid ramp-up. '
+              'Consider the user\'s available training time before suggesting — '
+              'if time is tight, skip or reduce warmup.',
+      'parameters': _schema(
+        properties: {
+          'workingWeight': {
+            'type': 'number',
+            'description': 'Target working weight in kg',
+          },
+          'workingSets': _propInteger('Number of working sets planned'),
+          'workingReps': _propInteger('Reps per working set'),
+        },
+        required: ['workingWeight', 'workingSets', 'workingReps'],
+      ),
+    },
+    {
       'name': 'requestExtendedHistory',
       'description':
           'Load extended workout/execution history for long-term '

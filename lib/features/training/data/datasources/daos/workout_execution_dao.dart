@@ -139,6 +139,28 @@ class WorkoutExecutionDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
+  /// Returns completed non-warmup sets for [exerciseId] paired with
+  /// the execution's startedAt date (for charting over time).
+  Future<List<({ExecutionSet set, DateTime date})>>
+      getCompletedSetsWithDateForExercise(int exerciseId) async {
+    final rows = await (select(executionSets).join([
+      innerJoin(workoutExecutions,
+          workoutExecutions.id.equalsExp(executionSets.executionId)),
+    ])
+          ..where(executionSets.exerciseId.equals(exerciseId) &
+              executionSets.isCompleted.equals(true) &
+              executionSets.isWarmup.equals(false) &
+              workoutExecutions.finishedAt.isNotNull())
+          ..orderBy([OrderingTerm.asc(workoutExecutions.startedAt)]))
+        .get();
+    return rows
+        .map((row) => (
+              set: row.readTable(executionSets),
+              date: row.readTable(workoutExecutions).startedAt,
+            ))
+        .toList();
+  }
+
   // --- Execution sets ---
 
   Future<List<ExecutionSet>> getSets(int executionId) =>

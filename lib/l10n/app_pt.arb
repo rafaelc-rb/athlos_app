@@ -2192,5 +2192,15 @@
   "bodyMetricsWeeklyPromptSkip": "Agora não",
   "bodyMetricsWeeklyPromptRecord": "Registar",
   "bodyMetricsChartTitle": "Evolução do peso",
-  "bodyMetricsNoData": "Dados insuficientes para o gráfico"
+  "bodyMetricsNoData": "Dados insuficientes para o gráfico",
+
+  "loadChartTitle": "Evolução de 1RM estimado",
+  "loadChartRange30": "30 dias",
+  "loadChartRange90": "90 dias",
+  "loadChartRangeAll": "Todo",
+
+  "prHistoryTitle": "Recordes pessoais",
+  "prHistoryEmpty": "Nenhum recorde pessoal registado. Complete treinos para detectar PRs automaticamente.",
+
+  "volumeTrendTitle": "Volume semanal por grupo muscular"
 }

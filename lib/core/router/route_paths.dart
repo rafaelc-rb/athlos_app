@@ -34,6 +34,12 @@ abstract final class RoutePaths {
   // :workoutId used via string interpolation
   // e.g. '${trainingWorkouts}/$id' and '${trainingWorkouts}/$id/edit'
 
+  // Progress visualization
+  static String trainingExerciseLoadChart(int exerciseId) =>
+      '$trainingExercises/$exerciseId/load-chart';
+  static const trainingPRHistory = '/training/pr-history';
+  static const trainingVolumeTrend = '/training/volume-trend';
+
   // Diet module (future)
   static const diet = '/diet';
 }

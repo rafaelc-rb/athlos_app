@@ -262,6 +262,24 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
     }
   }
 
+  @override
+  Future<Result<List<({domain.ExecutionSet set, DateTime date})>>>
+      getCompletedSetsWithDateForExercise(int exerciseId) async {
+    try {
+      final rows =
+          await _dao.getCompletedSetsWithDateForExercise(exerciseId);
+      return Success(rows
+          .map((r) => (
+                set: _setToDomain(r.set),
+                date: r.date,
+              ))
+          .toList());
+    } on Exception catch (e) {
+      return Failure(
+          DatabaseException('Failed to load sets with date: $e'));
+    }
+  }
+
   domain.WorkoutExecution _executionToDomain(dynamic row) =>
       domain.WorkoutExecution(
         id: row.id as int,

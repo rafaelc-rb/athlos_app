@@ -57,6 +57,8 @@ class TrainingHomeScreen extends ConsumerWidget {
           const Gap(AthlosSpacing.md),
 
           const _WeeklyVolumeCard(),
+          const Gap(AthlosSpacing.sm),
+          const _RecentPRCard(),
           const Gap(AthlosSpacing.md),
 
           // Summary section (sessions analytics)
@@ -694,49 +696,120 @@ class _WeeklyVolumeCard extends ConsumerWidget {
         final sorted = volume.entries.toList()
           ..sort((a, b) => b.value.compareTo(a.value));
         return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AthlosSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.bar_chart,
-                        size: 20, color: colorScheme.primary),
-                    const Gap(AthlosSpacing.xs),
-                    Text(
-                      l10n.weeklyVolume,
-                      style: textTheme.titleSmall,
-                    ),
-                  ],
-                ),
-                const Gap(AthlosSpacing.sm),
-                Wrap(
-                  spacing: AthlosSpacing.sm,
-                  runSpacing: AthlosSpacing.xs,
-                  children: sorted.map((e) {
-                    final group = MuscleGroup.values
-                        .where((g) => g.name == e.key)
-                        .firstOrNull;
-                    final label = group != null
-                        ? localizedMuscleGroupName(group, l10n)
-                        : e.key;
-                    return Chip(
-                      avatar: Text(
-                        '${e.value}',
-                        style: textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onSecondaryContainer,
-                          fontWeight: FontWeight.bold,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () =>
+                context.push(RoutePaths.trainingVolumeTrend),
+            child: Padding(
+              padding: const EdgeInsets.all(AthlosSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.bar_chart,
+                          size: 20, color: colorScheme.primary),
+                      const Gap(AthlosSpacing.xs),
+                      Expanded(
+                        child: Text(
+                          l10n.weeklyVolume,
+                          style: textTheme.titleSmall,
                         ),
                       ),
-                      label: Text(label),
-                      visualDensity: VisualDensity.compact,
-                      materialTapTargetSize:
-                          MaterialTapTargetSize.shrinkWrap,
-                    );
-                  }).toList(),
-                ),
-              ],
+                      Icon(Icons.chevron_right,
+                          size: 20,
+                          color: colorScheme.onSurfaceVariant),
+                    ],
+                  ),
+                  const Gap(AthlosSpacing.sm),
+                  Wrap(
+                    spacing: AthlosSpacing.sm,
+                    runSpacing: AthlosSpacing.xs,
+                    children: sorted.map((e) {
+                      final group = MuscleGroup.values
+                          .where((g) => g.name == e.key)
+                          .firstOrNull;
+                      final label = group != null
+                          ? localizedMuscleGroupName(group, l10n)
+                          : e.key;
+                      return Chip(
+                        avatar: Text(
+                          '${e.value}',
+                          style: textTheme.labelSmall?.copyWith(
+                            color: colorScheme.onSecondaryContainer,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        label: Text(label),
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize:
+                            MaterialTapTargetSize.shrinkWrap,
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _RecentPRCard extends ConsumerWidget {
+  const _RecentPRCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    final prsAsync = ref.watch(allExercisePRsProvider);
+
+    return prsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (prs) {
+        if (prs.isEmpty) return const SizedBox.shrink();
+        final top = prs.first;
+        final name = localizedExerciseName(top.exerciseName,
+            isVerified: top.isVerified, l10n: l10n);
+        final e1rmStr = top.best1RM % 1 == 0
+            ? top.best1RM.toInt().toString()
+            : top.best1RM.toStringAsFixed(1);
+        return Card(
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () =>
+                context.push(RoutePaths.trainingPRHistory),
+            child: Padding(
+              padding: const EdgeInsets.all(AthlosSpacing.md),
+              child: Row(
+                children: [
+                  Icon(Icons.emoji_events,
+                      color: colorScheme.tertiary, size: 24),
+                  const Gap(AthlosSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(l10n.prBadge,
+                            style: textTheme.titleSmall),
+                        Text(
+                          '$name — $e1rmStr kg',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right,
+                      size: 20, color: colorScheme.onSurfaceVariant),
+                ],
+              ),
             ),
           ),
         );

@@ -999,6 +999,14 @@ class _PRSection extends ConsumerWidget {
                     ],
                   ),
                 ),
+                IconButton(
+                  icon: Icon(Icons.show_chart,
+                      color: colorScheme.onPrimaryContainer),
+                  tooltip: l10n.loadChartTitle,
+                  onPressed: () => context.push(
+                    RoutePaths.trainingExerciseLoadChart(exerciseId),
+                  ),
+                ),
               ],
             ),
           ),

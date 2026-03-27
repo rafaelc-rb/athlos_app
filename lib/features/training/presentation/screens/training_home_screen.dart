@@ -3,47 +3,86 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart' as intl;
-import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../../../core/router/route_paths.dart';
-import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/execution_comparison.dart';
-import '../../domain/entities/training_program.dart';
-import '../../domain/enums/program_focus.dart';
+import '../../domain/enums/muscle_group.dart';
 import '../helpers/duration_format.dart';
+import '../helpers/exercise_l10n.dart';
 import '../providers/equipment_notifier.dart';
 import '../providers/exercise_notifier.dart';
-import '../providers/program_notifier.dart';
-import '../../domain/enums/muscle_group.dart';
-import '../helpers/exercise_l10n.dart';
 import '../providers/training_analytics_provider.dart';
 import '../providers/training_metrics_provider.dart';
-import '../providers/workout_notifier.dart';
 import '../../../profile/presentation/providers/body_metric_notifier.dart';
+import '../../../profile/presentation/providers/profile_notifier.dart'
+    show profileProvider;
 
-/// Training module — Home / Dashboard tab.
-class TrainingHomeScreen extends ConsumerWidget {
+/// Training module — Dashboard tab with two inner sub-tabs:
+/// "Visão Geral" (overview metrics) and "Catálogos" (exercises + equipment).
+class TrainingHomeScreen extends StatefulWidget {
   const TrainingHomeScreen({super.key});
+
+  @override
+  State<TrainingHomeScreen> createState() => _TrainingHomeScreenState();
+}
+
+class _TrainingHomeScreenState extends State<TrainingHomeScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
+      children: [
+        TabBar(
+          controller: _tabController,
+          labelColor: colorScheme.primary,
+          unselectedLabelColor: colorScheme.onSurfaceVariant,
+          indicatorColor: colorScheme.primary,
+          tabs: [
+            Tab(text: l10n.dashboardOverviewTab),
+            Tab(text: l10n.dashboardCatalogsTab),
+          ],
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: const [
+              _OverviewSubTab(),
+              _CatalogsSubTab(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Sub-tab: Visão Geral ─────────────────────────────────────────────
+
+class _OverviewSubTab extends ConsumerWidget {
+  const _OverviewSubTab();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    final equipmentAsync = ref.watch(equipmentListProvider);
-    final equipmentCount = equipmentAsync.value?.length ?? 0;
-
-    final exercisesAsync = ref.watch(exerciseListProvider);
-    final exerciseCount = exercisesAsync.value?.length ?? 0;
-
-    final analyticsAsync = ref.watch(trainingHomeAnalyticsProvider);
-    final workoutsAsync = ref.watch(workoutListProvider);
-    final streakAsync = ref.watch(executionStreakProvider);
-
-    final activeProgramAsync = ref.watch(activeProgramProvider);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AthlosSpacing.md),
@@ -51,70 +90,138 @@ class TrainingHomeScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _WeightPromptBanner(),
-
-          // Active program card
-          _ActiveProgramCard(activeProgramAsync: activeProgramAsync),
+          _StatPillsRow(l10n: l10n),
           const Gap(AthlosSpacing.md),
-
           const _WeeklyVolumeCard(),
           const Gap(AthlosSpacing.sm),
           const _RecentPRCard(),
-          const Gap(AthlosSpacing.md),
+          const Gap(AthlosSpacing.lg),
+          _EvolutionCard(l10n: l10n),
+        ],
+      ),
+    );
+  }
+}
 
-          // Summary section (sessions analytics)
-          Text(
-            l10n.trainingSummarySection,
-            style: textTheme.titleSmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
+// ── Stat pills (streak + this week) ──────────────────────────────────
+
+class _StatPillsRow extends ConsumerWidget {
+  final AppLocalizations l10n;
+
+  const _StatPillsRow({required this.l10n});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    final streakAsync = ref.watch(executionStreakProvider);
+    final thisWeekAsync = ref.watch(thisWeekSessionCountProvider);
+    final profileAsync = ref.watch(profileProvider);
+    final trainingFrequency = profileAsync.value?.trainingFrequency;
+
+    final streak = streakAsync.value ?? 0;
+    final thisWeek = thisWeekAsync.value ?? 0;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _StatPill(
+            icon: Icons.local_fire_department,
+            iconColor: streak > 0 ? colorScheme.error : colorScheme.onSurfaceVariant,
+            label: l10n.dashboardStreakLabel,
+            value: l10n.dashboardStreakDays(streak),
+            textTheme: textTheme,
+            colorScheme: colorScheme,
           ),
-          const Gap(AthlosSpacing.sm),
-          analyticsAsync.when(
-            data: (analytics) {
-              final workouts = workoutsAsync.value ?? [];
-              final nameById = {for (final w in workouts) w.id: w.name};
-              return _SummaryCard(
-                analytics: analytics,
-                nameById: nameById,
-                streak: streakAsync.value,
-                l10n: l10n,
-                textTheme: textTheme,
-                colorScheme: colorScheme,
-              );
-            },
-            loading: () => Skeletonizer(
-              enabled: true,
-              child: _SummaryCard(
-                analytics: const TrainingHomeAnalytics(
-                  sessionsByActiveWorkoutId: {},
-                  archivedSessionsTotal: 0,
-                  totalSessions: 0,
-                ),
-                nameById: const {},
-                streak: null,
-                l10n: l10n,
-                textTheme: textTheme,
-                colorScheme: colorScheme,
+        ),
+        const Gap(AthlosSpacing.sm),
+        Expanded(
+          child: _StatPill(
+            icon: Icons.calendar_today,
+            iconColor: colorScheme.primary,
+            label: l10n.dashboardThisWeekLabel,
+            value: trainingFrequency != null
+                ? l10n.dashboardThisWeekProgress(thisWeek, trainingFrequency)
+                : l10n.dashboardThisWeekCount(thisWeek),
+            textTheme: textTheme,
+            colorScheme: colorScheme,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+  final TextTheme textTheme;
+  final ColorScheme colorScheme;
+
+  const _StatPill({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+    required this.textTheme,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AthlosSpacing.md,
+          vertical: AthlosSpacing.sm,
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: iconColor),
+            const Gap(AthlosSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  Text(value, style: textTheme.titleSmall),
+                ],
               ),
             ),
-            error: (err, stackTrace) => const SizedBox.shrink(),
-          ),
-          const Gap(AthlosSpacing.lg),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-          // Evolution card (last vs previous for last executed workout)
-          _EvolutionCard(l10n: l10n),
+// ── Sub-tab: Catálogos ───────────────────────────────────────────────
 
-          const Gap(AthlosSpacing.lg),
+class _CatalogsSubTab extends ConsumerWidget {
+  const _CatalogsSubTab();
 
-          // Catalogs section
-          Text(
-            l10n.catalogsSection,
-            style: textTheme.titleSmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const Gap(AthlosSpacing.sm),
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
 
+    final equipmentAsync = ref.watch(equipmentListProvider);
+    final equipmentCount = equipmentAsync.value?.length ?? 0;
+
+    final exercisesAsync = ref.watch(exerciseListProvider);
+    final exerciseCount = exercisesAsync.value?.length ?? 0;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AthlosSpacing.md),
+      child: Column(
+        children: [
           _CatalogCard(
             icon: Icons.sports_gymnastics,
             title: l10n.exercisesCatalog,
@@ -124,7 +231,6 @@ class TrainingHomeScreen extends ConsumerWidget {
             onTap: () => context.go(RoutePaths.trainingExercises),
           ),
           const Gap(AthlosSpacing.sm),
-
           _CatalogCard(
             icon: Icons.handyman,
             title: l10n.equipmentCatalogTitle,
@@ -138,6 +244,218 @@ class TrainingHomeScreen extends ConsumerWidget {
     );
   }
 }
+
+// ── Weekly Volume with targets ───────────────────────────────────────
+
+class _WeeklyVolumeCard extends ConsumerWidget {
+  const _WeeklyVolumeCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    final volumeAsync = ref.watch(weeklyVolumePerMuscleGroupProvider);
+    final profileAsync = ref.watch(profileProvider);
+    final experienceLevel = profileAsync.value?.experienceLevel?.name;
+    final target = volumeTargetForLevel(experienceLevel);
+
+    return volumeAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (volume) {
+        if (volume.isEmpty) return const SizedBox.shrink();
+        final sorted = volume.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+        return Card(
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => context.push(RoutePaths.trainingVolumeTrend),
+            child: Padding(
+              padding: const EdgeInsets.all(AthlosSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.bar_chart,
+                          size: 20, color: colorScheme.primary),
+                      const Gap(AthlosSpacing.xs),
+                      Expanded(
+                        child: Text(
+                          l10n.weeklyVolume,
+                          style: textTheme.titleSmall,
+                        ),
+                      ),
+                      Text(
+                        l10n.dashboardVolumeTargetRange(target.min, target.max),
+                        style: textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const Gap(AthlosSpacing.xs),
+                      Icon(Icons.chevron_right,
+                          size: 20, color: colorScheme.onSurfaceVariant),
+                    ],
+                  ),
+                  const Gap(AthlosSpacing.sm),
+                  ...sorted.map((e) {
+                    final group = MuscleGroup.values
+                        .where((g) => g.name == e.key)
+                        .firstOrNull;
+                    final label = group != null
+                        ? localizedMuscleGroupName(group, l10n)
+                        : e.key;
+                    return _VolumeRow(
+                      label: label,
+                      sets: e.value,
+                      targetMin: target.min,
+                      targetMax: target.max,
+                      colorScheme: colorScheme,
+                      textTheme: textTheme,
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _VolumeRow extends StatelessWidget {
+  final String label;
+  final int sets;
+  final int targetMin;
+  final int targetMax;
+  final ColorScheme colorScheme;
+  final TextTheme textTheme;
+
+  const _VolumeRow({
+    required this.label,
+    required this.sets,
+    required this.targetMin,
+    required this.targetMax,
+    required this.colorScheme,
+    required this.textTheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fraction = (sets / targetMax).clamp(0.0, 1.0);
+    final statusColor = sets < targetMin
+        ? colorScheme.error
+        : sets > targetMax
+            ? colorScheme.tertiary
+            : colorScheme.primary;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AthlosSpacing.xs),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 90,
+            child: Text(
+              label,
+              style: textTheme.bodySmall,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const Gap(AthlosSpacing.sm),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(
+                value: fraction,
+                minHeight: 8,
+                backgroundColor: colorScheme.surfaceContainerHighest,
+                color: statusColor,
+              ),
+            ),
+          ),
+          const Gap(AthlosSpacing.sm),
+          SizedBox(
+            width: 28,
+            child: Text(
+              '$sets',
+              style: textTheme.labelMedium?.copyWith(
+                color: statusColor,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.end,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Recent PR Card ───────────────────────────────────────────────────
+
+class _RecentPRCard extends ConsumerWidget {
+  const _RecentPRCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    final prsAsync = ref.watch(allExercisePRsProvider);
+
+    return prsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (prs) {
+        if (prs.isEmpty) return const SizedBox.shrink();
+        final top = prs.first;
+        final name = localizedExerciseName(top.exerciseName,
+            isVerified: top.isVerified, l10n: l10n);
+        final e1rmStr = top.best1RM % 1 == 0
+            ? top.best1RM.toInt().toString()
+            : top.best1RM.toStringAsFixed(1);
+        return Card(
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => context.push(RoutePaths.trainingPRHistory),
+            child: Padding(
+              padding: const EdgeInsets.all(AthlosSpacing.md),
+              child: Row(
+                children: [
+                  Icon(Icons.emoji_events,
+                      color: colorScheme.tertiary, size: 24),
+                  const Gap(AthlosSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(l10n.prBadge, style: textTheme.titleSmall),
+                        Text(
+                          '$name — $e1rmStr kg',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right,
+                      size: 20, color: colorScheme.onSurfaceVariant),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ── Evolution Card ───────────────────────────────────────────────────
 
 class _EvolutionCard extends ConsumerWidget {
   const _EvolutionCard({required this.l10n});
@@ -211,20 +529,25 @@ class _EvolutionCard extends ConsumerWidget {
                               ? Theme.of(context).colorScheme.primary
                               : c.volumeDelta < 0
                                   ? Theme.of(context).colorScheme.error
-                                  : Theme.of(context).colorScheme.onSurfaceVariant,
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                         ),
                         const Gap(AthlosSpacing.xs),
                         Text(
                           _deltaText(c),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: c.volumeDelta > 0
-                                    ? Theme.of(context).colorScheme.primary
-                                    : c.volumeDelta < 0
-                                        ? Theme.of(context).colorScheme.error
-                                        : Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: c.volumeDelta > 0
+                                        ? Theme.of(context).colorScheme.primary
+                                        : c.volumeDelta < 0
+                                            ? Theme.of(context)
+                                                .colorScheme
+                                                .error
+                                            : Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                  ),
                         ),
                       ],
                     ),
@@ -236,7 +559,7 @@ class _EvolutionCard extends ConsumerWidget {
         );
       },
       loading: () => const SizedBox.shrink(),
-      error: (err, stackTrace) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 
@@ -289,123 +612,7 @@ class _EvolutionCard extends ConsumerWidget {
   }
 }
 
-class _SummaryCard extends StatelessWidget {
-  final TrainingHomeAnalytics analytics;
-  final Map<int, String> nameById;
-  final int? streak;
-  final AppLocalizations l10n;
-  final TextTheme textTheme;
-  final ColorScheme colorScheme;
-
-  const _SummaryCard({
-    required this.analytics,
-    required this.nameById,
-    this.streak,
-    required this.l10n,
-    required this.textTheme,
-    required this.colorScheme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final entries = analytics.sessionsByActiveWorkoutId.entries.toList()
-      ..sort((a, b) => (nameById[a.key] ?? '').compareTo(nameById[b.key] ?? ''));
-
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(AthlosSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (entries.isNotEmpty) ...[
-              Text(
-                l10n.trainingSessionsPerWorkout,
-                style: textTheme.titleSmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const Gap(AthlosSpacing.xs),
-              ...entries.map(
-                (e) => Padding(
-                  padding: const EdgeInsets.only(bottom: AthlosSpacing.xxs),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          nameById[e.key] ?? 'Treino #${e.key}',
-                          style: textTheme.bodyMedium,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Text(
-                        l10n.trainingSessionsCount(e.value),
-                        style: textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const Gap(AthlosSpacing.sm),
-            ],
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  l10n.trainingOtherSessions,
-                  style: textTheme.bodyMedium,
-                ),
-                Text(
-                  l10n.trainingSessionsCount(analytics.archivedSessionsTotal),
-                  style: textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-            const Gap(AthlosSpacing.xs),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  l10n.trainingTotalSessions,
-                  style: textTheme.titleSmall,
-                ),
-                Text(
-                  l10n.trainingSessionsCount(analytics.totalSessions),
-                  style: textTheme.titleSmall?.copyWith(
-                    color: colorScheme.primary,
-                  ),
-                ),
-              ],
-            ),
-            if (streak != null && streak! > 0) ...[
-              const Gap(AthlosSpacing.sm),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    l10n.trainingStreakLabel,
-                    style: textTheme.bodyMedium,
-                  ),
-                  Text(
-                    l10n.trainingStreakCount(streak!),
-                    style: textTheme.bodySmall?.copyWith(
-                      color: colorScheme.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
+// ── Catalog Card ─────────────────────────────────────────────────────
 
 class _CatalogCard extends StatelessWidget {
   final IconData icon;
@@ -459,364 +666,7 @@ class _CatalogCard extends StatelessWidget {
   }
 }
 
-class _ActiveProgramCard extends ConsumerWidget {
-  final AsyncValue<TrainingProgram?> activeProgramAsync;
-
-  const _ActiveProgramCard({required this.activeProgramAsync});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return activeProgramAsync.when(
-      data: (program) {
-        if (program == null) {
-          return Card(
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: () => context.go(RoutePaths.trainingPrograms),
-              child: Padding(
-                padding: const EdgeInsets.all(AthlosSpacing.md),
-                child: Row(
-                  children: [
-                    Icon(Icons.auto_awesome_outlined,
-                        color: colorScheme.onSurfaceVariant),
-                    const Gap(AthlosSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(l10n.programFreeCycleLabel,
-                              style: textTheme.titleSmall),
-                          const Gap(AthlosSpacing.xxs),
-                          Text(
-                            l10n.programFreeCycleHint,
-                            style: textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(Icons.chevron_right,
-                        color: colorScheme.onSurfaceVariant),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }
-
-        final focusLabel = switch (program.focus) {
-          ProgramFocus.hypertrophy => l10n.programFocusHypertrophy,
-          ProgramFocus.strength => l10n.programFocusStrength,
-          ProgramFocus.endurance => l10n.programFocusEndurance,
-          ProgramFocus.custom => l10n.programFocusCustom,
-        };
-
-        return Card(
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(
-            borderRadius: AthlosRadius.mdAll,
-            side: BorderSide(color: colorScheme.primary, width: 1),
-          ),
-          child: InkWell(
-            onTap: () => context.go(RoutePaths.trainingPrograms),
-            child: Padding(
-              padding: const EdgeInsets.all(AthlosSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.auto_awesome,
-                          color: colorScheme.primary, size: 20),
-                      const Gap(AthlosSpacing.sm),
-                      Expanded(
-                        child: Text(
-                          program.name,
-                          style: textTheme.titleSmall,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AthlosSpacing.sm,
-                          vertical: AthlosSpacing.xxs,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorScheme.primaryContainer,
-                          borderRadius: AthlosRadius.smAll,
-                        ),
-                        child: Text(
-                          focusLabel,
-                          style: textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onPrimaryContainer,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (program.isInDeload) ...[
-                    const Gap(AthlosSpacing.xs),
-                    Row(
-                      children: [
-                        Chip(
-                          avatar: Icon(Icons.spa,
-                              size: 16, color: colorScheme.tertiary),
-                          label: Text(l10n.deloadActiveChip),
-                          backgroundColor: colorScheme.tertiaryContainer,
-                          labelStyle: textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onTertiaryContainer,
-                          ),
-                          visualDensity: VisualDensity.compact,
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        const Gap(AthlosSpacing.sm),
-                        TextButton(
-                          onPressed: () =>
-                              _confirmEndDeload(context, ref, program.id),
-                          child: Text(l10n.deloadEndAction),
-                        ),
-                      ],
-                    ),
-                  ],
-                  const Gap(AthlosSpacing.sm),
-                  _ProgramHomeProgress(programId: program.id),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-      loading: () => const SizedBox.shrink(),
-      error: (_, _) => const SizedBox.shrink(),
-    );
-  }
-
-  void _confirmEndDeload(BuildContext context, WidgetRef ref, int programId) {
-    final l10n = AppLocalizations.of(context)!;
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.deloadEndConfirmTitle),
-        content: Text(l10n.deloadEndConfirmMessage),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              ref
-                  .read(programActionsProvider.notifier)
-                  .exitDeload(programId);
-            },
-            child: Text(l10n.deloadEndAction),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProgramHomeProgress extends ConsumerWidget {
-  final int programId;
-
-  const _ProgramHomeProgress({required this.programId});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    final progressAsync = ref.watch(programProgressProvider(programId));
-
-    return progressAsync.when(
-      data: (progress) => Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                l10n.programProgressLabel,
-                style: textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-              Text(
-                l10n.programSessionsProgress(
-                  progress.completedSessions,
-                  progress.totalSessions,
-                ),
-                style: textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-          const Gap(AthlosSpacing.xs),
-          ClipRRect(
-            borderRadius: AthlosRadius.smAll,
-            child: LinearProgressIndicator(
-              value: progress.fraction,
-              minHeight: 6,
-              backgroundColor: colorScheme.surfaceContainerHighest,
-            ),
-          ),
-        ],
-      ),
-      loading: () => const LinearProgressIndicator(),
-      error: (_, _) => const SizedBox.shrink(),
-    );
-  }
-}
-
-class _WeeklyVolumeCard extends ConsumerWidget {
-  const _WeeklyVolumeCard();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    final volumeAsync = ref.watch(weeklyVolumePerMuscleGroupProvider);
-
-    return volumeAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (_, _) => const SizedBox.shrink(),
-      data: (volume) {
-        if (volume.isEmpty) return const SizedBox.shrink();
-        final sorted = volume.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
-        return Card(
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () =>
-                context.push(RoutePaths.trainingVolumeTrend),
-            child: Padding(
-              padding: const EdgeInsets.all(AthlosSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.bar_chart,
-                          size: 20, color: colorScheme.primary),
-                      const Gap(AthlosSpacing.xs),
-                      Expanded(
-                        child: Text(
-                          l10n.weeklyVolume,
-                          style: textTheme.titleSmall,
-                        ),
-                      ),
-                      Icon(Icons.chevron_right,
-                          size: 20,
-                          color: colorScheme.onSurfaceVariant),
-                    ],
-                  ),
-                  const Gap(AthlosSpacing.sm),
-                  Wrap(
-                    spacing: AthlosSpacing.sm,
-                    runSpacing: AthlosSpacing.xs,
-                    children: sorted.map((e) {
-                      final group = MuscleGroup.values
-                          .where((g) => g.name == e.key)
-                          .firstOrNull;
-                      final label = group != null
-                          ? localizedMuscleGroupName(group, l10n)
-                          : e.key;
-                      return Chip(
-                        avatar: Text(
-                          '${e.value}',
-                          style: textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onSecondaryContainer,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        label: Text(label),
-                        visualDensity: VisualDensity.compact,
-                        materialTapTargetSize:
-                            MaterialTapTargetSize.shrinkWrap,
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _RecentPRCard extends ConsumerWidget {
-  const _RecentPRCard();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    final prsAsync = ref.watch(allExercisePRsProvider);
-
-    return prsAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (_, _) => const SizedBox.shrink(),
-      data: (prs) {
-        if (prs.isEmpty) return const SizedBox.shrink();
-        final top = prs.first;
-        final name = localizedExerciseName(top.exerciseName,
-            isVerified: top.isVerified, l10n: l10n);
-        final e1rmStr = top.best1RM % 1 == 0
-            ? top.best1RM.toInt().toString()
-            : top.best1RM.toStringAsFixed(1);
-        return Card(
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () =>
-                context.push(RoutePaths.trainingPRHistory),
-            child: Padding(
-              padding: const EdgeInsets.all(AthlosSpacing.md),
-              child: Row(
-                children: [
-                  Icon(Icons.emoji_events,
-                      color: colorScheme.tertiary, size: 24),
-                  const Gap(AthlosSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(l10n.prBadge,
-                            style: textTheme.titleSmall),
-                        Text(
-                          '$name — $e1rmStr kg',
-                          style: textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.chevron_right,
-                      size: 20, color: colorScheme.onSurfaceVariant),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
+// ── Weight Prompt Banner ─────────────────────────────────────────────
 
 class _WeightPromptBanner extends ConsumerStatefulWidget {
   const _WeightPromptBanner();
@@ -852,14 +702,13 @@ class _WeightPromptBannerState extends ConsumerState<_WeightPromptBanner> {
                   Expanded(
                     child: Text(
                       l10n.bodyMetricsWeeklyPromptMessage,
-                      style: TextStyle(
-                          color: colorScheme.onTertiaryContainer),
+                      style:
+                          TextStyle(color: colorScheme.onTertiaryContainer),
                     ),
                   ),
                   const Gap(AthlosSpacing.xs),
                   TextButton(
-                    onPressed: () =>
-                        setState(() => _dismissed = true),
+                    onPressed: () => setState(() => _dismissed = true),
                     child: Text(l10n.bodyMetricsWeeklyPromptSkip),
                   ),
                   FilledButton(

@@ -386,13 +386,13 @@
   "@profile": {
     "description": "Label do perfil"
   },
-  "tabHome": "Início",
-  "@tabHome": {
-    "description": "Label da tab Home na bottom bar"
+  "tabDashboard": "Dashboard",
+  "@tabDashboard": {
+    "description": "Label da tab Dashboard na bottom bar"
   },
-  "tabWorkouts": "Treinos",
-  "@tabWorkouts": {
-    "description": "Label da tab Workouts na bottom bar"
+  "tabTraining": "Treino",
+  "@tabTraining": {
+    "description": "Label da tab Treino na bottom bar"
   },
   "tabExercises": "Exercícios",
   "@tabExercises": {
@@ -918,23 +918,6 @@
     }
   },
 
-  "trainingSummarySection": "Resumo",
-  "@trainingSummarySection": { "description": "Section title for training home summary" },
-  "trainingSessionsPerWorkout": "Sessões por treino",
-  "trainingArchivedSessions": "Arquivados",
-  "trainingOtherSessions": "Outros",
-  "@trainingOtherSessions": {
-    "description": "Label in analytics for sessions from non-active (archived/other) workouts"
-  },
-  "trainingTotalSessions": "Total de sessões",
-  "trainingSessionsCount": "{count} sessões",
-  "@trainingSessionsCount": {
-    "description": "Session count for a workout or total",
-    "placeholders": {
-      "count": { "type": "int" }
-    }
-  },
-
   "trainingEvolutionRecent": "Comparativo recente",
   "trainingLastSession": "Última sessão",
   "trainingPreviousSession": "Sessão anterior",
@@ -950,12 +933,6 @@
   },
   "trainingLastVsPrevious": "Última vs anterior",
 
-  "trainingStreakLabel": "Sequência",
-  "trainingStreakCount": "{count} treinos na ordem",
-  "@trainingStreakCount": {
-    "description": "Streak count in cycle order",
-    "placeholders": { "count": { "type": "int" } }
-  },
   "trainingCycleConfigure": "Configurar ciclo",
   "@trainingCycleConfigure": { "description": "Button to open cycle configuration" },
   "trainingCycleSection": "Ciclo",
@@ -2236,5 +2213,56 @@
   "leftSideLabel": "Lado esquerdo",
   "rightSideLabel": "Lado direito",
   "leftAbbr": "E",
-  "rightAbbr": "D"
+  "rightAbbr": "D",
+
+  "dashboardOverviewTab": "Visão Geral",
+  "@dashboardOverviewTab": { "description": "Sub-tab label for dashboard overview" },
+  "dashboardCatalogsTab": "Catálogos",
+  "@dashboardCatalogsTab": { "description": "Sub-tab label for dashboard catalogs" },
+
+  "trainingActiveProgramHero": "Programa ativo",
+  "@trainingActiveProgramHero": { "description": "Section label for active program hero card" },
+  "trainingEditProgram": "Editar programa",
+  "@trainingEditProgram": { "description": "Button label to edit the active program" },
+  "trainingViewArchivedPrograms": "Ver programas arquivados",
+  "@trainingViewArchivedPrograms": { "description": "Button label to view archived programs" },
+  "trainingFreeModeTitle": "Modo livre",
+  "@trainingFreeModeTitle": { "description": "Title when no active program" },
+  "trainingFreeModeHint": "Treine sem programa — crie um quando quiser",
+  "@trainingFreeModeHint": { "description": "Hint for free mode training" },
+  "trainingCreateProgram": "Criar programa",
+  "@trainingCreateProgram": { "description": "CTA to create a program from free mode" },
+  "trainingStartNext": "Iniciar treino",
+  "@trainingStartNext": { "description": "Button to start the next workout in the cycle" },
+
+  "dashboardStreakLabel": "Sequência",
+  "@dashboardStreakLabel": { "description": "Label for streak stat pill" },
+  "dashboardStreakDays": "{count} dias",
+  "@dashboardStreakDays": {
+    "description": "Streak count in days",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "dashboardThisWeekLabel": "Esta semana",
+  "@dashboardThisWeekLabel": { "description": "Label for this-week stat pill" },
+  "dashboardThisWeekProgress": "{done}/{target}",
+  "@dashboardThisWeekProgress": {
+    "description": "This week sessions done vs target",
+    "placeholders": {
+      "done": { "type": "int" },
+      "target": { "type": "int" }
+    }
+  },
+  "dashboardThisWeekCount": "{count} treinos",
+  "@dashboardThisWeekCount": {
+    "description": "This week sessions when no frequency target",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "dashboardVolumeTargetRange": "{min}–{max}",
+  "@dashboardVolumeTargetRange": {
+    "description": "Volume target range display",
+    "placeholders": {
+      "min": { "type": "int" },
+      "max": { "type": "int" }
+    }
+  }
 }

@@ -97,12 +97,14 @@ class _TrainingShell extends ConsumerWidget {
 
     final isSubPage = _isSubPage(currentPath);
 
+    final subPageBackTarget = _subPageBackTarget(currentPath);
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         if (isSubPage) {
-          context.go(RoutePaths.trainingHome);
+          context.go(subPageBackTarget);
           return;
         }
         context.go(RoutePaths.hub);
@@ -112,7 +114,7 @@ class _TrainingShell extends ConsumerWidget {
           leading: isSubPage
               ? IconButton(
                   icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.go(RoutePaths.trainingHome),
+                  onPressed: () => context.go(subPageBackTarget),
                 )
               : null,
           automaticallyImplyLeading: false,
@@ -148,12 +150,12 @@ class _TrainingShell extends ConsumerWidget {
                   NavigationDestination(
                     icon: const Icon(Icons.dashboard_outlined),
                     selectedIcon: const Icon(Icons.dashboard),
-                    label: l10n.tabHome,
+                    label: l10n.tabDashboard,
                   ),
                   NavigationDestination(
                     icon: const Icon(Icons.fitness_center_outlined),
                     selectedIcon: const Icon(Icons.fitness_center),
-                    label: l10n.tabWorkouts,
+                    label: l10n.tabTraining,
                   ),
                   NavigationDestination(
                     icon: const Icon(Icons.timeline_outlined),
@@ -176,6 +178,20 @@ class _TrainingShell extends ConsumerWidget {
   };
 
   bool _isSubPage(String path) => !_primaryPaths.contains(path);
+
+  static const _trainingTabSubPages = {
+    RoutePaths.trainingPrograms,
+    RoutePaths.trainingProgramNew,
+    RoutePaths.trainingCycleEdit,
+  };
+
+  String _subPageBackTarget(String path) {
+    if (_trainingTabSubPages.contains(path) ||
+        path.startsWith(RoutePaths.trainingPrograms)) {
+      return RoutePaths.trainingWorkouts;
+    }
+    return RoutePaths.trainingHome;
+  }
 
   int _indexFromPath(String path) {
     if (path.startsWith(RoutePaths.trainingWorkouts)) return 1;

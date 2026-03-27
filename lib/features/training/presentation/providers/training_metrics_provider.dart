@@ -134,6 +134,22 @@ Future<Map<String, int>> weeklyVolumePerMuscleGroup(Ref ref) async {
       _ => (min: 10, max: 20),
     };
 
+/// Finished sessions in the current calendar week (Mon–Sun).
+@riverpod
+Future<int> thisWeekSessionCount(Ref ref) async {
+  final execRepo = ref.watch(workoutExecutionRepositoryProvider);
+  final allResult = await execRepo.getAll();
+  if (!allResult.isSuccess) return 0;
+  final all = allResult.getOrThrow();
+
+  final now = DateTime.now();
+  final weekday = now.weekday; // 1=Mon … 7=Sun
+  final monday = DateTime(now.year, now.month, now.day - (weekday - 1));
+  return all
+      .where((e) => e.finishedAt != null && !e.startedAt.isBefore(monday))
+      .length;
+}
+
 // ── Phase 10: Progress Visualization providers ──────────────────────
 
 /// A data point for the per-exercise load chart.

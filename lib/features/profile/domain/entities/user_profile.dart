@@ -12,9 +12,6 @@ class UserProfile {
   /// Display name chosen by the user.
   final String? name;
 
-  /// Weight in kg.
-  final double? weight;
-
   /// Height in cm.
   final double? height;
 
@@ -48,7 +45,6 @@ class UserProfile {
   const UserProfile({
     required this.id,
     this.name,
-    this.weight,
     this.height,
     this.age,
     this.goal,
@@ -67,7 +63,6 @@ class UserProfile {
   UserProfile copyWith({
     int? id,
     String? Function()? name,
-    double? Function()? weight,
     double? Function()? height,
     int? Function()? age,
     TrainingGoal? Function()? goal,
@@ -85,7 +80,6 @@ class UserProfile {
       UserProfile(
         id: id ?? this.id,
         name: name != null ? name() : this.name,
-        weight: weight != null ? weight() : this.weight,
         height: height != null ? height() : this.height,
         age: age != null ? age() : this.age,
         goal: goal != null ? goal() : this.goal,

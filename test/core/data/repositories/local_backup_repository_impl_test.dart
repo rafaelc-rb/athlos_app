@@ -26,10 +26,9 @@ void main() {
 
     test('previewImport gera conflito de perfil por campo diferente', () async {
       await db.customInsert(
-        'INSERT INTO "user_profiles" ("name", "weight", "height", "age", "trains_at_gym") VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO "user_profiles" ("name", "height", "age", "trains_at_gym") VALUES (?, ?, ?, ?)',
         variables: [
           const Variable<String>('Rafa'),
-          const Variable<double>(72.0),
           const Variable<double>(181.0),
           const Variable<int>(24),
           const Variable<bool>(false),
@@ -42,8 +41,8 @@ void main() {
             {
               'id': 1,
               'name': 'Rafa',
-              'weight': 73.0,
-              'height': 181.0,
+              'weight': 72.0,
+              'height': 185.0,
               'age': 24,
               'trains_at_gym': null,
             },
@@ -58,7 +57,7 @@ void main() {
           .map((c) => c.conflictId)
           .toList();
 
-      expect(profileConflictIds, contains('profile:weight'));
+      expect(profileConflictIds, contains('profile:height'));
       expect(profileConflictIds, isNot(contains('profile:name')));
       expect(profileConflictIds, isNot(contains('profile:trains_at_gym')));
     });
@@ -94,10 +93,9 @@ void main() {
 
     test('previewImport nao gera conflito com equivalencia de formato', () async {
       await db.customInsert(
-        'INSERT INTO "user_profiles" ("name", "weight", "height", "age", "trains_at_gym") VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO "user_profiles" ("name", "height", "age", "trains_at_gym") VALUES (?, ?, ?, ?)',
         variables: [
           const Variable<String>('Rafa'),
-          const Variable<double>(72.0),
           const Variable<double>(181.0),
           const Variable<int>(24),
           const Variable<bool>(false),
@@ -163,10 +161,9 @@ void main() {
       'importBackup com perfil keepExisting incrementa skippedCount',
       () async {
         await db.customInsert(
-          'INSERT INTO "user_profiles" ("name", "weight", "height", "age", "trains_at_gym") VALUES (?, ?, ?, ?, ?)',
+          'INSERT INTO "user_profiles" ("name", "height", "age", "trains_at_gym") VALUES (?, ?, ?, ?)',
           variables: [
             const Variable<String>('Rafa'),
-            const Variable<double>(72.0),
             const Variable<double>(181.0),
             const Variable<int>(24),
             const Variable<bool>(false),
@@ -179,7 +176,6 @@ void main() {
               {
                 'id': 1,
                 'name': 'Rafael',
-                'weight': 73.5,
                 'height': 181.0,
                 'age': 24,
                 'trains_at_gym': 1,
@@ -193,7 +189,6 @@ void main() {
             jsonContent: jsonContent,
             conflictResolutions: const {
               'profile:name': BackupConflictResolution.keepExisting,
-              'profile:weight': BackupConflictResolution.keepExisting,
               'profile:trains_at_gym': BackupConflictResolution.keepExisting,
             },
           ),
@@ -209,10 +204,9 @@ void main() {
       'importBackup aplica resolucao de conflito de perfil por campo',
       () async {
         await db.customInsert(
-          'INSERT INTO "user_profiles" ("name", "weight", "height", "age", "trains_at_gym") VALUES (?, ?, ?, ?, ?)',
+          'INSERT INTO "user_profiles" ("name", "height", "age", "trains_at_gym") VALUES (?, ?, ?, ?)',
           variables: [
             const Variable<String>('Rafa'),
-            const Variable<double>(72.0),
             const Variable<double>(181.0),
             const Variable<int>(24),
             const Variable<bool>(false),
@@ -225,8 +219,7 @@ void main() {
               {
                 'id': 1,
                 'name': 'Rafael',
-                'weight': 73.5,
-                'height': 181,
+                'height': 185.0,
                 'age': 24,
                 'trains_at_gym': null,
               },
@@ -239,7 +232,7 @@ void main() {
             jsonContent: jsonContent,
             conflictResolutions: const {
               'profile:name': BackupConflictResolution.keepExisting,
-              'profile:weight': BackupConflictResolution.overwriteExisting,
+              'profile:height': BackupConflictResolution.overwriteExisting,
             },
           ),
         );
@@ -252,7 +245,7 @@ void main() {
 
         expect(report.updatedCount, 1);
         expect(profile['name'], 'Rafa');
-        expect(profile['weight'], 73.5);
+        expect(profile['height'], 185.0);
       },
     );
 

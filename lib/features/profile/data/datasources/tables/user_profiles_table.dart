@@ -13,9 +13,6 @@ class UserProfiles extends Table {
   /// Display name chosen by the user.
   TextColumn get name => text().nullable()();
 
-  /// Weight in kg.
-  RealColumn get weight => real().nullable()();
-
   /// Height in cm.
   RealColumn get height => real().nullable()();
 

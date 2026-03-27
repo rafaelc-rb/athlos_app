@@ -102,7 +102,7 @@ class AppDatabase extends _$AppDatabase {
   bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed && _enableDevSeed;
 
   @override
-  int get schemaVersion => 23;
+  int get schemaVersion => 24;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -113,7 +113,7 @@ class AppDatabase extends _$AppDatabase {
       if (_shouldSeedDevData) await seedDevData(this);
     },
     onUpgrade: (m, from, to) async {
-      if (_shouldSeedDevData && from >= 3 && from <= 22) {
+      if (_shouldSeedDevData && from >= 3 && from <= 23) {
         for (final table in allTables) {
           await m.deleteTable(table.actualTableName);
         }
@@ -454,6 +454,20 @@ class AppDatabase extends _$AppDatabase {
         );
         await customStatement(
           'ALTER TABLE execution_sets ADD COLUMN right_weight REAL',
+        );
+      }
+
+      if (from < 24) {
+        // Migrate profile.weight into body_metrics, then drop the column.
+        await customStatement('''
+          INSERT INTO body_metrics (weight, recorded_at)
+          SELECT weight, CAST(strftime('%s','now') AS INTEGER)
+          FROM user_profiles
+          WHERE weight IS NOT NULL
+            AND NOT EXISTS (SELECT 1 FROM body_metrics)
+        ''');
+        await customStatement(
+          'ALTER TABLE user_profiles DROP COLUMN weight',
         );
       }
     },

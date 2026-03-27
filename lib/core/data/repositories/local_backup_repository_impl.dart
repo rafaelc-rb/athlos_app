@@ -19,7 +19,6 @@ const _fuzzyThreshold = 0.84;
 const _strongMatchThreshold = 0.96;
 const _profileComparableKeys = <String>{
   'name',
-  'weight',
   'height',
   'age',
   'goal',
@@ -255,7 +254,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
             await _insertRow(
               _tableUserProfiles,
               importedProfile,
-              excludeKeys: const {'id'},
+              excludeKeys: const {'id', 'weight'},
             );
             createdCount++;
           } else {
@@ -290,7 +289,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
                   _tableUserProfiles,
                   existingProfileId,
                   mergedProfile,
-                  excludeKeys: const {'id', 'created_at', 'updated_at'},
+                  excludeKeys: const {'id', 'created_at', 'updated_at', 'weight'},
                 );
                 updatedCount++;
               } else if (hasFieldSkip) {

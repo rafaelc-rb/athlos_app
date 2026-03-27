@@ -51,7 +51,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _weightController = TextEditingController();
   final _heightController = TextEditingController();
   final _ageController = TextEditingController();
   final _injuriesController = TextEditingController();
@@ -68,7 +67,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _weightController.dispose();
     _heightController.dispose();
     _ageController.dispose();
     _injuriesController.dispose();
@@ -78,7 +76,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   void _startEditing(UserProfile profile) {
     _nameController.text = profile.name ?? '';
-    _weightController.text = profile.weight?.toString() ?? '';
     _heightController.text = profile.height?.toString() ?? '';
     _ageController.text = profile.age?.toString() ?? '';
     _injuriesController.text = profile.injuries ?? '';
@@ -187,9 +184,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   _ProfileTile(
                     icon: Icons.monitor_weight_outlined,
                     label: l10n.profileWeight,
-                    value: profile.weight != null
-                        ? '${profile.weight} ${l10n.weightUnit}'
-                        : l10n.profileNotSet,
+                    value: _formatWeight(
+                      ref.watch(latestBodyWeightProvider).value,
+                      l10n,
+                    ),
                   ),
                   _ProfileTile(
                     icon: Icons.height,
@@ -471,38 +469,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _buildEditView(UserProfile profile, AppLocalizations l10n) {
     final textTheme = Theme.of(context).textTheme;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AthlosSpacing.md),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _SectionHeader(title: l10n.profileSectionPersonal),
-            const Gap(AthlosSpacing.sm),
-            TextFormField(
-              controller: _nameController,
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AthlosSpacing.md),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _SectionHeader(title: l10n.profileSectionPersonal),
+                  const Gap(AthlosSpacing.sm),
+                  TextFormField(
+                    controller: _nameController,
               decoration: InputDecoration(labelText: l10n.nameLabel),
               textCapitalization: TextCapitalization.words,
-            ),
-            const Gap(AthlosSpacing.md),
-            TextFormField(
-              controller: _weightController,
-              decoration: InputDecoration(
-                labelText: l10n.weightLabel,
-                suffixText: l10n.weightUnit,
-              ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
-              ],
-              validator: (value) {
-                if (value == null || value.isEmpty) return l10n.fieldRequired;
-                if (double.tryParse(value) == null) return l10n.invalidNumber;
-                return null;
-              },
             ),
             const Gap(AthlosSpacing.md),
             TextFormField(
@@ -518,8 +500,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
               ],
               validator: (value) {
-                if (value == null || value.isEmpty) return l10n.fieldRequired;
-                if (double.tryParse(value) == null) return l10n.invalidNumber;
+                if (value != null && value.isNotEmpty && double.tryParse(value) == null) {
+                  return l10n.invalidNumber;
+                }
                 return null;
               },
             ),
@@ -533,8 +516,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               validator: (value) {
-                if (value == null || value.isEmpty) return l10n.fieldRequired;
-                if (int.tryParse(value) == null) return l10n.invalidNumber;
+                if (value != null && value.isNotEmpty && int.tryParse(value) == null) {
+                  return l10n.invalidNumber;
+                }
                 return null;
               },
             ),
@@ -672,8 +656,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               maxLines: 4,
               textCapitalization: TextCapitalization.sentences,
             ),
-            const Gap(AthlosSpacing.lg),
-            Row(
+                ],
+              ),
+            ),
+          ),
+        ),
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.all(AthlosSpacing.md),
+            child: Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
@@ -690,9 +682,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ],
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -702,12 +694,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final name = _nameController.text.trim();
     final injuries = _injuriesController.text.trim();
     final bio = _bioController.text.trim();
+    final heightText = _heightController.text.trim();
+    final ageText = _ageController.text.trim();
     final updated = UserProfile(
       id: profile.id,
       name: name.isEmpty ? null : name,
-      weight: double.parse(_weightController.text),
-      height: double.parse(_heightController.text),
-      age: int.parse(_ageController.text),
+      height: heightText.isEmpty ? null : double.tryParse(heightText),
+      age: ageText.isEmpty ? null : int.tryParse(ageText),
       gender: _selectedGender,
       goal: _selectedGoal,
       bodyAesthetic: _selectedAesthetic,
@@ -733,6 +726,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         );
       }
     }
+  }
+
+  String _formatWeight(double? weight, AppLocalizations l10n) {
+    if (weight == null) return l10n.profileNotSet;
+    final str = weight % 1 == 0
+        ? weight.toInt().toString()
+        : weight.toStringAsFixed(1);
+    return '$str ${l10n.weightUnit}';
   }
 
   String _goalLabel(TrainingGoal goal, AppLocalizations l10n) =>

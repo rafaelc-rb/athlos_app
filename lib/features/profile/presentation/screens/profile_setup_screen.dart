@@ -15,6 +15,7 @@ import '../../domain/enums/gender.dart';
 import '../../domain/enums/training_goal.dart';
 import '../../domain/enums/training_style.dart';
 import '../helpers/profile_l10n.dart';
+import '../providers/body_metric_notifier.dart';
 import '../providers/profile_notifier.dart';
 
 /// Chat-style profile setup screen shown on first launch.
@@ -439,7 +440,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           .read(profileProvider.notifier)
           .create(
             name: _name,
-            weight: _weight,
             height: _height,
             age: _age,
             gender: _gender,
@@ -452,6 +452,12 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             injuries: _injuries,
             bio: _bio,
           );
+
+      if (_weight != null) {
+        await ref
+            .read(bodyMetricListProvider.notifier)
+            .add(weight: _weight!);
+      }
 
       ref.read(hasProfileProvider.notifier).markAsCreated();
 
@@ -474,7 +480,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           .read(profileProvider.notifier)
           .create(
             name: _name,
-            weight: _weight,
             height: _height,
             age: _age,
             gender: _gender,
@@ -487,6 +492,13 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             injuries: _injuries,
             bio: _bio,
           );
+
+      if (_weight != null) {
+        await ref
+            .read(bodyMetricListProvider.notifier)
+            .add(weight: _weight!);
+      }
+
       ref.read(hasProfileProvider.notifier).markAsCreated();
       if (mounted) context.go(RoutePaths.hub);
     } on Exception catch (_) {

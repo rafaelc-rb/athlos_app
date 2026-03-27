@@ -12,6 +12,7 @@ part 'chiron_providers.g.dart';
 @riverpod
 PromptBuilder promptBuilder(Ref ref) => PromptBuilder(
       profileRepo: ref.watch(userProfileRepositoryProvider),
+      bodyMetricRepo: ref.watch(bodyMetricRepositoryProvider),
       equipmentRepo: ref.watch(equipmentRepositoryProvider),
       workoutRepo: ref.watch(workoutRepositoryProvider),
       executionRepo: ref.watch(workoutExecutionRepositoryProvider),

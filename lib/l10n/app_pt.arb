@@ -2067,5 +2067,44 @@
   },
   "programCompletedMessage": "Programa concluído! Revise os resultados ou inicie um novo.",
   "programFreeCycleLabel": "Ciclo livre",
-  "programFreeCycleHint": "Sem programa ativo — treino em modo livre"
+  "programFreeCycleHint": "Sem programa ativo — treino em modo livre",
+
+  "deloadSectionTitle": "Deload",
+  "deloadEnableLabel": "Configurar deload automático",
+  "deloadStrategyLabel": "Estratégia",
+  "deloadStrategyReduceVolume": "Reduzir volume",
+  "deloadStrategyReduceIntensity": "Reduzir intensidade",
+  "deloadStrategyReduceBoth": "Reduzir ambos",
+  "deloadFrequencyLabel": "Frequência (rotações)",
+  "deloadFrequencyHint": "Ex: a cada 4 rotações",
+  "deloadFrequencyManualHint": "Vazio = apenas manual",
+  "deloadVolumeMultiplierLabel": "Multiplicador de volume",
+  "deloadVolumeMultiplierHint": "Ex: 0.6 = manter 60% dos sets",
+  "deloadIntensityMultiplierLabel": "Multiplicador de intensidade",
+  "deloadIntensityMultiplierHint": "Ex: 0.5 = usar 50% da carga",
+  "deloadActiveChip": "Deload ativo",
+  "deloadPromptTitle": "Hora do deload",
+  "deloadPromptMessage": "Seu programa completou {rotations} rotações. Quer uma semana leve?",
+  "@deloadPromptMessage": {
+    "placeholders": {
+      "rotations": { "type": "int" }
+    }
+  },
+  "deloadAccept": "Iniciar deload",
+  "deloadSkip": "Pular",
+  "deloadEndAction": "Encerrar deload",
+  "deloadEndConfirmTitle": "Encerrar deload?",
+  "deloadEndConfirmMessage": "Seus próximos treinos voltarão à intensidade e volume normais.",
+  "deloadInfoVolume": "Volume reduzido a {percent}%",
+  "@deloadInfoVolume": {
+    "placeholders": {
+      "percent": { "type": "int" }
+    }
+  },
+  "deloadInfoIntensity": "Intensidade reduzida a {percent}%",
+  "@deloadInfoIntensity": {
+    "placeholders": {
+      "percent": { "type": "int" }
+    }
+  }
 }

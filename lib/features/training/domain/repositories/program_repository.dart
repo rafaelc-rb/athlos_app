@@ -15,4 +15,7 @@ abstract interface class ProgramRepository {
 
   /// Number of finished sessions for this program.
   Future<Result<int>> getSessionCount(int programId);
+
+  /// Enter or exit deload mode for [programId].
+  Future<Result<void>> setDeloadActive(int programId, {required bool active});
 }

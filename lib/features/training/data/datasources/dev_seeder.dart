@@ -464,6 +464,10 @@ Future<void> _seedProgram(AppDatabase db) async {
       durationValue: 24,
       defaultRestSeconds: const Value(90),
       isActive: const Value(true),
+      deloadFrequency: const Value(4),
+      deloadStrategy: const Value('reduceVolume'),
+      deloadVolumeMultiplier: const Value(0.6),
+      deloadIntensityMultiplier: const Value(0.5),
     ),
   );
 

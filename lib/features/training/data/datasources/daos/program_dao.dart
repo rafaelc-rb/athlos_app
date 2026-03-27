@@ -54,6 +54,11 @@ class ProgramDao extends DatabaseAccessor<AppDatabase>
         ),
       );
 
+  Future<void> setDeloadActive(int id, {required bool active}) =>
+      (update(programs)..where((p) => p.id.equals(id))).write(
+        ProgramsCompanion(isInDeload: Value(active)),
+      );
+
   /// Count finished executions belonging to a given program.
   Future<int> getSessionCount(int programId) async {
     final count = countAll(

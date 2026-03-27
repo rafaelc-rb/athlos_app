@@ -146,7 +146,26 @@ class _ProgramCard extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (isActive)
+                  if (isActive) ...[
+                    if (program.isInDeload)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AthlosSpacing.sm,
+                          vertical: AthlosSpacing.xxs,
+                        ),
+                        margin:
+                            const EdgeInsets.only(right: AthlosSpacing.xs),
+                        decoration: BoxDecoration(
+                          color: colorScheme.tertiaryContainer,
+                          borderRadius: AthlosRadius.mdAll,
+                        ),
+                        child: Text(
+                          l10n.deloadActiveChip,
+                          style: textTheme.labelSmall?.copyWith(
+                            color: colorScheme.onTertiaryContainer,
+                          ),
+                        ),
+                      ),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: AthlosSpacing.sm,
@@ -163,6 +182,7 @@ class _ProgramCard extends ConsumerWidget {
                         ),
                       ),
                     ),
+                  ],
                 ],
               ),
               const SizedBox(height: AthlosSpacing.xs),

@@ -83,6 +83,28 @@ Future<ProgramProgressInfo> programProgress(Ref ref, int programId) async {
   );
 }
 
+/// Whether the active program should trigger a deload prompt.
+/// Returns true when deload frequency is set and the current rotation count
+/// is a multiple of that frequency, and the program is not already in deload.
+@riverpod
+Future<bool> isDeloadDue(Ref ref) async {
+  final program = await ref.watch(activeProgramProvider.future);
+  if (program == null || program.isInDeload) return false;
+  final config = program.deloadConfig;
+  if (config == null || config.frequency == null) return false;
+
+  final steps =
+      await ref.watch(cycleStepsForProgramProvider(program.id).future);
+  if (steps.isEmpty) return false;
+
+  final sessionCount =
+      await ref.watch(programSessionCountProvider(program.id).future);
+  final completedRotations = sessionCount ~/ steps.length;
+
+  return completedRotations > 0 &&
+      completedRotations % config.frequency! == 0;
+}
+
 /// Notifier for program mutations (create, update, activate, archive).
 @riverpod
 class ProgramActions extends _$ProgramActions {
@@ -120,5 +142,21 @@ class ProgramActions extends _$ProgramActions {
     result.getOrThrow();
     ref.invalidate(programListProvider);
     ref.invalidate(activeProgramProvider);
+  }
+
+  Future<void> enterDeload(int programId) async {
+    final repo = ref.read(programRepositoryProvider);
+    final result = await repo.setDeloadActive(programId, active: true);
+    result.getOrThrow();
+    ref.invalidate(activeProgramProvider);
+    ref.invalidate(programListProvider);
+  }
+
+  Future<void> exitDeload(int programId) async {
+    final repo = ref.read(programRepositoryProvider);
+    final result = await repo.setDeloadActive(programId, active: false);
+    result.getOrThrow();
+    ref.invalidate(activeProgramProvider);
+    ref.invalidate(programListProvider);
   }
 }

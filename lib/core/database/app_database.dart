@@ -94,7 +94,7 @@ class AppDatabase extends _$AppDatabase {
   bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed && _enableDevSeed;
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 19;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -105,7 +105,7 @@ class AppDatabase extends _$AppDatabase {
       if (_shouldSeedDevData) await seedDevData(this);
     },
     onUpgrade: (m, from, to) async {
-      if (_shouldSeedDevData && from >= 3 && from <= 18) {
+      if (_shouldSeedDevData && from >= 3 && from <= 19) {
         for (final table in allTables) {
           await m.deleteTable(table.actualTableName);
         }
@@ -367,6 +367,25 @@ class AppDatabase extends _$AppDatabase {
         );
         await customStatement(
           'ALTER TABLE workout_executions ADD COLUMN program_id INTEGER REFERENCES programs(id)',
+        );
+      }
+
+      if (from < 19) {
+        // Phase 4: Deload strategy columns on programs.
+        await customStatement(
+          'ALTER TABLE programs ADD COLUMN is_in_deload INTEGER NOT NULL DEFAULT 0',
+        );
+        await customStatement(
+          'ALTER TABLE programs ADD COLUMN deload_frequency INTEGER',
+        );
+        await customStatement(
+          'ALTER TABLE programs ADD COLUMN deload_strategy TEXT',
+        );
+        await customStatement(
+          'ALTER TABLE programs ADD COLUMN deload_volume_multiplier REAL',
+        );
+        await customStatement(
+          'ALTER TABLE programs ADD COLUMN deload_intensity_multiplier REAL',
         );
       }
     },

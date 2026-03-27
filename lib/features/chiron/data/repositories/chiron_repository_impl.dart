@@ -693,14 +693,25 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
     if (activeProgram != null) {
       final sessionResult = await _programRepo.getSessionCount(activeProgram.id);
       final sessions = sessionResult.isSuccess ? sessionResult.getOrThrow() : 0;
-      result['activeProgram'] = {
+      final programMap = <String, Object?>{
         'id': activeProgram.id,
         'name': activeProgram.name,
         'focus': activeProgram.focus.name,
         'durationMode': activeProgram.durationMode.name,
         'durationValue': activeProgram.durationValue,
         'completedSessions': sessions,
+        'isInDeload': activeProgram.isInDeload,
       };
+      if (activeProgram.deloadConfig != null) {
+        final dc = activeProgram.deloadConfig!;
+        programMap['deloadConfig'] = {
+          'strategy': dc.strategy.name,
+          'frequency': dc.frequency,
+          'volumeMultiplier': dc.volumeMultiplier,
+          'intensityMultiplier': dc.intensityMultiplier,
+        };
+      }
+      result['activeProgram'] = programMap;
     }
     return result;
   }

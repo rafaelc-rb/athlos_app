@@ -549,6 +549,31 @@ class _ActiveProgramCard extends ConsumerWidget {
                       ),
                     ],
                   ),
+                  if (program.isInDeload) ...[
+                    const Gap(AthlosSpacing.xs),
+                    Row(
+                      children: [
+                        Chip(
+                          avatar: Icon(Icons.spa,
+                              size: 16, color: colorScheme.tertiary),
+                          label: Text(l10n.deloadActiveChip),
+                          backgroundColor: colorScheme.tertiaryContainer,
+                          labelStyle: textTheme.labelSmall?.copyWith(
+                            color: colorScheme.onTertiaryContainer,
+                          ),
+                          visualDensity: VisualDensity.compact,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        const Gap(AthlosSpacing.sm),
+                        TextButton(
+                          onPressed: () =>
+                              _confirmEndDeload(context, ref, program.id),
+                          child: Text(l10n.deloadEndAction),
+                        ),
+                      ],
+                    ),
+                  ],
                   const Gap(AthlosSpacing.sm),
                   _ProgramHomeProgress(programId: program.id),
                 ],
@@ -559,6 +584,32 @@ class _ActiveProgramCard extends ConsumerWidget {
       },
       loading: () => const SizedBox.shrink(),
       error: (_, _) => const SizedBox.shrink(),
+    );
+  }
+
+  void _confirmEndDeload(BuildContext context, WidgetRef ref, int programId) {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.deloadEndConfirmTitle),
+        content: Text(l10n.deloadEndConfirmMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              ref
+                  .read(programActionsProvider.notifier)
+                  .exitDeload(programId);
+            },
+            child: Text(l10n.deloadEndAction),
+          ),
+        ],
+      ),
     );
   }
 }

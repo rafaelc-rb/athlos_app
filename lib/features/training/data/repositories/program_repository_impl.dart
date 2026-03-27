@@ -3,7 +3,9 @@ import 'package:drift/drift.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/errors/result.dart';
+import '../../domain/entities/deload_config.dart';
 import '../../domain/entities/training_program.dart';
+import '../../domain/enums/deload_strategy.dart';
 import '../../domain/enums/duration_mode.dart';
 import '../../domain/enums/program_focus.dart';
 import '../../domain/repositories/program_repository.dart';
@@ -47,6 +49,7 @@ class ProgramRepositoryImpl implements ProgramRepository {
   @override
   Future<Result<int>> create(TrainingProgram program) async {
     try {
+      final dc = program.deloadConfig;
       final id = await _dao.create(ProgramsCompanion.insert(
         name: program.name,
         focus: program.focus.name,
@@ -54,6 +57,10 @@ class ProgramRepositoryImpl implements ProgramRepository {
         durationValue: program.durationValue,
         defaultRestSeconds: Value(program.defaultRestSeconds),
         isActive: Value(program.isActive),
+        deloadFrequency: Value(dc?.frequency),
+        deloadStrategy: Value(dc?.strategy.name),
+        deloadVolumeMultiplier: Value(dc?.volumeMultiplier),
+        deloadIntensityMultiplier: Value(dc?.intensityMultiplier),
       ));
       return Success(id);
     } on Exception catch (e) {
@@ -64,6 +71,7 @@ class ProgramRepositoryImpl implements ProgramRepository {
   @override
   Future<Result<void>> update(TrainingProgram program) async {
     try {
+      final dc = program.deloadConfig;
       await _dao.updateProgram(
         program.id,
         ProgramsCompanion(
@@ -72,6 +80,10 @@ class ProgramRepositoryImpl implements ProgramRepository {
           durationMode: Value(program.durationMode.name),
           durationValue: Value(program.durationValue),
           defaultRestSeconds: Value(program.defaultRestSeconds),
+          deloadFrequency: Value(dc?.frequency),
+          deloadStrategy: Value(dc?.strategy.name),
+          deloadVolumeMultiplier: Value(dc?.volumeMultiplier),
+          deloadIntensityMultiplier: Value(dc?.intensityMultiplier),
         ),
       );
       return const Success(null);
@@ -101,6 +113,20 @@ class ProgramRepositoryImpl implements ProgramRepository {
   }
 
   @override
+  Future<Result<void>> setDeloadActive(
+    int programId, {
+    required bool active,
+  }) async {
+    try {
+      await _dao.setDeloadActive(programId, active: active);
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(
+          DatabaseException('Failed to set deload status: $e'));
+    }
+  }
+
+  @override
   Future<Result<int>> getSessionCount(int programId) async {
     try {
       final count = await _dao.getSessionCount(programId);
@@ -119,7 +145,20 @@ class ProgramRepositoryImpl implements ProgramRepository {
         durationValue: row.durationValue,
         defaultRestSeconds: row.defaultRestSeconds,
         isActive: row.isActive,
+        isInDeload: row.isInDeload,
+        deloadConfig: _deloadFromRow(row),
         createdAt: row.createdAt,
         archivedAt: row.archivedAt,
       );
+
+  DeloadConfig? _deloadFromRow(Program row) {
+    final strategy = row.deloadStrategy;
+    if (strategy == null) return null;
+    return DeloadConfig(
+      frequency: row.deloadFrequency,
+      strategy: DeloadStrategy.values.byName(strategy),
+      volumeMultiplier: row.deloadVolumeMultiplier ?? 0.6,
+      intensityMultiplier: row.deloadIntensityMultiplier ?? 0.5,
+    );
+  }
 }

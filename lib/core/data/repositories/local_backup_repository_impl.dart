@@ -527,6 +527,12 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
               'duration_value': row['duration_value'] ?? 12,
               'default_rest_seconds': row['default_rest_seconds'],
               'is_active': row['is_active'] ?? 0,
+              'is_in_deload': row['is_in_deload'] ?? 0,
+              'deload_frequency': row['deload_frequency'],
+              'deload_strategy': row['deload_strategy'],
+              'deload_volume_multiplier': row['deload_volume_multiplier'],
+              'deload_intensity_multiplier':
+                  row['deload_intensity_multiplier'],
               'created_at': row['created_at'],
               'archived_at': row['archived_at'],
             },

@@ -137,12 +137,16 @@ class ActiveExecutionState {
   final List<WorkoutExercise> exercises;
   final bool isFinishing;
 
+  /// Whether this session is running under deload adjustments.
+  final bool isDeload;
+
   const ActiveExecutionState({
     required this.executionId,
     required this.workoutId,
     required this.exerciseSets,
     required this.exercises,
     this.isFinishing = false,
+    this.isDeload = false,
   });
 
   int get completedSetCount => exerciseSets.values
@@ -162,6 +166,7 @@ class ActiveExecutionState {
         exerciseSets: exerciseSets ?? this.exerciseSets,
         exercises: exercises,
         isFinishing: isFinishing ?? this.isFinishing,
+        isDeload: isDeload,
       );
 
   @override

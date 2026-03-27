@@ -1,10 +1,14 @@
+import 'dart:math' as math;
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/errors/result.dart';
 import '../../data/repositories/training_providers.dart';
+import '../../domain/entities/deload_config.dart';
 import '../../domain/entities/execution_set.dart';
 import '../../domain/entities/execution_set_segment.dart';
 import '../../domain/entities/workout_exercise.dart';
+import '../../domain/enums/deload_strategy.dart';
 import '../../domain/usecases/complete_set_use_case.dart';
 import 'active_execution_state.dart';
 export 'active_execution_state.dart';
@@ -20,11 +24,12 @@ class ActiveExecution extends _$ActiveExecution {
   ActiveExecutionState? build() => null;
 
   /// Start a new execution, creating the DB record and pre-populating sets
-  /// from the workout template.
+  /// from the workout template. Applies deload adjustments when applicable.
   Future<void> startExecution(
     int workoutId,
     List<WorkoutExercise> exercises, {
     int? programId,
+    DeloadConfig? deloadConfig,
   }) async {
     final repo = ref.read(workoutExecutionRepositoryProvider);
     final result = await repo.start(workoutId, programId: programId);
@@ -35,17 +40,33 @@ class ActiveExecution extends _$ActiveExecution {
         await repo.getLastWeightsForExercises(exerciseIds);
     final lastWeights = weightsResult.getOrThrow();
 
+    final reduceVol = deloadConfig != null &&
+        (deloadConfig.strategy == DeloadStrategy.reduceVolume ||
+            deloadConfig.strategy == DeloadStrategy.reduceBoth);
+    final reduceInt = deloadConfig != null &&
+        (deloadConfig.strategy == DeloadStrategy.reduceIntensity ||
+            deloadConfig.strategy == DeloadStrategy.reduceBoth);
+
     final exerciseSets = <int, List<SetEntry>>{};
     for (final ex in exercises) {
       final lastWeight = lastWeights[ex.exerciseId];
       final isCardio = ex.duration != null;
       final repsTarget = isCardio ? null : ex.targetReps;
+
+      final effectiveSets = reduceVol
+          ? math.max(1, (ex.sets * deloadConfig.volumeMultiplier).ceil())
+          : ex.sets;
+
+      final effectiveWeight = (reduceInt && lastWeight != null)
+          ? lastWeight * deloadConfig.intensityMultiplier
+          : lastWeight;
+
       exerciseSets[ex.exerciseId] = List.generate(
-        ex.sets,
+        effectiveSets,
         (i) => SetEntry(
           setNumber: i + 1,
           plannedReps: repsTarget,
-          plannedWeight: isCardio ? null : lastWeight,
+          plannedWeight: isCardio ? null : effectiveWeight,
           reps: repsTarget,
           duration: isCardio ? ex.duration : null,
         ),
@@ -57,6 +78,7 @@ class ActiveExecution extends _$ActiveExecution {
       workoutId: workoutId,
       exerciseSets: exerciseSets,
       exercises: exercises,
+      isDeload: deloadConfig != null,
     );
   }
 

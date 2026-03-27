@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../domain/entities/deload_config.dart';
 import '../../domain/entities/training_program.dart';
 import '../../domain/entities/workout.dart';
+import '../../domain/enums/deload_strategy.dart';
 import '../../domain/enums/duration_mode.dart';
 import '../../domain/enums/program_focus.dart';
 import '../providers/program_notifier.dart';
@@ -29,12 +31,17 @@ class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
   final _nameController = TextEditingController();
   final _durationController = TextEditingController();
   final _restController = TextEditingController();
+  final _deloadFreqController = TextEditingController();
+  final _deloadVolController = TextEditingController(text: '0.6');
+  final _deloadIntController = TextEditingController(text: '0.5');
   ProgramFocus _focus = ProgramFocus.hypertrophy;
   DurationMode _durationMode = DurationMode.sessions;
   List<int> _cycleWorkoutIds = [];
   bool _activate = true;
   bool _loaded = false;
   bool _saving = false;
+  bool _deloadEnabled = false;
+  DeloadStrategy _deloadStrategy = DeloadStrategy.reduceVolume;
 
   bool get _isEditing => widget.programId != null;
 
@@ -43,6 +50,9 @@ class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
     _nameController.dispose();
     _durationController.dispose();
     _restController.dispose();
+    _deloadFreqController.dispose();
+    _deloadVolController.dispose();
+    _deloadIntController.dispose();
     super.dispose();
   }
 
@@ -58,6 +68,17 @@ class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
     }
     _cycleWorkoutIds = steps.map((s) => s.workoutId).toList();
     _activate = p.isActive;
+    if (p.deloadConfig != null) {
+      _deloadEnabled = true;
+      _deloadStrategy = p.deloadConfig!.strategy;
+      if (p.deloadConfig!.frequency != null) {
+        _deloadFreqController.text = p.deloadConfig!.frequency.toString();
+      }
+      _deloadVolController.text =
+          p.deloadConfig!.volumeMultiplier.toString();
+      _deloadIntController.text =
+          p.deloadConfig!.intensityMultiplier.toString();
+    }
   }
 
   Future<void> _save() async {
@@ -66,6 +87,20 @@ class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
     final durationValue = int.tryParse(_durationController.text.trim());
     if (durationValue == null || durationValue <= 0) return;
     final rest = int.tryParse(_restController.text.trim());
+
+    DeloadConfig? deloadConfig;
+    if (_deloadEnabled) {
+      final freq = int.tryParse(_deloadFreqController.text.trim());
+      final vol = double.tryParse(_deloadVolController.text.trim()) ?? 0.6;
+      final intensity =
+          double.tryParse(_deloadIntController.text.trim()) ?? 0.5;
+      deloadConfig = DeloadConfig(
+        frequency: freq,
+        strategy: _deloadStrategy,
+        volumeMultiplier: vol,
+        intensityMultiplier: intensity,
+      );
+    }
 
     setState(() => _saving = true);
     try {
@@ -80,6 +115,7 @@ class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
           durationMode: _durationMode,
           durationValue: durationValue,
           defaultRestSeconds: rest,
+          deloadConfig: deloadConfig,
           createdAt: DateTime.now(),
         );
         await actions.updateProgram(program);
@@ -101,6 +137,7 @@ class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
           durationValue: durationValue,
           defaultRestSeconds: rest,
           isActive: _activate,
+          deloadConfig: deloadConfig,
           createdAt: DateTime.now(),
         );
         final id = await actions.createProgram(program);
@@ -357,6 +394,82 @@ class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
             icon: const Icon(Icons.add),
             label: Text(l10n.trainingCycleAddWorkout),
           ),
+
+          const SizedBox(height: AthlosSpacing.lg),
+          Text(
+            l10n.deloadSectionTitle,
+            style: textTheme.titleSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(l10n.deloadEnableLabel),
+            value: _deloadEnabled,
+            onChanged: (v) => setState(() => _deloadEnabled = v),
+          ),
+          if (_deloadEnabled) ...[
+            const SizedBox(height: AthlosSpacing.sm),
+            Text(
+              l10n.deloadStrategyLabel,
+              style: textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AthlosSpacing.xs),
+            Wrap(
+              spacing: AthlosSpacing.sm,
+              children: DeloadStrategy.values.map((s) {
+                final label = switch (s) {
+                  DeloadStrategy.reduceVolume =>
+                    l10n.deloadStrategyReduceVolume,
+                  DeloadStrategy.reduceIntensity =>
+                    l10n.deloadStrategyReduceIntensity,
+                  DeloadStrategy.reduceBoth =>
+                    l10n.deloadStrategyReduceBoth,
+                };
+                return ChoiceChip(
+                  label: Text(label),
+                  selected: _deloadStrategy == s,
+                  onSelected: (_) =>
+                      setState(() => _deloadStrategy = s),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: AthlosSpacing.md),
+            TextField(
+              controller: _deloadFreqController,
+              decoration: InputDecoration(
+                labelText: l10n.deloadFrequencyLabel,
+                hintText: l10n.deloadFrequencyManualHint,
+              ),
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            ),
+            const SizedBox(height: AthlosSpacing.md),
+            if (_deloadStrategy != DeloadStrategy.reduceIntensity)
+              TextField(
+                controller: _deloadVolController,
+                decoration: InputDecoration(
+                  labelText: l10n.deloadVolumeMultiplierLabel,
+                  hintText: l10n.deloadVolumeMultiplierHint,
+                ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+              ),
+            if (_deloadStrategy != DeloadStrategy.reduceIntensity)
+              const SizedBox(height: AthlosSpacing.md),
+            if (_deloadStrategy != DeloadStrategy.reduceVolume)
+              TextField(
+                controller: _deloadIntController,
+                decoration: InputDecoration(
+                  labelText: l10n.deloadIntensityMultiplierLabel,
+                  hintText: l10n.deloadIntensityMultiplierHint,
+                ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+              ),
+          ],
 
           if (!_isEditing) ...[
             const SizedBox(height: AthlosSpacing.lg),

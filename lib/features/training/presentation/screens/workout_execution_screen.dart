@@ -7,6 +7,7 @@ import '../../../../core/theme/athlos_custom_colors.dart';
 import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../domain/entities/training_program.dart';
 import '../../domain/entities/workout_exercise.dart';
 import '../helpers/exercise_l10n.dart';
 import '../helpers/rep_performance.dart';
@@ -115,13 +116,19 @@ class _WorkoutExecutionScreenState
         final l10n = AppLocalizations.of(context)!;
         final router = GoRouter.of(context);
         try {
-          final programId = ref.read(activeProgramProvider).value?.id;
+          final activeProgram = ref.read(activeProgramProvider).value;
+          final programId = activeProgram?.id;
+          final deloadConfig =
+              (activeProgram?.isInDeload ?? false)
+                  ? activeProgram?.deloadConfig
+                  : null;
           await ref
               .read(activeExecutionProvider.notifier)
               .startExecution(
                 widget.workoutId,
                 exercisesAsync.value,
                 programId: programId,
+                deloadConfig: deloadConfig,
               );
         } on Exception catch (_) {
           messenger.showSnackBar(
@@ -449,6 +456,31 @@ class _WorkoutExecutionScreenState
       ),
       body: Column(
         children: [
+          if (exec.isDeload)
+            Container(
+              width: double.infinity,
+              color: colorScheme.tertiaryContainer,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AthlosSpacing.md,
+                vertical: AthlosSpacing.xs,
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.spa,
+                      size: 16, color: colorScheme.onTertiaryContainer),
+                  const SizedBox(width: AthlosSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      l10n.deloadActiveChip,
+                      style: textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onTertiaryContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // Progress bar
           Padding(
             padding: const EdgeInsets.symmetric(
@@ -1814,7 +1846,18 @@ class _WorkoutExecutionScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.workoutFinished)),
         );
-        context.pop();
+
+        ref.invalidate(isDeloadDueProvider);
+        final isDeloadDue =
+            await ref.read(isDeloadDueProvider.future);
+        if (isDeloadDue && context.mounted) {
+          final program = ref.read(activeProgramProvider).value;
+          if (program != null) {
+            await _showDeloadPrompt(context, program);
+          }
+        }
+
+        if (context.mounted) context.pop();
       }
     } on Exception catch (_) {
       if (context.mounted) {
@@ -1824,6 +1867,37 @@ class _WorkoutExecutionScreenState
           ),
         );
       }
+    }
+  }
+
+  Future<void> _showDeloadPrompt(
+      BuildContext context, TrainingProgram program) async {
+    final l10n = AppLocalizations.of(context)!;
+    final config = program.deloadConfig;
+    if (config == null) return;
+
+    final accept = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.deloadPromptTitle),
+        content: Text(l10n.deloadPromptMessage(config.frequency ?? 0)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.deloadSkip),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.deloadAccept),
+          ),
+        ],
+      ),
+    );
+
+    if (accept == true && mounted) {
+      await ref
+          .read(programActionsProvider.notifier)
+          .enterDeload(program.id);
     }
   }
 

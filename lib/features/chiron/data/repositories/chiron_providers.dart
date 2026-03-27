@@ -28,5 +28,6 @@ ChironRepository chironRepository(Ref ref) => ChironRepositoryImpl(
       cycleRepo: ref.watch(cycleRepositoryProvider),
       programRepo: ref.watch(programRepositoryProvider),
       progressionRuleRepo: ref.watch(progressionRuleRepositoryProvider),
+      bodyMetricRepo: ref.watch(bodyMetricRepositoryProvider),
       promptBuilder: ref.watch(promptBuilderProvider),
     );

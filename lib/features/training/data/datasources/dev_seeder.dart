@@ -15,6 +15,7 @@ Future<void> seedDevData(AppDatabase db) async {
   await _seedWorkoutsWithExercises(db, exerciseIds);
   await _seedExecutionHistory(db, exerciseIds);
   await _seedProgram(db, exerciseIds);
+  await _seedBodyMetrics(db);
 }
 
 Future<Map<String, int>> _resolveExerciseIds(AppDatabase db) async {
@@ -503,5 +504,33 @@ Future<void> _seedProgram(
         condition: const Value('completesAllSets'),
       ),
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Body Metrics (weight timeline)
+// ---------------------------------------------------------------------------
+
+Future<void> _seedBodyMetrics(AppDatabase db) async {
+  final now = DateTime.now();
+  final entries = <(double weight, double? bf, int daysAgo)>[
+    (80.0, 18.0, 56),
+    (79.5, null, 49),
+    (79.2, 17.5, 42),
+    (78.8, null, 35),
+    (78.5, 17.0, 28),
+    (78.2, null, 21),
+    (77.8, 16.5, 14),
+    (77.5, null, 7),
+    (77.2, 16.0, 0),
+  ];
+  for (final (weight, bf, daysAgo) in entries) {
+    await db.into(db.bodyMetrics).insert(
+          BodyMetricsCompanion.insert(
+            weight: weight,
+            bodyFatPercent: Value(bf),
+            recordedAt: Value(now.subtract(Duration(days: daysAgo))),
+          ),
+        );
   }
 }

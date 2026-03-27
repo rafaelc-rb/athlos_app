@@ -6,6 +6,7 @@ import '../../../../core/errors/result.dart';
 import '../../../profile/domain/entities/user_profile.dart';
 import '../../../profile/domain/enums/experience_level.dart';
 import '../../../profile/domain/enums/gender.dart';
+import '../../../profile/domain/repositories/body_metric_repository.dart';
 import '../../../profile/domain/repositories/user_profile_repository.dart';
 import '../../../training/domain/entities/cycle_step.dart';
 import '../../../training/domain/entities/workout.dart' as domain_workout;
@@ -66,6 +67,7 @@ class ChironRepositoryImpl implements ChironRepository {
     required CycleRepository cycleRepo,
     required ProgramRepository programRepo,
     required ProgressionRuleRepository progressionRuleRepo,
+    required BodyMetricRepository bodyMetricRepo,
     required PromptBuilder promptBuilder,
   }) : _profileRepo = profileRepo,
        _equipmentRepo = equipmentRepo,
@@ -74,6 +76,7 @@ class ChironRepositoryImpl implements ChironRepository {
        _cycleRepo = cycleRepo,
        _programRepo = programRepo,
        _progressionRuleRepo = progressionRuleRepo,
+       _bodyMetricRepo = bodyMetricRepo,
        _promptBuilder = promptBuilder,
        _restClient = GeminiRestClient(apiKey: apiKey);
 
@@ -85,6 +88,7 @@ class ChironRepositoryImpl implements ChironRepository {
   final CycleRepository _cycleRepo;
   final ProgramRepository _programRepo;
   final ProgressionRuleRepository _progressionRuleRepo;
+  final BodyMetricRepository _bodyMetricRepo;
   final PromptBuilder _promptBuilder;
 
   /// Client-side RPM guard aligned with the free tier (10 RPM for
@@ -746,6 +750,23 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
       }
       result['activeProgram'] = programMap;
     }
+
+    final bodyMetricResult = await _bodyMetricRepo.getAll();
+    if (bodyMetricResult.isSuccess) {
+      final metrics = bodyMetricResult.getOrThrow();
+      if (metrics.isNotEmpty) {
+        result['bodyWeightTimeline'] = metrics
+            .take(30)
+            .map((m) => {
+                  'weight': m.weight,
+                  if (m.bodyFatPercent != null)
+                    'bodyFatPercent': m.bodyFatPercent,
+                  'recordedAt': m.recordedAt.toIso8601String(),
+                })
+            .toList();
+      }
+    }
+
     return result;
   }
 

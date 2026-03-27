@@ -23,6 +23,8 @@ import '../../domain/enums/training_goal.dart';
 import '../../domain/enums/training_style.dart';
 import '../helpers/profile_l10n.dart';
 import '../helpers/backup_import_flow.dart';
+import '../../domain/entities/body_metric.dart';
+import '../providers/body_metric_notifier.dart';
 import '../providers/conflict_center_provider.dart';
 import '../providers/profile_notifier.dart';
 import '../widgets/aesthetic_selector.dart';
@@ -241,6 +243,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ),
           ),
+          const Gap(AthlosSpacing.md),
+          const _BodyMetricsSection(),
           const Gap(AthlosSpacing.lg),
 
           FilledButton.icon(
@@ -809,4 +813,270 @@ class _ProfileTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _BodyMetricsSection extends ConsumerWidget {
+  const _BodyMetricsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    final metricsAsync = ref.watch(bodyMetricListProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(title: l10n.bodyMetricsSectionTitle),
+        const Gap(AthlosSpacing.xs),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AthlosSpacing.md),
+            child: metricsAsync.when(
+              loading: () => const Center(
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              error: (_, _) => Text(l10n.genericError),
+              data: (metrics) {
+                if (metrics.isEmpty) {
+                  return Column(
+                    children: [
+                      Text(
+                        l10n.bodyMetricsEmptyHint,
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const Gap(AthlosSpacing.sm),
+                      FilledButton.tonal(
+                        onPressed: () =>
+                            _showRecordDialog(context, ref),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.add),
+                            const Gap(AthlosSpacing.xs),
+                            Text(l10n.bodyMetricsRecordWeight),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                }
+                final latest = metrics.first;
+                final weightStr = latest.weight % 1 == 0
+                    ? latest.weight.toInt().toString()
+                    : latest.weight.toStringAsFixed(1);
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.monitor_weight_outlined,
+                            color: colorScheme.primary, size: 24),
+                        const Gap(AthlosSpacing.sm),
+                        Text(
+                          l10n.bodyMetricsLatest(weightStr),
+                          style: textTheme.titleSmall,
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.add),
+                          tooltip: l10n.bodyMetricsRecordWeight,
+                          onPressed: () =>
+                              _showRecordDialog(context, ref),
+                        ),
+                      ],
+                    ),
+                    if (metrics.length >= 2) ...[
+                      const Gap(AthlosSpacing.sm),
+                      _MiniWeightChart(metrics: metrics),
+                    ],
+                    if (metrics.length > 1) ...[
+                      const Gap(AthlosSpacing.xs),
+                      TextButton(
+                        onPressed: () =>
+                            _showFullHistory(context, ref, metrics),
+                        child: Text(l10n.bodyMetricsHistory),
+                      ),
+                    ],
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showRecordDialog(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final weightCtrl = TextEditingController();
+    final bfCtrl = TextEditingController();
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.bodyMetricsRecordWeight),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: weightCtrl,
+              decoration: InputDecoration(
+                labelText: l10n.bodyMetricsWeightLabel,
+              ),
+              keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true),
+              autofocus: true,
+            ),
+            const Gap(AthlosSpacing.md),
+            TextField(
+              controller: bfCtrl,
+              decoration: InputDecoration(
+                labelText: l10n.bodyMetricsBodyFatLabel,
+                hintText: l10n.bodyMetricsBodyFatHint,
+              ),
+              keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+          ),
+          FilledButton(
+            onPressed: () {
+              final w = double.tryParse(weightCtrl.text.trim());
+              if (w == null || w <= 0) return;
+              final bf = double.tryParse(bfCtrl.text.trim());
+              ref
+                  .read(bodyMetricListProvider.notifier)
+                  .add(weight: w, bodyFatPercent: bf);
+              Navigator.pop(ctx);
+            },
+            child: Text(l10n.programSaveAction),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFullHistory(
+    BuildContext context,
+    WidgetRef ref,
+    List<BodyMetric> metrics,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        builder: (ctx, scrollCtrl) => Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(AthlosSpacing.md),
+              child: Text(
+                l10n.bodyMetricsHistory,
+                style: Theme.of(ctx).textTheme.titleMedium,
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                controller: scrollCtrl,
+                itemCount: metrics.length,
+                itemBuilder: (ctx, i) {
+                  final m = metrics[i];
+                  final date =
+                      '${m.recordedAt.day}/${m.recordedAt.month}/${m.recordedAt.year}';
+                  final weightStr = m.weight % 1 == 0
+                      ? m.weight.toInt().toString()
+                      : m.weight.toStringAsFixed(1);
+                  return ListTile(
+                    title: Text('$weightStr kg'),
+                    subtitle: Text(date),
+                    trailing: m.bodyFatPercent != null
+                        ? Text('${m.bodyFatPercent!.toStringAsFixed(1)}%')
+                        : null,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact sparkline-style chart showing weight trend.
+class _MiniWeightChart extends StatelessWidget {
+  final List<BodyMetric> metrics;
+
+  const _MiniWeightChart({required this.metrics});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final reversed = metrics.reversed.toList();
+    if (reversed.length < 2) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 60,
+      child: CustomPaint(
+        size: const Size(double.infinity, 60),
+        painter: _SparklinePainter(
+          values: reversed.map((m) => m.weight).toList(),
+          color: colorScheme.primary,
+        ),
+      ),
+    );
+  }
+}
+
+class _SparklinePainter extends CustomPainter {
+  final List<double> values;
+  final Color color;
+
+  _SparklinePainter({required this.values, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (values.length < 2) return;
+    final minV = values.reduce((a, b) => a < b ? a : b);
+    final maxV = values.reduce((a, b) => a > b ? a : b);
+    final range = maxV - minV;
+    final effectiveRange = range < 0.1 ? 1.0 : range;
+
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path();
+    for (var i = 0; i < values.length; i++) {
+      final x = i / (values.length - 1) * size.width;
+      final y =
+          size.height - ((values[i] - minV) / effectiveRange) * size.height;
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SparklinePainter oldDelegate) =>
+      values != oldDelegate.values || color != oldDelegate.color;
 }

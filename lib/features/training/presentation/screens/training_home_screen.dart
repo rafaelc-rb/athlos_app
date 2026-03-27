@@ -21,6 +21,7 @@ import '../helpers/exercise_l10n.dart';
 import '../providers/training_analytics_provider.dart';
 import '../providers/training_metrics_provider.dart';
 import '../providers/workout_notifier.dart';
+import '../../../profile/presentation/providers/body_metric_notifier.dart';
 
 /// Training module — Home / Dashboard tab.
 class TrainingHomeScreen extends ConsumerWidget {
@@ -49,6 +50,8 @@ class TrainingHomeScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const _WeightPromptBanner(),
+
           // Active program card
           _ActiveProgramCard(activeProgramAsync: activeProgramAsync),
           const Gap(AthlosSpacing.md),
@@ -742,3 +745,102 @@ class _WeeklyVolumeCard extends ConsumerWidget {
   }
 }
 
+class _WeightPromptBanner extends ConsumerStatefulWidget {
+  const _WeightPromptBanner();
+
+  @override
+  ConsumerState<_WeightPromptBanner> createState() =>
+      _WeightPromptBannerState();
+}
+
+class _WeightPromptBannerState extends ConsumerState<_WeightPromptBanner> {
+  bool _dismissed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_dismissed) return const SizedBox.shrink();
+    final shouldPrompt = ref.watch(shouldPromptBodyWeightProvider);
+    return shouldPrompt.when(
+      data: (show) {
+        if (!show) return const SizedBox.shrink();
+        final l10n = AppLocalizations.of(context)!;
+        final colorScheme = Theme.of(context).colorScheme;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AthlosSpacing.md),
+          child: Card(
+            color: colorScheme.tertiaryContainer,
+            child: Padding(
+              padding: const EdgeInsets.all(AthlosSpacing.md),
+              child: Row(
+                children: [
+                  Icon(Icons.monitor_weight_outlined,
+                      color: colorScheme.onTertiaryContainer),
+                  const Gap(AthlosSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      l10n.bodyMetricsWeeklyPromptMessage,
+                      style: TextStyle(
+                          color: colorScheme.onTertiaryContainer),
+                    ),
+                  ),
+                  const Gap(AthlosSpacing.xs),
+                  TextButton(
+                    onPressed: () =>
+                        setState(() => _dismissed = true),
+                    child: Text(l10n.bodyMetricsWeeklyPromptSkip),
+                  ),
+                  FilledButton(
+                    onPressed: () => _showRecordDialog(context),
+                    child: Text(l10n.bodyMetricsWeeklyPromptRecord),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+    );
+  }
+
+  void _showRecordDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final weightCtrl = TextEditingController();
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.bodyMetricsRecordWeight),
+        content: TextField(
+          controller: weightCtrl,
+          decoration: InputDecoration(
+            labelText: l10n.bodyMetricsWeightLabel,
+          ),
+          keyboardType:
+              const TextInputType.numberWithOptions(decimal: true),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child:
+                Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+          ),
+          FilledButton(
+            onPressed: () {
+              final w = double.tryParse(weightCtrl.text.trim());
+              if (w == null || w <= 0) return;
+              ref
+                  .read(bodyMetricListProvider.notifier)
+                  .add(weight: w);
+              Navigator.pop(ctx);
+              setState(() => _dismissed = true);
+            },
+            child: Text(l10n.bodyMetricsWeeklyPromptRecord),
+          ),
+        ],
+      ),
+    );
+  }
+}

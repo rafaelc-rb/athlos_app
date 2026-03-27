@@ -2170,5 +2170,27 @@
   },
   "volumeUnderTarget": "Abaixo do alvo",
   "volumeOnTarget": "No alvo",
-  "volumeOverTarget": "Acima do alvo"
+  "volumeOverTarget": "Acima do alvo",
+
+  "bodyMetricsSectionTitle": "Peso corporal",
+  "bodyMetricsRecordWeight": "Registar peso",
+  "bodyMetricsWeightLabel": "Peso (kg)",
+  "bodyMetricsBodyFatLabel": "Gordura corporal (%)",
+  "bodyMetricsBodyFatHint": "Opcional",
+  "bodyMetricsLatest": "Último: {weight} kg",
+  "@bodyMetricsLatest": {
+    "placeholders": {
+      "weight": { "type": "String" }
+    }
+  },
+  "bodyMetricsEmpty": "Sem registos de peso",
+  "bodyMetricsEmptyHint": "Registe o seu peso para acompanhar a evolução.",
+  "bodyMetricsHistory": "Histórico de peso",
+  "bodyMetricsDeleteConfirm": "Eliminar este registo?",
+  "bodyMetricsWeeklyPromptTitle": "Registar peso?",
+  "bodyMetricsWeeklyPromptMessage": "Já passou uma semana desde o último registo. Quer atualizar?",
+  "bodyMetricsWeeklyPromptSkip": "Agora não",
+  "bodyMetricsWeeklyPromptRecord": "Registar",
+  "bodyMetricsChartTitle": "Evolução do peso",
+  "bodyMetricsNoData": "Dados insuficientes para o gráfico"
 }

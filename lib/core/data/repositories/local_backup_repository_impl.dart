@@ -48,6 +48,7 @@ const _tableExecutionSetSegments = 'execution_set_segments';
 const _tableCycleSteps = 'cycle_steps';
 const _tablePrograms = 'programs';
 const _tableProgressionRules = 'progression_rules';
+const _tableBodyMetrics = 'body_metrics';
 const _tableUserEquipments = 'user_equipments';
 const _tableCatalogGovernanceEvents = 'catalog_governance_events';
 const _tableLocalDuplicateFeedback = 'local_duplicate_feedback';
@@ -79,6 +80,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       final programs = await _fetchTableRows(_tablePrograms);
       final progressionRules =
           await _fetchTableRows(_tableProgressionRules);
+      final bodyMetrics = await _fetchTableRows(_tableBodyMetrics);
       final userEquipments = await _fetchTableRows(_tableUserEquipments);
 
       final allEquipments = await _fetchTableRows(_tableEquipments);
@@ -176,6 +178,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           _tablePrograms: programs.map(_toJsonMap).toList(),
           _tableProgressionRules:
               progressionRules.map(_toJsonMap).toList(),
+          _tableBodyMetrics: bodyMetrics.map(_toJsonMap).toList(),
           _tableUserEquipments: userEquipments.map(_toJsonMap).toList(),
         },
         _tableCatalogReferences: <String, dynamic>{
@@ -573,6 +576,21 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
               'frequency': row['frequency'],
               'condition': row['condition'],
               'condition_value': row['condition_value'],
+            },
+            excludeKeys: const {'id'},
+          );
+        }
+
+        // Body Metrics
+        final bodyMetricRows =
+            payload.tables[_tableBodyMetrics] ?? const [];
+        for (final row in bodyMetricRows) {
+          await _insertRow(
+            _tableBodyMetrics,
+            {
+              'weight': row['weight'],
+              'body_fat_percent': row['body_fat_percent'],
+              'recorded_at': row['recorded_at'],
             },
             excludeKeys: const {'id'},
           );
@@ -2064,6 +2082,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       _tableCycleSteps,
       _tablePrograms,
       _tableProgressionRules,
+      _tableBodyMetrics,
       _tableUserEquipments,
     ];
 

@@ -1,7 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/errors/result.dart';
-import '../../../profile/data/repositories/profile_providers.dart';
+import '../../../profile/presentation/providers/body_metric_notifier.dart';
 import '../../data/repositories/training_providers.dart';
 import '../../domain/helpers/training_metrics.dart';
 import 'exercise_notifier.dart';
@@ -37,11 +37,7 @@ Future<ExercisePR?> exercisePR(Ref ref, int exerciseId) async {
       exercises.where((e) => e.id == exerciseId).firstOrNull;
   if (exercise == null) return null;
 
-  final profileRepo = ref.watch(userProfileRepositoryProvider);
-  final profileResult = await profileRepo.get();
-  final profileWeight = profileResult.isSuccess
-      ? profileResult.getOrThrow()?.weight?.toDouble()
-      : null;
+  final profileWeight = await ref.watch(latestBodyWeightProvider.future);
 
   final setsResult =
       await execRepo.getAllCompletedSetsForExercise(exerciseId);
@@ -80,11 +76,7 @@ Future<bool> isSetNewPR(
   required int? reps,
   required bool isBodyweight,
 }) async {
-  final profileRepo = ref.watch(userProfileRepositoryProvider);
-  final profileResult = await profileRepo.get();
-  final profileWeight = profileResult.isSuccess
-      ? profileResult.getOrThrow()?.weight?.toDouble()
-      : null;
+  final profileWeight = await ref.watch(latestBodyWeightProvider.future);
 
   final load = effectiveLoad(
     isBodyweight: isBodyweight,

@@ -6,7 +6,9 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'tables/catalog_governance_applied_rules_table.dart';
 import 'tables/catalog_governance_events_table.dart';
 import 'tables/local_duplicate_feedback_table.dart';
+import '../../features/profile/data/datasources/daos/body_metric_dao.dart';
 import '../../features/profile/data/datasources/daos/user_profile_dao.dart';
+import '../../features/profile/data/datasources/tables/body_metrics_table.dart';
 import '../../features/profile/data/datasources/tables/user_profiles_table.dart';
 import '../../features/profile/domain/enums/body_aesthetic.dart';
 import '../../features/profile/domain/enums/experience_level.dart';
@@ -72,6 +74,7 @@ const _skipDevSeed = bool.fromEnvironment('SKIP_DEV_SEED');
     LocalDuplicateFeedback,
     // Profile
     UserProfiles,
+    BodyMetrics,
   ],
   daos: [
     EquipmentDao,
@@ -82,6 +85,7 @@ const _skipDevSeed = bool.fromEnvironment('SKIP_DEV_SEED');
     WorkoutExecutionDao,
     CycleStepDao,
     UserProfileDao,
+    BodyMetricDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -98,7 +102,7 @@ class AppDatabase extends _$AppDatabase {
   bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed && _enableDevSeed;
 
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 22;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -109,7 +113,7 @@ class AppDatabase extends _$AppDatabase {
       if (_shouldSeedDevData) await seedDevData(this);
     },
     onUpgrade: (m, from, to) async {
-      if (_shouldSeedDevData && from >= 3 && from <= 21) {
+      if (_shouldSeedDevData && from >= 3 && from <= 22) {
         for (final table in allTables) {
           await m.deleteTable(table.actualTableName);
         }
@@ -421,6 +425,18 @@ class AppDatabase extends _$AppDatabase {
             'pullUp','chinUp','invertedRow','pikePushUp',
             'diamondPushUp','dip','crunch','plank',
             'hangingLegRaise','gluteBridge'
+          )
+        ''');
+      }
+
+      if (from < 22) {
+        // Phase 9: Body weight timeline.
+        await customStatement('''
+          CREATE TABLE body_metrics (
+            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            weight REAL NOT NULL,
+            body_fat_percent REAL,
+            recorded_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
           )
         ''');
       }

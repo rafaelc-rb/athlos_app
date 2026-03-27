@@ -6,12 +6,16 @@ import 'package:intl/intl.dart' as intl;
 import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/execution_comparison.dart';
+import '../../domain/entities/training_program.dart';
+import '../../domain/enums/program_focus.dart';
 import '../helpers/duration_format.dart';
 import '../providers/equipment_notifier.dart';
 import '../providers/exercise_notifier.dart';
+import '../providers/program_notifier.dart';
 import '../providers/training_analytics_provider.dart';
 import '../providers/workout_notifier.dart';
 
@@ -35,11 +39,17 @@ class TrainingHomeScreen extends ConsumerWidget {
     final workoutsAsync = ref.watch(workoutListProvider);
     final streakAsync = ref.watch(executionStreakProvider);
 
+    final activeProgramAsync = ref.watch(activeProgramProvider);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AthlosSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Active program card
+          _ActiveProgramCard(activeProgramAsync: activeProgramAsync),
+          const Gap(AthlosSpacing.md),
+
           // Summary section (sessions analytics)
           Text(
             l10n.trainingSummarySection,
@@ -434,6 +444,173 @@ class _CatalogCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ActiveProgramCard extends ConsumerWidget {
+  final AsyncValue<TrainingProgram?> activeProgramAsync;
+
+  const _ActiveProgramCard({required this.activeProgramAsync});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return activeProgramAsync.when(
+      data: (program) {
+        if (program == null) {
+          return Card(
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => context.go(RoutePaths.trainingPrograms),
+              child: Padding(
+                padding: const EdgeInsets.all(AthlosSpacing.md),
+                child: Row(
+                  children: [
+                    Icon(Icons.auto_awesome_outlined,
+                        color: colorScheme.onSurfaceVariant),
+                    const Gap(AthlosSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(l10n.programFreeCycleLabel,
+                              style: textTheme.titleSmall),
+                          const Gap(AthlosSpacing.xxs),
+                          Text(
+                            l10n.programFreeCycleHint,
+                            style: textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right,
+                        color: colorScheme.onSurfaceVariant),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        final focusLabel = switch (program.focus) {
+          ProgramFocus.hypertrophy => l10n.programFocusHypertrophy,
+          ProgramFocus.strength => l10n.programFocusStrength,
+          ProgramFocus.endurance => l10n.programFocusEndurance,
+          ProgramFocus.custom => l10n.programFocusCustom,
+        };
+
+        return Card(
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: AthlosRadius.mdAll,
+            side: BorderSide(color: colorScheme.primary, width: 1),
+          ),
+          child: InkWell(
+            onTap: () => context.go(RoutePaths.trainingPrograms),
+            child: Padding(
+              padding: const EdgeInsets.all(AthlosSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.auto_awesome,
+                          color: colorScheme.primary, size: 20),
+                      const Gap(AthlosSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          program.name,
+                          style: textTheme.titleSmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AthlosSpacing.sm,
+                          vertical: AthlosSpacing.xxs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer,
+                          borderRadius: AthlosRadius.smAll,
+                        ),
+                        child: Text(
+                          focusLabel,
+                          style: textTheme.labelSmall?.copyWith(
+                            color: colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Gap(AthlosSpacing.sm),
+                  _ProgramHomeProgress(programId: program.id),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _ProgramHomeProgress extends ConsumerWidget {
+  final int programId;
+
+  const _ProgramHomeProgress({required this.programId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final progressAsync = ref.watch(programProgressProvider(programId));
+
+    return progressAsync.when(
+      data: (progress) => Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                l10n.programProgressLabel,
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              Text(
+                l10n.programSessionsProgress(
+                  progress.completedSessions,
+                  progress.totalSessions,
+                ),
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          const Gap(AthlosSpacing.xs),
+          ClipRRect(
+            borderRadius: AthlosRadius.smAll,
+            child: LinearProgressIndicator(
+              value: progress.fraction,
+              minHeight: 6,
+              backgroundColor: colorScheme.surfaceContainerHighest,
+            ),
+          ),
+        ],
+      ),
+      loading: () => const LinearProgressIndicator(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 }

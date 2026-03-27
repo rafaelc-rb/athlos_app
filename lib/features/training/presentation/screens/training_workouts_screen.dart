@@ -12,6 +12,7 @@ import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/training_providers.dart';
 import '../../domain/entities/cycle_step.dart';
 import '../../domain/entities/workout.dart';
+import '../providers/program_notifier.dart';
 import '../providers/training_analytics_provider.dart';
 import '../providers/workout_notifier.dart';
 
@@ -368,9 +369,10 @@ class _CycleListBodyState extends ConsumerState<_CycleListBody> {
           ),
       ];
       try {
+        final programId = ref.read(activeProgramProvider).value?.id;
         final result = await ref
             .read(cycleRepositoryProvider)
-            .setSteps(steps);
+            .setSteps(steps, programId: programId);
         result.getOrThrow();
         ref.invalidate(cycleStepsProvider);
       } on Exception catch (_) {

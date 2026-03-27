@@ -2,6 +2,7 @@
 class WorkoutExecution {
   final int id;
   final int workoutId;
+  final int? programId;
   final DateTime startedAt;
   final DateTime? finishedAt;
   final String? notes;
@@ -9,6 +10,7 @@ class WorkoutExecution {
   const WorkoutExecution({
     required this.id,
     required this.workoutId,
+    this.programId,
     required this.startedAt,
     this.finishedAt,
     this.notes,

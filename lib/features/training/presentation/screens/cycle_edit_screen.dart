@@ -8,6 +8,7 @@ import '../../../../core/errors/result.dart';
 import '../../data/repositories/training_providers.dart';
 import '../../domain/entities/cycle_step.dart';
 import '../../domain/entities/workout.dart';
+import '../providers/program_notifier.dart';
 import '../providers/training_analytics_provider.dart';
 import '../providers/workout_notifier.dart';
 
@@ -34,6 +35,7 @@ class _CycleEditScreenState extends ConsumerState<CycleEditScreen> {
 
   Future<void> _save() async {
     final repo = ref.read(cycleRepositoryProvider);
+    final programId = ref.read(activeProgramProvider).value?.id;
     final steps = [
       for (var i = 0; i < _workoutIds.length; i++)
         TrainingCycleStep(
@@ -42,7 +44,7 @@ class _CycleEditScreenState extends ConsumerState<CycleEditScreen> {
           workoutId: _workoutIds[i],
         ),
     ];
-    final result = await repo.setSteps(steps);
+    final result = await repo.setSteps(steps, programId: programId);
     switch (result) {
       case Success():
         ref.invalidate(cycleStepsProvider);

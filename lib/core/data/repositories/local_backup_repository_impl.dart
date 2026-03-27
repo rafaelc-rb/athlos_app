@@ -46,6 +46,7 @@ const _tableWorkoutExecutions = 'workout_executions';
 const _tableExecutionSets = 'execution_sets';
 const _tableExecutionSetSegments = 'execution_set_segments';
 const _tableCycleSteps = 'cycle_steps';
+const _tablePrograms = 'programs';
 const _tableUserEquipments = 'user_equipments';
 const _tableCatalogGovernanceEvents = 'catalog_governance_events';
 const _tableLocalDuplicateFeedback = 'local_duplicate_feedback';
@@ -74,6 +75,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         _tableExecutionSetSegments,
       );
       final cycleSteps = await _fetchTableRows(_tableCycleSteps);
+      final programs = await _fetchTableRows(_tablePrograms);
       final userEquipments = await _fetchTableRows(_tableUserEquipments);
 
       final allEquipments = await _fetchTableRows(_tableEquipments);
@@ -168,6 +170,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
               .map(_toJsonMap)
               .toList(),
           _tableCycleSteps: cycleSteps.map(_toJsonMap).toList(),
+          _tablePrograms: programs.map(_toJsonMap).toList(),
           _tableUserEquipments: userEquipments.map(_toJsonMap).toList(),
         },
         _tableCatalogReferences: <String, dynamic>{
@@ -509,6 +512,29 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           }, orReplace: true);
         }
 
+        // Programs
+        final programRows = payload.tables[_tablePrograms] ?? const [];
+        final programIdMap = <int, int>{};
+        for (final row in programRows) {
+          final oldId = _asInt(row['id']);
+          if (oldId == null) continue;
+          final newId = await _insertRow(
+            _tablePrograms,
+            {
+              'name': row['name'],
+              'focus': row['focus'] ?? 'custom',
+              'duration_mode': row['duration_mode'] ?? 'sessions',
+              'duration_value': row['duration_value'] ?? 12,
+              'default_rest_seconds': row['default_rest_seconds'],
+              'is_active': row['is_active'] ?? 0,
+              'created_at': row['created_at'],
+              'archived_at': row['archived_at'],
+            },
+            excludeKeys: const {'id'},
+          );
+          programIdMap[oldId] = newId;
+        }
+
         final executionRows =
             payload.tables[_tableWorkoutExecutions] ?? const [];
         final skippedExecutionIds = <int>{};
@@ -530,10 +556,15 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
             );
             continue;
           }
+          final oldProgramId = _asInt(row['program_id']);
+          final newProgramId = oldProgramId != null
+              ? programIdMap[oldProgramId]
+              : null;
           final newExecutionId = await _insertRow(
             _tableWorkoutExecutions,
             {
               'workout_id': newWorkoutId,
+              'program_id': newProgramId,
               'started_at': row['started_at'],
               'finished_at': row['finished_at'],
               'notes': row['notes'],
@@ -622,7 +653,6 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         final cycleStepRows = payload.tables[_tableCycleSteps] ?? const [];
         var cycleOrderIndex = 0;
         for (final row in cycleStepRows) {
-          // Skip legacy rest steps from older backups.
           if (row['step_type'] == 'rest') continue;
           final oldWorkoutId = _asInt(row['workout_id']);
           final newWorkoutId = oldWorkoutId != null
@@ -632,11 +662,16 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
               importWorkoutDetails[oldWorkoutId] == false) {
             continue;
           }
+          final oldProgramId = _asInt(row['program_id']);
+          final newProgramId = oldProgramId != null
+              ? programIdMap[oldProgramId]
+              : null;
           await _insertRow(
             _tableCycleSteps,
             {
               'order_index': cycleOrderIndex++,
               'workout_id': newWorkoutId,
+              'program_id': newProgramId,
             },
             excludeKeys: const {'id'},
           );
@@ -1984,6 +2019,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       _tableExecutionSets,
       _tableExecutionSetSegments,
       _tableCycleSteps,
+      _tablePrograms,
       _tableUserEquipments,
     ];
 

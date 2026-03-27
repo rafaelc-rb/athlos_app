@@ -12,6 +12,7 @@ import '../helpers/exercise_l10n.dart';
 import '../helpers/rep_performance.dart';
 import '../providers/active_execution_notifier.dart';
 import '../providers/exercise_notifier.dart';
+import '../providers/program_notifier.dart';
 import '../helpers/duration_format.dart';
 import '../providers/cardio_timer_notifier.dart';
 import '../providers/rest_timer_notifier.dart';
@@ -114,9 +115,14 @@ class _WorkoutExecutionScreenState
         final l10n = AppLocalizations.of(context)!;
         final router = GoRouter.of(context);
         try {
+          final programId = ref.read(activeProgramProvider).value?.id;
           await ref
               .read(activeExecutionProvider.notifier)
-              .startExecution(widget.workoutId, exercisesAsync.value);
+              .startExecution(
+                widget.workoutId,
+                exercisesAsync.value,
+                programId: programId,
+              );
         } on Exception catch (_) {
           messenger.showSnackBar(
             SnackBar(content: Text(l10n.genericError)),

@@ -13,6 +13,7 @@ import '../../../training/domain/entities/workout_exercise.dart' as domain_we;
 import '../../../training/domain/repositories/cycle_repository.dart';
 import '../../../training/domain/repositories/equipment_repository.dart';
 import '../../../training/domain/repositories/exercise_repository.dart';
+import '../../../training/domain/repositories/program_repository.dart';
 import '../../../training/domain/repositories/workout_repository.dart';
 import '../../domain/entities/chiron_message.dart';
 import '../../domain/repositories/chiron_repository.dart';
@@ -58,12 +59,14 @@ class ChironRepositoryImpl implements ChironRepository {
     required WorkoutRepository workoutRepo,
     required ExerciseRepository exerciseRepo,
     required CycleRepository cycleRepo,
+    required ProgramRepository programRepo,
     required PromptBuilder promptBuilder,
   }) : _profileRepo = profileRepo,
        _equipmentRepo = equipmentRepo,
        _workoutRepo = workoutRepo,
        _exerciseRepo = exerciseRepo,
        _cycleRepo = cycleRepo,
+       _programRepo = programRepo,
        _promptBuilder = promptBuilder,
        _restClient = GeminiRestClient(apiKey: apiKey);
 
@@ -73,6 +76,7 @@ class ChironRepositoryImpl implements ChironRepository {
   final WorkoutRepository _workoutRepo;
   final ExerciseRepository _exerciseRepo;
   final CycleRepository _cycleRepo;
+  final ProgramRepository _programRepo;
   final PromptBuilder _promptBuilder;
 
   /// Client-side RPM guard aligned with the free tier (10 RPM for
@@ -639,7 +643,12 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
         'error': 'No valid steps (each step needs a workoutId)',
       };
     }
-    final result = await _cycleRepo.setSteps(cycleSteps);
+    final programResult = await _programRepo.getActive();
+    final programId = programResult.isSuccess
+        ? programResult.getOrThrow()?.id
+        : null;
+    final result =
+        await _cycleRepo.setSteps(cycleSteps, programId: programId);
     if (!result.isSuccess) {
       return {'success': false, 'error': 'Failed to persist cycle'};
     }
@@ -652,7 +661,14 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
       return {'success': false, 'error': 'Failed to load active workouts'};
     }
     final active = activeResult.getOrThrow();
-    final stepsResult = await _cycleRepo.getSteps();
+
+    final programResult = await _programRepo.getActive();
+    final activeProgram = programResult.isSuccess
+        ? programResult.getOrThrow()
+        : null;
+    final programId = activeProgram?.id;
+
+    final stepsResult = await _cycleRepo.getSteps(programId: programId);
     if (!stepsResult.isSuccess) {
       return {'success': false, 'error': 'Failed to load cycle'};
     }
@@ -669,11 +685,24 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
         'workoutName': w?.name ?? 'Workout #${s.workoutId}',
       });
     }
-    return {
+    final result = <String, Object?>{
       'success': true,
       'activeWorkouts': activeWorkouts,
       'cycleSteps': cycleSteps,
     };
+    if (activeProgram != null) {
+      final sessionResult = await _programRepo.getSessionCount(activeProgram.id);
+      final sessions = sessionResult.isSuccess ? sessionResult.getOrThrow() : 0;
+      result['activeProgram'] = {
+        'id': activeProgram.id,
+        'name': activeProgram.name,
+        'focus': activeProgram.focus.name,
+        'durationMode': activeProgram.durationMode.name,
+        'durationValue': activeProgram.durationValue,
+        'completedSessions': sessions,
+      };
+    }
+    return result;
   }
 
   int _parseInt(dynamic value, int fallback) {

@@ -2013,5 +2013,59 @@
   "setupChatStart": "Começar",
   "setupChatSkipped": "Prefiro não dizer",
   "setupChatNone": "Nenhuma",
-  "setupChatChipHint": "Segure em uma opção para ver o que significa"
+  "setupChatChipHint": "Segure em uma opção para ver o que significa",
+
+  "programListTitle": "Programas",
+  "programEmpty": "Nenhum programa",
+  "programEmptyHint": "Crie um programa para organizar seu mesociclo de treino.",
+  "programCreateTitle": "Novo Programa",
+  "programEditTitle": "Editar Programa",
+  "programNameLabel": "Nome",
+  "programNameHint": "Ex: PPL Hipertrofia",
+  "programFocusLabel": "Foco",
+  "programFocusHypertrophy": "Hipertrofia",
+  "programFocusStrength": "Força",
+  "programFocusEndurance": "Resistência",
+  "programFocusCustom": "Personalizado",
+  "programDurationModeLabel": "Medida de duração",
+  "programDurationModeSessions": "Sessões",
+  "programDurationModeRotations": "Rotações",
+  "programDurationValueLabel": "Duração",
+  "programDurationValueHintSessions": "Número de sessões",
+  "programDurationValueHintRotations": "Número de rotações do ciclo",
+  "programDefaultRestLabel": "Descanso padrão (s)",
+  "programDefaultRestHint": "Sobrescreve o descanso global por foco",
+  "programCycleSection": "Ciclo do programa",
+  "programCycleHint": "Defina a ordem dos treinos neste programa.",
+  "programSaveAction": "Salvar",
+  "programActivateAndSave": "Salvar e ativar",
+  "programActivate": "Ativar",
+  "programArchive": "Arquivar",
+  "programArchived": "Programa arquivado",
+  "programActivated": "Programa ativado",
+  "programCreated": "Programa criado",
+  "programUpdated": "Programa atualizado",
+  "programDeleteTitle": "Excluir programa?",
+  "programDeleteMessage": "Isso não pode ser desfeito. O histórico de execuções será mantido.",
+  "programActiveBadge": "Ativo",
+  "programArchivedBadge": "Arquivado",
+  "programProgressLabel": "Progresso",
+  "programSessionsProgress": "{completed}/{total} sessões",
+  "@programSessionsProgress": {
+    "placeholders": {
+      "completed": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "programRotationsProgress": "{completed}/{total} sessões ({rotations} rotações)",
+  "@programRotationsProgress": {
+    "placeholders": {
+      "completed": {"type": "int"},
+      "total": {"type": "int"},
+      "rotations": {"type": "String"}
+    }
+  },
+  "programCompletedMessage": "Programa concluído! Revise os resultados ou inicie um novo.",
+  "programFreeCycleLabel": "Ciclo livre",
+  "programFreeCycleHint": "Sem programa ativo — treino em modo livre"
 }

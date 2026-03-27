@@ -15,7 +15,7 @@ abstract interface class WorkoutExecutionRepository {
   /// Returns null if there are fewer than two finished executions.
   Future<Result<ExecutionComparison?>> getLastTwoFinishedWithVolume(
       int workoutId);
-  Future<Result<int>> start(int workoutId);
+  Future<Result<int>> start(int workoutId, {int? programId});
   Future<Result<void>> finish(int executionId, {String? notes});
   Future<Result<void>> delete(int id);
   Future<Result<List<ExecutionSet>>> getSets(int executionId);

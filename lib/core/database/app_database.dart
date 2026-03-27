@@ -23,6 +23,7 @@ import '../../features/training/domain/enums/muscle_role.dart';
 import '../../features/training/data/datasources/daos/cycle_step_dao.dart';
 import '../../features/training/data/datasources/daos/equipment_dao.dart';
 import '../../features/training/data/datasources/daos/exercise_dao.dart';
+import '../../features/training/data/datasources/daos/program_dao.dart';
 import '../../features/training/data/datasources/daos/workout_dao.dart';
 import '../../features/training/data/datasources/daos/workout_execution_dao.dart';
 import '../../features/training/data/datasources/tables/cycle_steps_table.dart';
@@ -38,6 +39,7 @@ import '../../features/training/domain/enums/equipment_category.dart';
 import '../../features/training/domain/enums/muscle_group.dart';
 import '../../features/training/domain/enums/muscle_region.dart';
 import '../../features/training/domain/enums/target_muscle.dart';
+import '../../features/training/data/datasources/tables/programs_table.dart';
 import '../../features/training/data/datasources/tables/workout_exercises_table.dart';
 import '../../features/training/data/datasources/tables/workout_executions_table.dart';
 import '../../features/training/data/datasources/tables/workouts_table.dart';
@@ -59,6 +61,7 @@ const _skipDevSeed = bool.fromEnvironment('SKIP_DEV_SEED');
     WorkoutExecutions,
     ExecutionSets,
     ExecutionSetSegments,
+    Programs,
     CycleSteps,
     UserEquipments,
     CatalogGovernanceEvents,
@@ -70,6 +73,7 @@ const _skipDevSeed = bool.fromEnvironment('SKIP_DEV_SEED');
   daos: [
     EquipmentDao,
     ExerciseDao,
+    ProgramDao,
     WorkoutDao,
     WorkoutExecutionDao,
     CycleStepDao,
@@ -90,7 +94,7 @@ class AppDatabase extends _$AppDatabase {
   bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed && _enableDevSeed;
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -101,7 +105,7 @@ class AppDatabase extends _$AppDatabase {
       if (_shouldSeedDevData) await seedDevData(this);
     },
     onUpgrade: (m, from, to) async {
-      if (_shouldSeedDevData && from >= 3 && from <= 17) {
+      if (_shouldSeedDevData && from >= 3 && from <= 18) {
         for (final table in allTables) {
           await m.deleteTable(table.actualTableName);
         }
@@ -340,6 +344,29 @@ class AppDatabase extends _$AppDatabase {
         // Phase 7: warmup sets — excluded from volume and progression.
         await customStatement(
           'ALTER TABLE execution_sets ADD COLUMN is_warmup INTEGER NOT NULL DEFAULT 0',
+        );
+      }
+
+      if (from < 18) {
+        // Phase 3: Training Program (mesocycle).
+        await customStatement('''
+          CREATE TABLE programs (
+            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            focus TEXT NOT NULL,
+            duration_mode TEXT NOT NULL,
+            duration_value INTEGER NOT NULL,
+            default_rest_seconds INTEGER,
+            is_active INTEGER NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+            archived_at INTEGER
+          )
+        ''');
+        await customStatement(
+          'ALTER TABLE cycle_steps ADD COLUMN program_id INTEGER REFERENCES programs(id)',
+        );
+        await customStatement(
+          'ALTER TABLE workout_executions ADD COLUMN program_id INTEGER REFERENCES programs(id)',
         );
       }
     },

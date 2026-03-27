@@ -8,6 +8,7 @@ import '../../domain/entities/workout_exercise.dart';
 import '../../domain/usecases/complete_set_use_case.dart';
 import 'active_execution_state.dart';
 export 'active_execution_state.dart';
+import 'program_notifier.dart';
 import 'workout_execution_notifier.dart';
 import 'workout_notifier.dart';
 
@@ -22,10 +23,11 @@ class ActiveExecution extends _$ActiveExecution {
   /// from the workout template.
   Future<void> startExecution(
     int workoutId,
-    List<WorkoutExercise> exercises,
-  ) async {
+    List<WorkoutExercise> exercises, {
+    int? programId,
+  }) async {
     final repo = ref.read(workoutExecutionRepositoryProvider);
-    final result = await repo.start(workoutId);
+    final result = await repo.start(workoutId, programId: programId);
     final executionId = result.getOrThrow();
 
     final exerciseIds = exercises.map((e) => e.exerciseId).toList();
@@ -244,6 +246,7 @@ class ActiveExecution extends _$ActiveExecution {
 
     ref.invalidate(lastFinishedWorkoutIdProvider);
     ref.invalidate(workoutExecutionListProvider);
+    ref.invalidate(programSessionCountProvider);
 
     state = null;
   }

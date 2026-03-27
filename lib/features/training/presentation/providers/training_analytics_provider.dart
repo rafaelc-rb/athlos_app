@@ -5,6 +5,7 @@ import '../../data/repositories/training_providers.dart';
 import '../../domain/entities/cycle_step.dart';
 import '../../domain/entities/execution_comparison.dart';
 import '../../domain/entities/workout.dart';
+import 'program_notifier.dart';
 import 'workout_notifier.dart';
 
 part 'training_analytics_provider.g.dart';
@@ -100,17 +101,30 @@ Future<({ExecutionComparison comparison, String workoutName})?>
   return (comparison: comparison, workoutName: name);
 }
 
-/// Ordered cycle steps (workout queue). Empty when using legacy sortOrder.
+/// Ordered cycle steps for the effective context (active program or free cycle).
 @riverpod
 Future<List<TrainingCycleStep>> cycleSteps(Ref ref) async {
+  final programId = await ref.watch(activeProgramIdProvider.future);
   final repo = ref.watch(cycleRepositoryProvider);
-  final result = await repo.getSteps();
+  final result = await repo.getSteps(programId: programId);
+  return result.getOrThrow();
+}
+
+/// Cycle steps for a specific program (used by progress calculations).
+@riverpod
+Future<List<TrainingCycleStep>> cycleStepsForProgram(
+    Ref ref, int programId) async {
+  final repo = ref.watch(cycleRepositoryProvider);
+  final result = await repo.getSteps(programId: programId);
   return result.getOrThrow();
 }
 
 /// Ensures every active workout is in the cycle (appends any missing).
+/// Only syncs the free cycle — programs manage their own cycle explicitly.
 @riverpod
 Future<void> ensureCycleSync(Ref ref) async {
+  final programId = await ref.watch(activeProgramIdProvider.future);
+  if (programId != null) return; // programs don't auto-sync
   final workouts = await ref.watch(workoutListProvider.future);
   if (workouts.isEmpty) return;
   final activeIds = workouts.map((w) => w.id).toList();

@@ -26,5 +26,6 @@ ChironRepository chironRepository(Ref ref) => ChironRepositoryImpl(
       workoutRepo: ref.watch(workoutRepositoryProvider),
       exerciseRepo: ref.watch(exerciseRepositoryProvider),
       cycleRepo: ref.watch(cycleRepositoryProvider),
+      programRepo: ref.watch(programRepositoryProvider),
       promptBuilder: ref.watch(promptBuilderProvider),
     );

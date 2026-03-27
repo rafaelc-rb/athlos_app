@@ -1,3 +1,5 @@
+import 'package:drift/drift.dart';
+
 import '../../../../core/database/app_database.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/errors/result.dart';
@@ -11,9 +13,9 @@ class CycleRepositoryImpl implements CycleRepository {
   final CycleStepDao _dao;
 
   @override
-  Future<Result<List<TrainingCycleStep>>> getSteps() async {
+  Future<Result<List<TrainingCycleStep>>> getSteps({int? programId}) async {
     try {
-      final rows = await _dao.getAllOrdered();
+      final rows = await _dao.getAllOrdered(programId: programId);
       return Success(rows.map(_rowToDomain).toList());
     } on Exception catch (e) {
       return Failure(DatabaseException('Failed to load cycle steps: $e'));
@@ -21,16 +23,19 @@ class CycleRepositoryImpl implements CycleRepository {
   }
 
   @override
-  Future<Result<void>> setSteps(List<TrainingCycleStep> steps) async {
+  Future<Result<void>> setSteps(
+    List<TrainingCycleStep> steps, {
+    int? programId,
+  }) async {
     try {
       final companions = steps.asMap().entries.map((e) {
-        final s = e.value;
         return CycleStepsCompanion.insert(
+          programId: Value(programId),
           orderIndex: e.key,
-          workoutId: s.workoutId,
+          workoutId: e.value.workoutId,
         );
       }).toList();
-      await _dao.replaceAll(companions);
+      await _dao.replaceAll(companions, programId: programId);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(DatabaseException('Failed to save cycle steps: $e'));
@@ -38,19 +43,23 @@ class CycleRepositoryImpl implements CycleRepository {
   }
 
   @override
-  Future<Result<void>> removeWorkoutFromCycle(int workoutId) async {
+  Future<Result<void>> removeWorkoutFromCycle(
+    int workoutId, {
+    int? programId,
+  }) async {
     try {
-      final steps = await _dao.getAllOrdered();
+      final steps = await _dao.getAllOrdered(programId: programId);
       final filtered =
           steps.where((row) => row.workoutId != workoutId).toList();
       if (filtered.length == steps.length) return const Success(null);
       final companions = filtered.asMap().entries.map((e) {
         return CycleStepsCompanion.insert(
+          programId: Value(programId),
           orderIndex: e.key,
           workoutId: e.value.workoutId,
         );
       }).toList();
-      await _dao.replaceAll(companions);
+      await _dao.replaceAll(companions, programId: programId);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(
@@ -59,20 +68,25 @@ class CycleRepositoryImpl implements CycleRepository {
   }
 
   @override
-  Future<Result<void>> appendWorkoutToCycle(int workoutId) async {
+  Future<Result<void>> appendWorkoutToCycle(
+    int workoutId, {
+    int? programId,
+  }) async {
     try {
-      final steps = await _dao.getAllOrdered();
+      final steps = await _dao.getAllOrdered(programId: programId);
       final companions = steps.asMap().entries.map((e) {
         return CycleStepsCompanion.insert(
+          programId: Value(programId),
           orderIndex: e.key,
           workoutId: e.value.workoutId,
         );
       }).toList();
       companions.add(CycleStepsCompanion.insert(
+        programId: Value(programId),
         orderIndex: steps.length,
         workoutId: workoutId,
       ));
-      await _dao.replaceAll(companions);
+      await _dao.replaceAll(companions, programId: programId);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(
@@ -81,26 +95,31 @@ class CycleRepositoryImpl implements CycleRepository {
   }
 
   @override
-  Future<Result<void>> syncWithActiveWorkoutIds(List<int> activeIds) async {
+  Future<Result<void>> syncWithActiveWorkoutIds(
+    List<int> activeIds, {
+    int? programId,
+  }) async {
     if (activeIds.isEmpty) return const Success(null);
     try {
-      final steps = await _dao.getAllOrdered();
+      final steps = await _dao.getAllOrdered(programId: programId);
       final inCycle = {for (final row in steps) row.workoutId};
       final toAdd = activeIds.where((id) => !inCycle.contains(id)).toList();
       if (toAdd.isEmpty) return const Success(null);
       final companions = steps.asMap().entries.map((e) {
         return CycleStepsCompanion.insert(
+          programId: Value(programId),
           orderIndex: e.key,
           workoutId: e.value.workoutId,
         );
       }).toList();
       for (var i = 0; i < toAdd.length; i++) {
         companions.add(CycleStepsCompanion.insert(
+          programId: Value(programId),
           orderIndex: steps.length + i,
           workoutId: toAdd[i],
         ));
       }
-      await _dao.replaceAll(companions);
+      await _dao.replaceAll(companions, programId: programId);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(

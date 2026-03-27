@@ -196,7 +196,8 @@ class _FakeWorkoutExecutionRepository implements WorkoutExecutionRepository {
   ) =>
       _unsupported();
   @override
-  Future<Result<int>> start(int workoutId) => _unsupported();
+  Future<Result<int>> start(int workoutId, {int? programId}) =>
+      _unsupported();
   @override
   Future<Result<void>> finish(int executionId, {String? notes}) =>
       _unsupported();

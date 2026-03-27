@@ -100,10 +100,13 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
   }
 
   @override
-  Future<Result<int>> start(int workoutId) async {
+  Future<Result<int>> start(int workoutId, {int? programId}) async {
     try {
       final id = await _dao.create(
-        WorkoutExecutionsCompanion.insert(workoutId: workoutId),
+        WorkoutExecutionsCompanion.insert(
+          workoutId: workoutId,
+          programId: Value(programId),
+        ),
       );
       return Success(id);
     } on Exception catch (e) {
@@ -205,6 +208,7 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
       domain.WorkoutExecution(
         id: row.id as int,
         workoutId: row.workoutId as int,
+        programId: row.programId as int?,
         startedAt: row.startedAt as DateTime,
         finishedAt: row.finishedAt as DateTime?,
         notes: row.notes as String?,

@@ -4,17 +4,20 @@ import '../../../../core/database/app_database.dart';
 import '../../domain/repositories/cycle_repository.dart';
 import '../../domain/repositories/equipment_repository.dart';
 import '../../domain/repositories/exercise_repository.dart';
+import '../../domain/repositories/program_repository.dart';
 import '../../domain/repositories/workout_execution_repository.dart';
 import '../../domain/repositories/workout_repository.dart';
 import '../../domain/usecases/complete_set_use_case.dart';
 import '../datasources/daos/cycle_step_dao.dart';
 import '../datasources/daos/equipment_dao.dart';
 import '../datasources/daos/exercise_dao.dart';
+import '../datasources/daos/program_dao.dart';
 import '../datasources/daos/workout_dao.dart';
 import '../datasources/daos/workout_execution_dao.dart';
 import 'cycle_repository_impl.dart';
 import 'equipment_repository_impl.dart';
 import 'exercise_repository_impl.dart';
+import 'program_repository_impl.dart';
 import 'workout_execution_repository_impl.dart';
 import 'workout_repository_impl.dart';
 
@@ -42,6 +45,10 @@ WorkoutExecutionDao workoutExecutionDao(Ref ref) =>
 CycleStepDao cycleStepDao(Ref ref) =>
     CycleStepDao(ref.watch(appDatabaseProvider));
 
+@riverpod
+ProgramDao programDao(Ref ref) =>
+    ProgramDao(ref.watch(appDatabaseProvider));
+
 // --- Repositories ---
 
 @riverpod
@@ -63,6 +70,10 @@ WorkoutExecutionRepository workoutExecutionRepository(Ref ref) =>
 @riverpod
 CycleRepository cycleRepository(Ref ref) =>
     CycleRepositoryImpl(ref.watch(cycleStepDaoProvider));
+
+@riverpod
+ProgramRepository programRepository(Ref ref) =>
+    ProgramRepositoryImpl(ref.watch(programDaoProvider));
 
 // --- Use Cases ---
 

@@ -14,6 +14,7 @@ Future<void> seedDevData(AppDatabase db) async {
   await _seedUserEquipments(db, equipmentIds);
   await _seedWorkoutsWithExercises(db, exerciseIds);
   await _seedExecutionHistory(db, exerciseIds);
+  await _seedProgram(db);
 }
 
 Future<Map<String, int>> _resolveExerciseIds(AppDatabase db) async {
@@ -440,4 +441,39 @@ class _WE {
     this.duration,
     this.groupId,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Training Program (mesocycle)
+// ---------------------------------------------------------------------------
+
+Future<void> _seedProgram(AppDatabase db) async {
+  final activeWorkouts = await db.customSelect(
+    'SELECT id FROM workouts WHERE is_archived = 0 ORDER BY sort_order ASC',
+  ).get();
+
+  // PPL program with first 3 workouts
+  final pplIds = activeWorkouts.take(3).map((r) => r.read<int>('id')).toList();
+  if (pplIds.length < 3) return;
+
+  final programId = await db.into(db.programs).insert(
+    ProgramsCompanion.insert(
+      name: 'PPL Hipertrofia',
+      focus: 'hypertrophy',
+      durationMode: 'sessions',
+      durationValue: 24,
+      defaultRestSeconds: const Value(90),
+      isActive: const Value(true),
+    ),
+  );
+
+  for (var i = 0; i < pplIds.length; i++) {
+    await db.into(db.cycleSteps).insert(
+      CycleStepsCompanion.insert(
+        programId: Value(programId),
+        orderIndex: i,
+        workoutId: pplIds[i],
+      ),
+    );
+  }
 }

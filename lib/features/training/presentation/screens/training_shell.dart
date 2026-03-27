@@ -9,6 +9,8 @@ import '../../../../core/widgets/app_bar_menu.dart';
 import '../../../../l10n/app_localizations.dart';
 import 'equipment_screen.dart';
 import 'cycle_edit_screen.dart';
+import 'program_form_screen.dart';
+import 'program_list_screen.dart';
 import 'training_exercises_screen.dart';
 import 'training_history_screen.dart';
 import 'training_home_screen.dart';
@@ -62,6 +64,21 @@ ShellRoute trainingShellRoute() {
       GoRoute(
         path: RoutePaths.trainingCycleEdit,
         builder: (context, state) => const CycleEditScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.trainingPrograms,
+        builder: (context, state) => const ProgramListScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.trainingProgramNew,
+        builder: (context, state) => const ProgramFormScreen(),
+      ),
+      GoRoute(
+        path: '${RoutePaths.trainingPrograms}/:programId/edit',
+        builder: (context, state) {
+          final programId = int.parse(state.pathParameters['programId']!);
+          return ProgramFormScreen(programId: programId);
+        },
       ),
     ],
   );

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/services/rest_timer_live_activity_service.dart';
 import '../../../../core/services/rest_timer_notification_service.dart';
 import '../../../../core/theme/athlos_custom_colors.dart';
 import '../../../../core/theme/athlos_radius.dart';
@@ -51,7 +50,6 @@ class _WorkoutExecutionScreenState
   bool _isInBackground = false;
 
   final _restTimerNotificationService = RestTimerNotificationService.instance;
-  final _restTimerLiveActivityService = RestTimerLiveActivityService.instance;
 
   int _focusedExerciseIndex = 0;
   int _focusedSetNumber = 1;
@@ -71,7 +69,6 @@ class _WorkoutExecutionScreenState
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _restTimerLiveActivityService.end();
     _restTimerNotificationService.cancelAllForRestTimer();
     super.dispose();
   }
@@ -168,7 +165,6 @@ class _WorkoutExecutionScreenState
   }) async {
     if (!_isInBackground) {
       if ((previous?.isActive ?? false) || next.isActive) {
-        await _restTimerLiveActivityService.end();
         await _restTimerNotificationService.cancelAllForRestTimer();
       }
       return;
@@ -180,7 +176,6 @@ class _WorkoutExecutionScreenState
     final hasJustFinished =
         (previous?.remainingSeconds ?? 0) > 0 && next.remainingSeconds == 0;
     if (hasJustFinished) {
-      await _restTimerLiveActivityService.end();
       if (_restTimerNotificationService.usesScheduledFinishAlert) {
         await _restTimerNotificationService.cancelScheduledRestFinished();
       } else {
@@ -205,18 +200,10 @@ class _WorkoutExecutionScreenState
         final startedOrResumed = !wasRunning || !hasRemaining;
         final wasExtended = next.remainingSeconds > (previousRemaining + 1);
         if (startedOrResumed || wasExtended) {
-          final hasLiveActivity = await _restTimerLiveActivityService
-              .upsertCountdown(
-            remainingSeconds: next.remainingSeconds,
+          await _restTimerNotificationService.showOngoingRest(
             title: l10n.restTimerLabel(next.remainingSeconds),
-            subtitle: l10n.nextSetLabel,
+            body: l10n.nextSetLabel,
           );
-          if (!hasLiveActivity) {
-            await _restTimerNotificationService.showOngoingRest(
-              title: l10n.restTimerLabel(next.remainingSeconds),
-              body: l10n.nextSetLabel,
-            );
-          }
           await _restTimerNotificationService.scheduleRestFinished(
             title: l10n.restTimerDone,
             body: l10n.restComplete,
@@ -230,13 +217,11 @@ class _WorkoutExecutionScreenState
     if (_restTimerNotificationService.usesScheduledFinishAlert &&
         !next.isRunning &&
         next.remainingSeconds > 0) {
-      await _restTimerLiveActivityService.end();
       await _restTimerNotificationService.cancelScheduledRestFinished();
       return;
     }
 
     if (!next.isActive) {
-      await _restTimerLiveActivityService.end();
       await _restTimerNotificationService.cancelAllForRestTimer();
     }
   }

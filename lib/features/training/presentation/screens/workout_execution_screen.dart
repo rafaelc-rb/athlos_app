@@ -59,6 +59,8 @@ class _WorkoutExecutionScreenState
   double _currentDistance = 0;
   int? _selectedRpe;
   bool _isWarmup = false;
+  String? _setNotes;
+  bool _showNotesField = false;
   List<_DropSegmentInput> _dropSegments = [];
 
   @override
@@ -360,6 +362,8 @@ class _WorkoutExecutionScreenState
       }
       _selectedRpe = entry.rpe;
       _isWarmup = entry.isWarmup;
+      _setNotes = entry.notes;
+      _showNotesField = entry.notes != null && entry.notes!.isNotEmpty;
       _dropSegments = entry.segments
           .skip(1)
           .map((s) => _DropSegmentInput(reps: s.reps, weight: s.weight ?? 0))
@@ -811,7 +815,7 @@ class _WorkoutExecutionScreenState
                 ),
               ),
 
-            // Warmup toggle + RPE selector (before complete)
+            // Warmup toggle + notes toggle + RPE selector
             Padding(
               padding:
                   const EdgeInsets.only(bottom: AthlosSpacing.md),
@@ -821,6 +825,37 @@ class _WorkoutExecutionScreenState
                     isSelected: _isWarmup,
                     onTap: () =>
                         setState(() => _isWarmup = !_isWarmup),
+                  ),
+                  const SizedBox(width: AthlosSpacing.xs),
+                  GestureDetector(
+                    onTap: () => setState(
+                        () => _showNotesField = !_showNotesField),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AthlosSpacing.sm,
+                        vertical: AthlosSpacing.xxs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _showNotesField
+                            ? colorScheme.secondaryContainer
+                            : colorScheme.surfaceContainerHighest,
+                        borderRadius: AthlosRadius.fullAll,
+                        border: Border.all(
+                          color: _showNotesField
+                              ? colorScheme.secondary
+                                  .withValues(alpha: 0.5)
+                              : colorScheme.outline
+                                  .withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.note_alt_outlined,
+                        size: 14,
+                        color: _showNotesField
+                            ? colorScheme.onSecondaryContainer
+                            : colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                   ),
                   if (!_isFocusedCardio(exec)) ...[
                     const SizedBox(width: AthlosSpacing.md),
@@ -835,6 +870,27 @@ class _WorkoutExecutionScreenState
                 ],
               ),
             ),
+            if (_showNotesField)
+              Padding(
+                padding:
+                    const EdgeInsets.only(bottom: AthlosSpacing.md),
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: l10n.setNotesHint,
+                    isDense: true,
+                    border: const OutlineInputBorder(),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AthlosSpacing.sm,
+                      vertical: AthlosSpacing.sm,
+                    ),
+                  ),
+                  maxLines: 2,
+                  minLines: 1,
+                  textInputAction: TextInputAction.done,
+                  controller: TextEditingController(text: _setNotes),
+                  onChanged: (v) => _setNotes = v,
+                ),
+              ),
 
             // Complete button
             if (!currentSetEntry.isCompleted)
@@ -1650,6 +1706,7 @@ class _WorkoutExecutionScreenState
                 isCardio ? (_currentDistance > 0 ? _currentDistance : null) : null,
             isWarmup: _isWarmup,
             rpe: _selectedRpe,
+            notes: _setNotes?.trim().isNotEmpty == true ? _setNotes!.trim() : null,
             segments: segments.isEmpty ? null : segments,
           );
     } on Exception catch (_) {
@@ -1705,6 +1762,7 @@ class _WorkoutExecutionScreenState
                 _currentDistance > 0 ? _currentDistance : null,
             isWarmup: _isWarmup,
             rpe: _selectedRpe,
+            notes: _setNotes?.trim().isNotEmpty == true ? _setNotes!.trim() : null,
           );
     } on Exception catch (_) {
       if (mounted) {

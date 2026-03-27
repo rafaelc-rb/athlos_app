@@ -47,6 +47,9 @@ class SetEntry {
   /// Rate of Perceived Exertion (1–10). Null when not recorded.
   final int? rpe;
 
+  /// Per-set user notes (e.g. "shoulder pain", "try wider grip").
+  final String? notes;
+
   final List<SegmentEntry> segments;
 
   const SetEntry({
@@ -61,6 +64,7 @@ class SetEntry {
     this.isCompleted = false,
     this.isWarmup = false,
     this.rpe,
+    this.notes,
     this.segments = const [],
   });
 
@@ -78,6 +82,7 @@ class SetEntry {
     bool? isCompleted,
     bool? isWarmup,
     int? Function()? rpe,
+    String? Function()? notes,
     List<SegmentEntry>? segments,
   }) =>
       SetEntry(
@@ -94,6 +99,7 @@ class SetEntry {
         isCompleted: isCompleted ?? this.isCompleted,
         isWarmup: isWarmup ?? this.isWarmup,
         rpe: rpe != null ? rpe() : this.rpe,
+        notes: notes != null ? notes() : this.notes,
         segments: segments ?? this.segments,
       );
 

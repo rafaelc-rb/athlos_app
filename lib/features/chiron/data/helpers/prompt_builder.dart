@@ -261,6 +261,7 @@ class PromptBuilder {
       if (setsResult.isSuccess) {
         final sets = setsResult.getOrThrow();
         final bestByExercise = <int, String>{};
+        final setNotes = <int, List<String>>{};
         for (final s in sets.where((s) => s.isCompleted && !s.isWarmup)) {
           final base = s.weight != null
               ? '${s.weight}kg×${s.reps ?? 0}'
@@ -270,11 +271,20 @@ class PromptBuilder {
           final label = s.rpe != null ? '$base @RPE${s.rpe}' : base;
           final prev = bestByExercise[s.exerciseId];
           if (prev == null) bestByExercise[s.exerciseId] = label;
+          if (s.notes != null && s.notes!.isNotEmpty) {
+            setNotes
+                .putIfAbsent(s.exerciseId, () => [])
+                .add(s.notes!);
+          }
         }
         final summary = bestByExercise.entries
             .map((e) {
               final exName = exerciseMap[e.key] ?? '#${e.key}';
-              return '$exName ${e.value}';
+              final notes = setNotes[e.key];
+              final noteSuffix = notes != null && notes.isNotEmpty
+                  ? ' (${notes.join('; ')})'
+                  : '';
+              return '$exName ${e.value}$noteSuffix';
             })
             .join(', ');
         lines.add('- $dateFmt $wName ($duration) [$summary]');

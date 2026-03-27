@@ -157,6 +157,7 @@ class ActiveExecution extends _$ActiveExecution {
     double? distance,
     bool isWarmup = false,
     int? rpe,
+    String? notes,
     List<SegmentEntry>? segments,
   }) async {
     final current = state;
@@ -182,6 +183,7 @@ class ActiveExecution extends _$ActiveExecution {
       isCompleted: true,
       isWarmup: isWarmup,
       rpe: rpe,
+      notes: notes,
     );
 
     final domainSegments = effectiveSegments
@@ -212,6 +214,7 @@ class ActiveExecution extends _$ActiveExecution {
             isCompleted: true,
             isWarmup: isWarmup,
             rpe: () => rpe,
+            notes: () => notes,
             segments: effectiveSegments,
           )
         else

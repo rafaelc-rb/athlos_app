@@ -681,6 +681,30 @@ class _SetRow extends StatelessWidget {
               ),
             );
           }),
+
+        if (setEntry.notes != null && setEntry.notes!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(
+              left: AthlosSpacing.lg + AthlosSpacing.sm,
+              bottom: AthlosSpacing.xs,
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.note_alt_outlined,
+                    size: 12, color: colorScheme.onSurfaceVariant),
+                const SizedBox(width: AthlosSpacing.xs),
+                Flexible(
+                  child: Text(
+                    setEntry.notes!,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }

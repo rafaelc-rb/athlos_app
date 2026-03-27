@@ -1330,6 +1330,8 @@
   "@rpeLabel": { "description": "Label for Rate of Perceived Exertion selector" },
   "warmupLabel": "Warmup",
   "@warmupLabel": { "description": "Label for warmup set toggle" },
+  "setNotesHint": "Notas do set (ex: dor no ombro, grip mais largo...)",
+  "@setNotesHint": { "description": "Hint text for per-set notes input during execution" },
   "restSecondsLabel": "Desc.",
   "@restSecondsLabel": { "description": "Short label for rest seconds" },
   "removeExercise": "Remover exercício",

@@ -261,7 +261,7 @@ class PromptBuilder {
       if (setsResult.isSuccess) {
         final sets = setsResult.getOrThrow();
         final bestByExercise = <int, String>{};
-        for (final s in sets.where((s) => s.isCompleted)) {
+        for (final s in sets.where((s) => s.isCompleted && !s.isWarmup)) {
           final base = s.weight != null
               ? '${s.weight}kg×${s.reps ?? 0}'
               : s.duration != null

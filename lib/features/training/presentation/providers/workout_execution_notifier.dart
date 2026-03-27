@@ -59,6 +59,7 @@ Future<List<ExecutionSet>> executionSetsWithSegments(
             reps: s.reps,
             weight: s.weight,
             isCompleted: s.isCompleted,
+            isWarmup: s.isWarmup,
             rpe: s.rpe,
             notes: s.notes,
             segments: segments,

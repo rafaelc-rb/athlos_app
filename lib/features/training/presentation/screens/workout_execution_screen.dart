@@ -58,6 +58,7 @@ class _WorkoutExecutionScreenState
   int _currentDuration = 0;
   double _currentDistance = 0;
   int? _selectedRpe;
+  bool _isWarmup = false;
   List<_DropSegmentInput> _dropSegments = [];
 
   @override
@@ -358,6 +359,7 @@ class _WorkoutExecutionScreenState
             : entry.reps ?? 0;
       }
       _selectedRpe = entry.rpe;
+      _isWarmup = entry.isWarmup;
       _dropSegments = entry.segments
           .skip(1)
           .map((s) => _DropSegmentInput(reps: s.reps, weight: s.weight ?? 0))
@@ -809,17 +811,30 @@ class _WorkoutExecutionScreenState
                 ),
               ),
 
-            // RPE selector (strength only, before complete)
-            if (!_isFocusedCardio(exec))
-              Padding(
-                padding:
-                    const EdgeInsets.only(bottom: AthlosSpacing.md),
-                child: _RpeSelector(
-                  value: _selectedRpe,
-                  onChanged: (v) =>
-                      setState(() => _selectedRpe = v),
-                ),
+            // Warmup toggle + RPE selector (before complete)
+            Padding(
+              padding:
+                  const EdgeInsets.only(bottom: AthlosSpacing.md),
+              child: Row(
+                children: [
+                  _WarmupChip(
+                    isSelected: _isWarmup,
+                    onTap: () =>
+                        setState(() => _isWarmup = !_isWarmup),
+                  ),
+                  if (!_isFocusedCardio(exec)) ...[
+                    const SizedBox(width: AthlosSpacing.md),
+                    Expanded(
+                      child: _RpeSelector(
+                        value: _selectedRpe,
+                        onChanged: (v) =>
+                            setState(() => _selectedRpe = v),
+                      ),
+                    ),
+                  ],
+                ],
               ),
+            ),
 
             // Complete button
             if (!currentSetEntry.isCompleted)
@@ -1088,7 +1103,7 @@ class _WorkoutExecutionScreenState
     final exercise = exec.exercises[_focusedExerciseIndex];
     final sets = exec.exerciseSets[exercise.exerciseId] ?? [];
     final completedReps = sets
-        .where((s) => s.isCompleted && s.reps != null)
+        .where((s) => s.isCompleted && !s.isWarmup && s.reps != null)
         .map((s) => s.reps!)
         .toList();
 
@@ -1633,6 +1648,7 @@ class _WorkoutExecutionScreenState
             duration: isCardio ? _currentDuration : null,
             distance:
                 isCardio ? (_currentDistance > 0 ? _currentDistance : null) : null,
+            isWarmup: _isWarmup,
             rpe: _selectedRpe,
             segments: segments.isEmpty ? null : segments,
           );
@@ -1687,6 +1703,7 @@ class _WorkoutExecutionScreenState
             duration: _currentDuration > 0 ? _currentDuration : null,
             distance:
                 _currentDistance > 0 ? _currentDistance : null,
+            isWarmup: _isWarmup,
             rpe: _selectedRpe,
           );
     } on Exception catch (_) {
@@ -2340,6 +2357,64 @@ class _DropSegmentRowState extends State<_DropSegmentRow> {
             visualDensity: VisualDensity.compact,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _WarmupChip extends StatelessWidget {
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _WarmupChip({required this.isSelected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final l10n = AppLocalizations.of(context)!;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AthlosSpacing.sm,
+          vertical: AthlosSpacing.xxs,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? cs.secondaryContainer
+              : cs.surfaceContainerHighest,
+          borderRadius: AthlosRadius.fullAll,
+          border: Border.all(
+            color: isSelected
+                ? cs.secondary.withValues(alpha: 0.5)
+                : cs.outline.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.fitness_center,
+              size: 12,
+              color: isSelected
+                  ? cs.onSecondaryContainer
+                  : cs.onSurfaceVariant,
+            ),
+            const SizedBox(width: AthlosSpacing.xs),
+            Text(
+              l10n.warmupLabel,
+              style: textTheme.labelSmall?.copyWith(
+                color: isSelected
+                    ? cs.onSecondaryContainer
+                    : cs.onSurfaceVariant,
+                fontWeight: isSelected ? FontWeight.w600 : null,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

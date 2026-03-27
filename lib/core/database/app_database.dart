@@ -90,7 +90,7 @@ class AppDatabase extends _$AppDatabase {
   bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed && _enableDevSeed;
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -101,7 +101,7 @@ class AppDatabase extends _$AppDatabase {
       if (_shouldSeedDevData) await seedDevData(this);
     },
     onUpgrade: (m, from, to) async {
-      if (_shouldSeedDevData && from >= 3 && from <= 16) {
+      if (_shouldSeedDevData && from >= 3 && from <= 17) {
         for (final table in allTables) {
           await m.deleteTable(table.actualTableName);
         }
@@ -333,6 +333,13 @@ class AppDatabase extends _$AppDatabase {
         // Phase 6a: RPE — optional perceived exertion per set.
         await customStatement(
           'ALTER TABLE execution_sets ADD COLUMN rpe INTEGER',
+        );
+      }
+
+      if (from < 17) {
+        // Phase 7: warmup sets — excluded from volume and progression.
+        await customStatement(
+          'ALTER TABLE execution_sets ADD COLUMN is_warmup INTEGER NOT NULL DEFAULT 0',
         );
       }
     },

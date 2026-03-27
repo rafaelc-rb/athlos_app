@@ -155,6 +155,7 @@ class ActiveExecution extends _$ActiveExecution {
     double? weight,
     int? duration,
     double? distance,
+    bool isWarmup = false,
     int? rpe,
     List<SegmentEntry>? segments,
   }) async {
@@ -179,6 +180,7 @@ class ActiveExecution extends _$ActiveExecution {
       duration: duration,
       distance: distance,
       isCompleted: true,
+      isWarmup: isWarmup,
       rpe: rpe,
     );
 
@@ -208,6 +210,7 @@ class ActiveExecution extends _$ActiveExecution {
             duration: duration != null ? () => duration : null,
             distance: distance != null ? () => distance : null,
             isCompleted: true,
+            isWarmup: isWarmup,
             rpe: () => rpe,
             segments: effectiveSegments,
           )

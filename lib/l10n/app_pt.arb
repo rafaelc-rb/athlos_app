@@ -1328,6 +1328,8 @@
   "@amrapLabel": { "description": "Label for AMRAP (As Many Reps As Possible) toggle" },
   "rpeLabel": "RPE",
   "@rpeLabel": { "description": "Label for Rate of Perceived Exertion selector" },
+  "warmupLabel": "Warmup",
+  "@warmupLabel": { "description": "Label for warmup set toggle" },
   "restSecondsLabel": "Desc.",
   "@restSecondsLabel": { "description": "Short label for rest seconds" },
   "removeExercise": "Remover exercício",

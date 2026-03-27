@@ -42,6 +42,7 @@ class SetEntry {
   final double? distance;
 
   final bool isCompleted;
+  final bool isWarmup;
 
   /// Rate of Perceived Exertion (1–10). Null when not recorded.
   final int? rpe;
@@ -58,6 +59,7 @@ class SetEntry {
     this.duration,
     this.distance,
     this.isCompleted = false,
+    this.isWarmup = false,
     this.rpe,
     this.segments = const [],
   });
@@ -74,6 +76,7 @@ class SetEntry {
     int? Function()? duration,
     double? Function()? distance,
     bool? isCompleted,
+    bool? isWarmup,
     int? Function()? rpe,
     List<SegmentEntry>? segments,
   }) =>
@@ -89,6 +92,7 @@ class SetEntry {
         duration: duration != null ? duration() : this.duration,
         distance: distance != null ? distance() : this.distance,
         isCompleted: isCompleted ?? this.isCompleted,
+        isWarmup: isWarmup ?? this.isWarmup,
         rpe: rpe != null ? rpe() : this.rpe,
         segments: segments ?? this.segments,
       );
@@ -107,11 +111,12 @@ class SetEntry {
           duration == other.duration &&
           distance == other.distance &&
           isCompleted == other.isCompleted &&
+          isWarmup == other.isWarmup &&
           rpe == other.rpe;
 
   @override
   int get hashCode => Object.hash(id, setNumber, plannedReps, plannedWeight,
-      reps, weight, duration, distance, isCompleted, rpe);
+      reps, weight, duration, distance, isCompleted, isWarmup, rpe);
 }
 
 /// Holds the full state of an active workout execution in progress.

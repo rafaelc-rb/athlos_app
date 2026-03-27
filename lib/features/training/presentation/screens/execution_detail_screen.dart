@@ -148,12 +148,14 @@ class _ExecutionDetailBody extends StatelessWidget {
     for (final s in sets) {
       if (s.isCompleted) {
         totalCompletedSets++;
-        if (s.segments.isNotEmpty) {
-          for (final seg in s.segments) {
-            totalVolume += seg.reps * (seg.weight ?? 0);
+        if (!s.isWarmup) {
+          if (s.segments.isNotEmpty) {
+            for (final seg in s.segments) {
+              totalVolume += seg.reps * (seg.weight ?? 0);
+            }
+          } else {
+            totalVolume += (s.reps ?? 0) * (s.weight ?? 0);
           }
-        } else {
-          totalVolume += (s.reps ?? 0) * (s.weight ?? 0);
         }
       }
     }
@@ -441,15 +443,16 @@ class _ExerciseBreakdown extends StatelessWidget {
   Widget? _feedbackChip(BuildContext context) {
     if (_isCardio) return null;
 
-    final completed = sets.where((s) => s.isCompleted).toList();
-    if (completed.isEmpty) return null;
+    final workingSets =
+        sets.where((s) => s.isCompleted && !s.isWarmup).toList();
+    if (workingSets.isEmpty) return null;
 
-    final plannedReps = completed.first.plannedReps ?? 0;
+    final plannedReps = workingSets.first.plannedReps ?? 0;
     final feedback = loadFeedback(
       cs: colorScheme,
       custom: Theme.of(context).extension<AthlosCustomColors>()!,
       l10n: l10n,
-      completedReps: completed.map((s) => s.reps!).toList(),
+      completedReps: workingSets.map((s) => s.reps!).toList(),
       minReps: plannedReps,
       maxReps: plannedReps,
       isAmrap: false,
@@ -553,19 +556,39 @@ class _SetRow extends StatelessWidget {
         ? '${setEntry.weight!.toStringAsFixed(setEntry.weight! % 1 == 0 ? 0 : 1)}${l10n.weightUnit}'
         : '-';
 
+    final opacity = setEntry.isWarmup ? 0.5 : 1.0;
+
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: AthlosSpacing.xs),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 40,
-                child: Text(
-                  '${setEntry.setNumber}',
-                  style: textTheme.bodyMedium,
+        Opacity(
+          opacity: opacity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AthlosSpacing.xs),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 40,
+                  child: Row(
+                    children: [
+                      Text(
+                        '${setEntry.setNumber}',
+                        style: textTheme.bodyMedium,
+                      ),
+                      if (setEntry.isWarmup)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                              left: AthlosSpacing.xxs),
+                          child: Text(
+                            'W',
+                            style: textTheme.labelSmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
               Expanded(
                 child: RichText(
                   text: TextSpan(
@@ -615,6 +638,7 @@ class _SetRow extends StatelessWidget {
               ),
             ],
           ),
+        ),
         ),
 
         // Drop set segments

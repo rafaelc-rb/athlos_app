@@ -27,6 +27,9 @@ class ExecutionSet {
 
   final bool isCompleted;
 
+  /// Whether this is a warmup set (excluded from volume, load feedback, PRs).
+  final bool isWarmup;
+
   /// Rate of Perceived Exertion (1–10). Null when not recorded.
   final int? rpe;
 
@@ -48,6 +51,7 @@ class ExecutionSet {
     this.duration,
     this.distance,
     this.isCompleted = false,
+    this.isWarmup = false,
     this.rpe,
     this.notes,
     this.segments = const [],

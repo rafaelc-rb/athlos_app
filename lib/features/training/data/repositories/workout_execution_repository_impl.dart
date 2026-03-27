@@ -92,7 +92,7 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
     final sets = setsResult.getOrThrow();
     var volume = 0.0;
     for (final s in sets) {
-      if (s.isCompleted && s.weight != null && s.reps != null) {
+      if (s.isCompleted && !s.isWarmup && s.weight != null && s.reps != null) {
         volume += s.weight! * s.reps!;
       }
     }
@@ -156,6 +156,7 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
           duration: Value(set.duration),
           distance: Value(set.distance),
           isCompleted: Value(set.isCompleted),
+          isWarmup: Value(set.isWarmup),
           rpe: Value(set.rpe),
           notes: Value(set.notes),
         ),
@@ -177,6 +178,7 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
           duration: Value(set.duration),
           distance: Value(set.distance),
           isCompleted: Value(set.isCompleted),
+          isWarmup: Value(set.isWarmup),
           rpe: Value(set.rpe),
           notes: Value(set.notes),
         ),
@@ -220,6 +222,7 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
         duration: row.duration as int?,
         distance: row.distance as double?,
         isCompleted: row.isCompleted as bool,
+        isWarmup: row.isWarmup as bool,
         rpe: row.rpe as int?,
         notes: row.notes as String?,
       );

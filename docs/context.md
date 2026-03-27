@@ -153,6 +153,10 @@ Chiron speaks as the mythological character himself: wise, direct, encouraging, 
 
 ## Future Ideas
 
+- **PWA (Progressive Web App)** — deploy the app as a web application so iOS users (and anyone without the Play Store) can use it via browser (add to home screen). Flutter Web builds are separate from mobile and don't affect Android/iOS builds.
+  - **Adaptations needed:** configure Drift with `WasmDatabase` for web (SQLite via sql.js), adapt file-based backup to download/upload, accept that local notifications and background timer don't work on iOS Safari.
+  - **Hosting:** free via Vercel (`.vercel.app`) or Netlify (`.netlify.app`).
+  - **Gemini API key protection:** for public distribution, a proxy is required to keep the key server-side. Use a Supabase Edge Function (already in the project stack) as a lightweight proxy: `Browser → Edge Function (API key in env var) → Gemini API`. Add rate limiting per IP/session to prevent abuse. Zero additional cost within Supabase free tier (500K invocations/month).
 - **Health app integrations** — Apple Health, Google Fit, etc. for importing activity data and body metrics.
 - **Kleos (κλέος)** — gamification system named after the Greek concept of eternal glory and renown that heroes pursued. Achievements, streaks, challenges, and progression rewards to keep users motivated on their journey.
 - **Assessments** — physical evaluations, body measurements, bioimpedance records, and progress photos to enrich AI context and track body changes over time.

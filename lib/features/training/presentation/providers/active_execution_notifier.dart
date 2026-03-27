@@ -155,6 +155,7 @@ class ActiveExecution extends _$ActiveExecution {
     double? weight,
     int? duration,
     double? distance,
+    int? rpe,
     List<SegmentEntry>? segments,
   }) async {
     final current = state;
@@ -178,6 +179,7 @@ class ActiveExecution extends _$ActiveExecution {
       duration: duration,
       distance: distance,
       isCompleted: true,
+      rpe: rpe,
     );
 
     final domainSegments = effectiveSegments
@@ -206,6 +208,7 @@ class ActiveExecution extends _$ActiveExecution {
             duration: duration != null ? () => duration : null,
             distance: distance != null ? () => distance : null,
             isCompleted: true,
+            rpe: () => rpe,
             segments: effectiveSegments,
           )
         else

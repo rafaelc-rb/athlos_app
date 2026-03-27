@@ -27,6 +27,9 @@ class ExecutionSet {
 
   final bool isCompleted;
 
+  /// Rate of Perceived Exertion (1–10). Null when not recorded.
+  final int? rpe;
+
   /// Per-set user notes.
   final String? notes;
 
@@ -45,6 +48,7 @@ class ExecutionSet {
     this.duration,
     this.distance,
     this.isCompleted = false,
+    this.rpe,
     this.notes,
     this.segments = const [],
   });

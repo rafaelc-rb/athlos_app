@@ -57,6 +57,7 @@ class _WorkoutExecutionScreenState
   int _currentReps = 0;
   int _currentDuration = 0;
   double _currentDistance = 0;
+  int? _selectedRpe;
   List<_DropSegmentInput> _dropSegments = [];
 
   @override
@@ -356,6 +357,7 @@ class _WorkoutExecutionScreenState
             ? prevCompleted.last.reps ?? entry.reps ?? 0
             : entry.reps ?? 0;
       }
+      _selectedRpe = entry.rpe;
       _dropSegments = entry.segments
           .skip(1)
           .map((s) => _DropSegmentInput(reps: s.reps, weight: s.weight ?? 0))
@@ -804,6 +806,18 @@ class _WorkoutExecutionScreenState
                   style: textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
+                ),
+              ),
+
+            // RPE selector (strength only, before complete)
+            if (!_isFocusedCardio(exec))
+              Padding(
+                padding:
+                    const EdgeInsets.only(bottom: AthlosSpacing.md),
+                child: _RpeSelector(
+                  value: _selectedRpe,
+                  onChanged: (v) =>
+                      setState(() => _selectedRpe = v),
                 ),
               ),
 
@@ -1619,6 +1633,7 @@ class _WorkoutExecutionScreenState
             duration: isCardio ? _currentDuration : null,
             distance:
                 isCardio ? (_currentDistance > 0 ? _currentDistance : null) : null,
+            rpe: _selectedRpe,
             segments: segments.isEmpty ? null : segments,
           );
     } on Exception catch (_) {
@@ -1672,6 +1687,7 @@ class _WorkoutExecutionScreenState
             duration: _currentDuration > 0 ? _currentDuration : null,
             distance:
                 _currentDistance > 0 ? _currentDistance : null,
+            rpe: _selectedRpe,
           );
     } on Exception catch (_) {
       if (mounted) {
@@ -2324,6 +2340,102 @@ class _DropSegmentRowState extends State<_DropSegmentRow> {
             visualDensity: VisualDensity.compact,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Compact horizontal RPE selector (6–10 chips). Tap to select, tap again
+/// to deselect. Null = not recorded.
+class _RpeSelector extends StatelessWidget {
+  final int? value;
+  final ValueChanged<int?> onChanged;
+
+  const _RpeSelector({required this.value, required this.onChanged});
+
+  static const _values = [6, 7, 8, 9, 10];
+
+  Color _chipColor(int rpe, ColorScheme cs, AthlosCustomColors custom) {
+    if (rpe >= 10) return cs.error;
+    if (rpe >= 9) return custom.warning;
+    return cs.primary;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final custom = Theme.of(context).extension<AthlosCustomColors>()!;
+    final textTheme = Theme.of(context).textTheme;
+    final l10n = AppLocalizations.of(context)!;
+
+    return Row(
+      children: [
+        Text(
+          l10n.rpeLabel,
+          style: textTheme.labelSmall?.copyWith(
+            color: cs.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(width: AthlosSpacing.sm),
+        for (final rpe in _values) ...[
+          _RpeChip(
+            label: '$rpe',
+            isSelected: value == rpe,
+            color: _chipColor(rpe, cs, custom),
+            colorScheme: cs,
+            onTap: () => onChanged(value == rpe ? null : rpe),
+          ),
+          if (rpe != _values.last)
+            const SizedBox(width: AthlosSpacing.xs),
+        ],
+      ],
+    );
+  }
+}
+
+class _RpeChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final Color color;
+  final ColorScheme colorScheme;
+  final VoidCallback onTap;
+
+  const _RpeChip({
+    required this.label,
+    required this.isSelected,
+    required this.color,
+    required this.colorScheme,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AthlosSpacing.sm,
+          vertical: AthlosSpacing.xxs,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? color.withValues(alpha: 0.15)
+              : colorScheme.surfaceContainerHighest,
+          borderRadius: AthlosRadius.fullAll,
+          border: Border.all(
+            color: isSelected
+                ? color.withValues(alpha: 0.6)
+                : colorScheme.outline.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: isSelected ? color : colorScheme.onSurfaceVariant,
+                fontWeight: isSelected ? FontWeight.w700 : null,
+              ),
+        ),
       ),
     );
   }

@@ -583,6 +583,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
               'duration': row['duration'],
               'distance': row['distance'],
               'is_completed': row['is_completed'],
+              'rpe': row['rpe'],
               'notes': row['notes'],
             },
             excludeKeys: const {'id'},

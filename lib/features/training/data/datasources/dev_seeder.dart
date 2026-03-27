@@ -198,10 +198,13 @@ Future<void> _seedExecutionHistory(
         ),
       );
   await _insertCompletedSets(db, exec1, exerciseIds['flatBarbellBenchPress']!,
-      planned: 8, weights: [80, 80, 82.5, 82.5], reps: [8, 8, 7, 6]);
+      planned: 8,
+      weights: [80, 80, 82.5, 82.5],
+      reps: [8, 8, 7, 6],
+      rpes: [7, 8, 9, 10]);
   await _insertCompletedSets(
       db, exec1, exerciseIds['inclineBarbellBenchPress']!,
-      planned: 10, weights: [50, 50, 50], reps: [10, 10, 9]);
+      planned: 10, weights: [50, 50, 50], reps: [10, 10, 9], rpes: [7, 8, 9]);
   await _insertCompletedSets(db, exec1, exerciseIds['dumbbellFly']!,
       planned: 12, weights: [14, 14, 14], reps: [12, 12, 11]);
   await _insertCompletedSets(db, exec1, exerciseIds['overheadPress']!,
@@ -304,6 +307,7 @@ Future<void> _insertCompletedSets(
   required int planned,
   required List<double?> weights,
   required List<int> reps,
+  List<int?>? rpes,
 }) async {
   assert(weights.length == reps.length);
   for (var i = 0; i < weights.length; i++) {
@@ -317,6 +321,7 @@ Future<void> _insertCompletedSets(
             plannedWeight: Value(weights[i]),
             weight: Value(weights[i]),
             isCompleted: const Value(true),
+            rpe: Value(rpes != null && i < rpes.length ? rpes[i] : null),
           ),
         );
   }

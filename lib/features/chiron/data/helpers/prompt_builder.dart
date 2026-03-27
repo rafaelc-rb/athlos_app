@@ -262,11 +262,12 @@ class PromptBuilder {
         final sets = setsResult.getOrThrow();
         final bestByExercise = <int, String>{};
         for (final s in sets.where((s) => s.isCompleted)) {
-          final label = s.weight != null
+          final base = s.weight != null
               ? '${s.weight}kg×${s.reps ?? 0}'
               : s.duration != null
                   ? '${s.duration}s'
                   : '${s.reps ?? 0}r';
+          final label = s.rpe != null ? '$base @RPE${s.rpe}' : base;
           final prev = bestByExercise[s.exerciseId];
           if (prev == null) bestByExercise[s.exerciseId] = label;
         }

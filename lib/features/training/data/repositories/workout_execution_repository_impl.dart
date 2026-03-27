@@ -156,6 +156,7 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
           duration: Value(set.duration),
           distance: Value(set.distance),
           isCompleted: Value(set.isCompleted),
+          rpe: Value(set.rpe),
           notes: Value(set.notes),
         ),
       );
@@ -176,6 +177,7 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
           duration: Value(set.duration),
           distance: Value(set.distance),
           isCompleted: Value(set.isCompleted),
+          rpe: Value(set.rpe),
           notes: Value(set.notes),
         ),
       );
@@ -218,6 +220,7 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
         duration: row.duration as int?,
         distance: row.distance as double?,
         isCompleted: row.isCompleted as bool,
+        rpe: row.rpe as int?,
         notes: row.notes as String?,
       );
 

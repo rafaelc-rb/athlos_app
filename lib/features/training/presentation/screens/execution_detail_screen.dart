@@ -591,6 +591,16 @@ class _SetRow extends StatelessWidget {
                 width: 60,
                 child: Text(weightStr, style: textTheme.bodyMedium),
               ),
+              if (setEntry.rpe != null)
+                Padding(
+                  padding: const EdgeInsets.only(right: AthlosSpacing.xs),
+                  child: Text(
+                    'RPE ${setEntry.rpe}',
+                    style: textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
               SizedBox(
                 width: 24,
                 child: Icon(

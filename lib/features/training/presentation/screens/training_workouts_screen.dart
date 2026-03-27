@@ -112,7 +112,6 @@ class TrainingWorkoutsScreen extends ConsumerWidget {
             ? l10n.chironCreateWorkoutShortcut
             : l10n.chironAnalyzeWorkoutsShortcut,
         createManualLabel: l10n.trainingWorkoutActionCreateManual,
-        addRestLabel: l10n.trainingAddRestToCycleAction,
         onChiron: () => showChironSheet(
           context,
           initialMessage: workoutCount == 0
@@ -120,53 +119,23 @@ class TrainingWorkoutsScreen extends ConsumerWidget {
               : l10n.chironAnalyzeWorkoutsMessage,
         ),
         onCreateManual: () => context.push(RoutePaths.trainingWorkoutNew),
-        onAddRest: () => _addRestToCycle(context, ref),
       ),
     );
   }
-
-  Future<void> _addRestToCycle(BuildContext context, WidgetRef ref) async {
-    try {
-      final cycleRepo = ref.read(cycleRepositoryProvider);
-      final result = await cycleRepo.appendRestToCycle();
-      result.getOrThrow();
-      ref.invalidate(cycleStepsProvider);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.trainingCycleAddRest),
-          ),
-        );
-      }
-    } on Exception catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.genericError),
-          ),
-        );
-      }
-    }
-  }
-
 }
 
-/// Expandable FAB (speed dial): Quíron, Criar treino manual, Adicionar descanso.
+/// Expandable FAB (speed dial): Quíron, Criar treino manual.
 class _ExpandableWorkoutFab extends StatefulWidget {
   final String chironLabel;
   final String createManualLabel;
-  final String addRestLabel;
   final VoidCallback onChiron;
   final VoidCallback onCreateManual;
-  final VoidCallback onAddRest;
 
   const _ExpandableWorkoutFab({
     required this.chironLabel,
     required this.createManualLabel,
-    required this.addRestLabel,
     required this.onChiron,
     required this.onCreateManual,
-    required this.onAddRest,
   });
 
   @override
@@ -191,7 +160,6 @@ class _ExpandableWorkoutFabState extends State<_ExpandableWorkoutFab> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        // Expanded actions (top to bottom: Criar, Configurar ciclo, Iniciar próximo)
         AnimatedSize(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
@@ -213,12 +181,6 @@ class _ExpandableWorkoutFabState extends State<_ExpandableWorkoutFab> {
                         icon: Icons.edit_note,
                         label: widget.createManualLabel,
                         onPressed: () => _onAction(widget.onCreateManual),
-                      ),
-                      const SizedBox(height: AthlosSpacing.sm),
-                      _ActionChip(
-                        icon: Icons.hotel,
-                        label: widget.addRestLabel,
-                        onPressed: () => _onAction(widget.onAddRest),
                       ),
                     ],
                   ),
@@ -294,7 +256,7 @@ class _ActionChip extends StatelessWidget {
 }
 
 class _CycleListBody extends ConsumerStatefulWidget {
-  final List<CycleListItem> items;
+  final List<CycleListWorkoutItem> items;
   final bool isFromCycle;
   final int? nextStepIndex;
   final int? nextWorkoutId;
@@ -313,7 +275,7 @@ class _CycleListBody extends ConsumerStatefulWidget {
 }
 
 class _CycleListBodyState extends ConsumerState<_CycleListBody> {
-  late List<CycleListItem> _items;
+  late List<CycleListWorkoutItem> _items;
   bool _isArchivedExpanded = false;
 
   @override
@@ -342,28 +304,19 @@ class _CycleListBodyState extends ConsumerState<_CycleListBody> {
           onReorder: _onReorder,
           itemBuilder: (context, index) {
             final item = _items[index];
-            return switch (item) {
-              CycleListRestItem() => _RestTile(
-                  key: ValueKey('rest_$index'),
-                  index: index,
-                  isNext: index == widget.nextStepIndex,
-                  canReorder: widget.isFromCycle,
-                  label: l10n.trainingCycleRestLabel,
-                ),
-              CycleListWorkoutItem(:final workout) => _WorkoutCard(
-                  key: ValueKey(workout.id),
-                  index: index,
-                  workout: workout,
-                  isNext: workout.id == widget.nextWorkoutId,
-                  onTap: () => context.push(
-                    '${RoutePaths.trainingWorkouts}/${workout.id}',
-                  ),
-                  onStart: () => _startWorkout(context, workout.id),
-                  onArchive: () => _archiveWorkout(context, workout.id),
-                  onDuplicate: () => _duplicateWorkout(context, workout.id),
-                  onDelete: () => _confirmDelete(context, workout),
-                ),
-            };
+            return _WorkoutCard(
+              key: ValueKey(item.workout.id),
+              index: index,
+              workout: item.workout,
+              isNext: item.workout.id == widget.nextWorkoutId,
+              onTap: () => context.push(
+                '${RoutePaths.trainingWorkouts}/${item.workout.id}',
+              ),
+              onStart: () => _startWorkout(context, item.workout.id),
+              onArchive: () => _archiveWorkout(context, item.workout.id),
+              onDuplicate: () => _duplicateWorkout(context, item.workout.id),
+              onDelete: () => _confirmDelete(context, item.workout),
+            );
           },
         ),
 
@@ -406,26 +359,14 @@ class _CycleListBodyState extends ConsumerState<_CycleListBody> {
     });
 
     if (widget.isFromCycle) {
-      final steps = <TrainingCycleStep>[];
-      for (var i = 0; i < _items.length; i++) {
-        final it = _items[i];
-        switch (it) {
-          case CycleListRestItem():
-            steps.add(TrainingCycleStep(
-              id: 0,
-              orderIndex: i,
-              type: CycleStepType.rest,
-              workoutId: null,
-            ));
-          case CycleListWorkoutItem(:final workout):
-            steps.add(TrainingCycleStep(
-              id: 0,
-              orderIndex: i,
-              type: CycleStepType.workout,
-              workoutId: workout.id,
-            ));
-        }
-      }
+      final steps = <TrainingCycleStep>[
+        for (var i = 0; i < _items.length; i++)
+          TrainingCycleStep(
+            id: 0,
+            orderIndex: i,
+            workoutId: _items[i].workout.id,
+          ),
+      ];
       try {
         final result = await ref
             .read(cycleRepositoryProvider)
@@ -440,10 +381,7 @@ class _CycleListBodyState extends ConsumerState<_CycleListBody> {
         }
       }
     } else {
-      final orderedIds = <int>[
-        for (final it in _items)
-          if (it is CycleListWorkoutItem) it.workout.id,
-      ];
+      final orderedIds = [for (final it in _items) it.workout.id];
       try {
         await ref.read(workoutListProvider.notifier).reorderWorkouts(orderedIds);
       } on Exception catch (_) {
@@ -559,91 +497,6 @@ class _CycleListBodyState extends ConsumerState<_CycleListBody> {
             child: Text(l10n.delete),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _RestTile extends StatelessWidget {
-  final int index;
-  final bool isNext;
-  final bool canReorder;
-  final String label;
-
-  const _RestTile({
-    super.key,
-    required this.index,
-    required this.isNext,
-    required this.canReorder,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    final l10n = AppLocalizations.of(context)!;
-
-    return Card(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AthlosSpacing.sm,
-        vertical: AthlosSpacing.xs,
-      ),
-      shape: isNext
-          ? RoundedRectangleBorder(
-              borderRadius: AthlosRadius.mdAll,
-              side: BorderSide(color: colorScheme.primary, width: 2),
-            )
-          : null,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AthlosSpacing.md,
-          vertical: AthlosSpacing.sm,
-        ),
-        child: Row(
-          children: [
-            if (canReorder)
-              ReorderableDragStartListener(
-                index: index,
-                child: Icon(
-                  Icons.drag_handle,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-            if (canReorder) const SizedBox(width: AthlosSpacing.sm),
-            Icon(
-              Icons.hotel,
-              size: 24,
-              color: colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: AthlosSpacing.sm),
-            Expanded(
-              child: Text(
-                label,
-                style: textTheme.titleMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-            if (isNext)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AthlosSpacing.sm,
-                  vertical: AthlosSpacing.xxs,
-                ),
-                decoration: BoxDecoration(
-                  color: colorScheme.primaryContainer,
-                  borderRadius: AthlosRadius.mdAll,
-                ),
-                child: Text(
-                  l10n.nextWorkoutBadge,
-                  style: textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onPrimaryContainer,
-                  ),
-                ),
-              ),
-          ],
-        ),
       ),
     );
   }

@@ -615,21 +615,22 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         }
 
         final cycleStepRows = payload.tables[_tableCycleSteps] ?? const [];
+        var cycleOrderIndex = 0;
         for (final row in cycleStepRows) {
+          // Skip legacy rest steps from older backups.
+          if (row['step_type'] == 'rest') continue;
           final oldWorkoutId = _asInt(row['workout_id']);
           final newWorkoutId = oldWorkoutId != null
               ? workoutIdMap[oldWorkoutId]
               : null;
-          if (oldWorkoutId != null &&
-              (newWorkoutId == null ||
-                  importWorkoutDetails[oldWorkoutId] == false)) {
+          if (newWorkoutId == null ||
+              importWorkoutDetails[oldWorkoutId] == false) {
             continue;
           }
           await _insertRow(
             _tableCycleSteps,
             {
-              'order_index': row['order_index'],
-              'step_type': row['step_type'],
+              'order_index': cycleOrderIndex++,
               'workout_id': newWorkoutId,
             },
             excludeKeys: const {'id'},

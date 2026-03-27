@@ -21,65 +21,41 @@ void main() {
       await db.close();
     });
 
-    test('setSteps/getSteps preserva ordem e tipo', () async {
+    test('setSteps/getSteps preserva ordem', () async {
       final result = await repository.setSteps(
         const [
-          TrainingCycleStep(
-            id: 0,
-            orderIndex: 0,
-            type: CycleStepType.workout,
-            workoutId: 10,
-          ),
-          TrainingCycleStep(
-            id: 0,
-            orderIndex: 1,
-            type: CycleStepType.rest,
-          ),
+          TrainingCycleStep(id: 0, orderIndex: 0, workoutId: 10),
+          TrainingCycleStep(id: 0, orderIndex: 1, workoutId: 20),
         ],
       );
       expect(result.isSuccess, isTrue);
 
       final loaded = (await repository.getSteps()).getOrThrow();
       expect(loaded.length, 2);
-      expect(loaded[0].type, CycleStepType.workout);
       expect(loaded[0].workoutId, 10);
-      expect(loaded[1].type, CycleStepType.rest);
+      expect(loaded[1].workoutId, 20);
     });
 
-    test('appendWorkoutToCycle e appendRestToCycle', () async {
+    test('appendWorkoutToCycle adiciona no final', () async {
       await repository.setSteps(const []);
 
       expect((await repository.appendWorkoutToCycle(1)).isSuccess, isTrue);
-      expect((await repository.appendRestToCycle()).isSuccess, isTrue);
+      expect((await repository.appendWorkoutToCycle(2)).isSuccess, isTrue);
 
       final loaded = (await repository.getSteps()).getOrThrow();
       expect(loaded.length, 2);
-      expect(loaded[0].type, CycleStepType.workout);
-      expect(loaded[1].type, CycleStepType.rest);
+      expect(loaded[0].workoutId, 1);
       expect(loaded[0].orderIndex, 0);
+      expect(loaded[1].workoutId, 2);
       expect(loaded[1].orderIndex, 1);
     });
 
     test('removeWorkoutFromCycle remove e reindexa', () async {
       await repository.setSteps(
         const [
-          TrainingCycleStep(
-            id: 0,
-            orderIndex: 0,
-            type: CycleStepType.workout,
-            workoutId: 1,
-          ),
-          TrainingCycleStep(
-            id: 0,
-            orderIndex: 1,
-            type: CycleStepType.rest,
-          ),
-          TrainingCycleStep(
-            id: 0,
-            orderIndex: 2,
-            type: CycleStepType.workout,
-            workoutId: 2,
-          ),
+          TrainingCycleStep(id: 0, orderIndex: 0, workoutId: 1),
+          TrainingCycleStep(id: 0, orderIndex: 1, workoutId: 2),
+          TrainingCycleStep(id: 0, orderIndex: 2, workoutId: 3),
         ],
       );
 
@@ -88,31 +64,25 @@ void main() {
 
       expect(loaded.length, 2);
       expect(loaded[0].orderIndex, 0);
+      expect(loaded[0].workoutId, 2);
       expect(loaded[1].orderIndex, 1);
-      expect(loaded.any((s) => s.workoutId == 1), isFalse);
+      expect(loaded[1].workoutId, 3);
     });
 
     test('syncWithActiveWorkoutIds adiciona faltantes no final', () async {
       await repository.setSteps(
         const [
-          TrainingCycleStep(
-            id: 0,
-            orderIndex: 0,
-            type: CycleStepType.workout,
-            workoutId: 1,
-          ),
-          TrainingCycleStep(
-            id: 0,
-            orderIndex: 1,
-            type: CycleStepType.rest,
-          ),
+          TrainingCycleStep(id: 0, orderIndex: 0, workoutId: 1),
         ],
       );
 
-      expect((await repository.syncWithActiveWorkoutIds(const [1, 2, 3])).isSuccess, isTrue);
+      expect(
+        (await repository.syncWithActiveWorkoutIds(const [1, 2, 3])).isSuccess,
+        isTrue,
+      );
       final loaded = (await repository.getSteps()).getOrThrow();
 
-      final workoutIds = loaded.where((s) => s.type == CycleStepType.workout).map((s) => s.workoutId).toList();
+      final workoutIds = loaded.map((s) => s.workoutId).toList();
       expect(workoutIds, containsAll([1, 2, 3]));
       expect(loaded.last.workoutId, 3);
     });

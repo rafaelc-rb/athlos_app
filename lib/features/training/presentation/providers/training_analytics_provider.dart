@@ -9,35 +9,12 @@ import 'workout_notifier.dart';
 
 part 'training_analytics_provider.g.dart';
 
-/// Result of "next step" in the cycle: either a workout or rest.
-class NextCycleStep {
-  final bool isRest;
-  final Workout? workout;
-
-  const NextCycleStep({required this.isRest, this.workout});
-}
-
-/// Single item in the unified cycle list: either rest or workout (for display as one list).
-sealed class CycleListItem {
-  int get stepIndex;
-}
-
-class CycleListRestItem extends CycleListItem {
-  @override
-  final int stepIndex;
-
-  CycleListRestItem({required this.stepIndex});
-}
-
-class CycleListWorkoutItem extends CycleListItem {
-  @override
+/// Single item in the cycle list for display.
+class CycleListWorkoutItem {
   final int stepIndex;
   final Workout workout;
 
-  CycleListWorkoutItem({
-    required this.stepIndex,
-    required this.workout,
-  });
+  CycleListWorkoutItem({required this.stepIndex, required this.workout});
 }
 
 /// Aggregated session counts for the Training Home summary.
@@ -123,7 +100,7 @@ Future<({ExecutionComparison comparison, String workoutName})?>
   return (comparison: comparison, workoutName: name);
 }
 
-/// Ordered cycle steps (workout | rest). Empty when using legacy sortOrder.
+/// Ordered cycle steps (workout queue). Empty when using legacy sortOrder.
 @riverpod
 Future<List<TrainingCycleStep>> cycleSteps(Ref ref) async {
   final repo = ref.watch(cycleRepositoryProvider);
@@ -131,16 +108,14 @@ Future<List<TrainingCycleStep>> cycleSteps(Ref ref) async {
   return result.getOrThrow();
 }
 
-/// Ensures every active workout is in the cycle (appends any missing). Run when loading the training module so "next workout" is always cycle-based.
+/// Ensures every active workout is in the cycle (appends any missing).
 @riverpod
 Future<void> ensureCycleSync(Ref ref) async {
   final workouts = await ref.watch(workoutListProvider.future);
   if (workouts.isEmpty) return;
   final activeIds = workouts.map((w) => w.id).toList();
   final steps = await ref.watch(cycleStepsProvider.future);
-  final inCycle = {
-    for (final s in steps) if (s.workoutId != null) s.workoutId!,
-  };
+  final inCycle = {for (final s in steps) s.workoutId};
   final missing = activeIds.where((id) => !inCycle.contains(id)).toList();
   if (missing.isEmpty) return;
   final cycleRepo = ref.read(cycleRepositoryProvider);
@@ -149,30 +124,25 @@ Future<void> ensureCycleSync(Ref ref) async {
   ref.invalidate(cycleStepsProvider);
 }
 
-/// Cycle steps with archived workouts removed (only active workout steps + rest).
-/// Use this for display and "next step" logic so archived workouts never appear in the cycle.
+/// Cycle steps with archived workouts removed (only active workout steps).
 @riverpod
 Future<List<TrainingCycleStep>> effectiveCycleSteps(Ref ref) async {
   final steps = await ref.watch(cycleStepsProvider.future);
   final active = await ref.watch(workoutListProvider.future);
   final activeIds = {for (final w in active) w.id};
-  return steps
-      .where((s) =>
-          s.type == CycleStepType.rest ||
-          (s.workoutId != null && activeIds.contains(s.workoutId)))
-      .toList();
+  return steps.where((s) => activeIds.contains(s.workoutId)).toList();
 }
 
-/// Result of the unified cycle list: items in cycle order (rest + workout) and whether order comes from cycle (true) or fallback sortOrder (false).
+/// Result of the unified cycle list: items in cycle order and whether order
+/// comes from cycle (true) or fallback sortOrder (false).
 class CycleListData {
-  final List<CycleListItem> items;
+  final List<CycleListWorkoutItem> items;
   final bool isFromCycle;
 
   const CycleListData({required this.items, required this.isFromCycle});
 }
 
-/// Unified list for the workouts screen: cycle steps as rest tiles + workout cards in order.
-/// When the cycle has steps, [isFromCycle] is true and reorder updates the cycle; when empty, fallback to workout sortOrder.
+/// Unified list for the workouts screen: cycle steps as workout cards in order.
 @riverpod
 Future<CycleListData> cycleListItems(Ref ref) async {
   final steps = await ref.watch(effectiveCycleStepsProvider.future);
@@ -180,17 +150,13 @@ Future<CycleListData> cycleListItems(Ref ref) async {
   final workoutRepo = ref.watch(workoutRepositoryProvider);
 
   if (steps.isNotEmpty) {
-    final items = <CycleListItem>[];
+    final items = <CycleListWorkoutItem>[];
     for (var i = 0; i < steps.length; i++) {
       final s = steps[i];
-      if (s.type == CycleStepType.rest) {
-        items.add(CycleListRestItem(stepIndex: i));
-      } else if (s.workoutId != null) {
-        final result = await workoutRepo.getById(s.workoutId!);
-        final workout = result.getOrThrow();
-        if (workout != null) {
-          items.add(CycleListWorkoutItem(stepIndex: i, workout: workout));
-        }
+      final result = await workoutRepo.getById(s.workoutId);
+      final workout = result.getOrThrow();
+      if (workout != null) {
+        items.add(CycleListWorkoutItem(stepIndex: i, workout: workout));
       }
     }
     return CycleListData(items: items, isFromCycle: true);
@@ -225,11 +191,10 @@ Future<CycleListData> cycleListItems(Ref ref) async {
   );
 }
 
-/// Next step in the cycle: workout or rest.
+/// Next workout in the cycle.
 /// When cycle steps are empty, returns null and UI should use [nextWorkoutProvider].
-/// Uses [effectiveCycleStepsProvider] so archived workouts are ignored.
 @riverpod
-Future<NextCycleStep?> nextCycleStep(Ref ref) async {
+Future<Workout?> nextCycleWorkout(Ref ref) async {
   final stepsAsync = ref.watch(effectiveCycleStepsProvider);
   final lastIdAsync = ref.watch(lastFinishedWorkoutIdProvider);
   final workoutRepo = ref.watch(workoutRepositoryProvider);
@@ -237,71 +202,35 @@ Future<NextCycleStep?> nextCycleStep(Ref ref) async {
   final steps = stepsAsync.value;
   if (steps == null || steps.isEmpty) return null;
 
-  final workoutStepIndices = <int>[];
-  for (var i = 0; i < steps.length; i++) {
-    if (steps[i].type == CycleStepType.workout) workoutStepIndices.add(i);
-  }
-  if (workoutStepIndices.isEmpty) return null;
-
   final lastWorkoutId = lastIdAsync.value;
-  int nextStepIndex;
+  int nextIndex;
   if (lastWorkoutId == null) {
-    nextStepIndex = 0;
+    nextIndex = 0;
   } else {
     var lastStepIndex = -1;
     for (var i = 0; i < steps.length; i++) {
-      if (steps[i].type == CycleStepType.workout &&
-          steps[i].workoutId == lastWorkoutId) {
+      if (steps[i].workoutId == lastWorkoutId) {
         lastStepIndex = i;
         break;
       }
     }
-    nextStepIndex = lastStepIndex < 0 ? 0 : (lastStepIndex + 1) % steps.length;
+    nextIndex = lastStepIndex < 0 ? 0 : (lastStepIndex + 1) % steps.length;
   }
 
-  final next = steps[nextStepIndex];
-  if (next.type == CycleStepType.rest) {
-    return const NextCycleStep(isRest: true, workout: null);
-  }
-  if (next.workoutId == null) return null;
-  final workoutResult = await workoutRepo.getById(next.workoutId!);
-  final workout = workoutResult.getOrThrow();
-  return NextCycleStep(isRest: false, workout: workout);
+  final next = steps[nextIndex];
+  final workoutResult = await workoutRepo.getById(next.workoutId);
+  return workoutResult.getOrThrow();
 }
 
 /// Workout to start when the user taps "Iniciar próximo treino".
-/// When the next step is rest, returns the first workout after that rest so the user can start training again.
 @riverpod
 Future<Workout?> nextWorkoutToStart(Ref ref) async {
-  final nextStepAsync = ref.watch(nextCycleStepProvider);
-  final nextStep = nextStepAsync.value;
-  if (nextStep == null) {
-    return ref.watch(nextWorkoutProvider);
-  }
-  if (!nextStep.isRest && nextStep.workout != null) {
-    return nextStep.workout;
-  }
-  if (!nextStep.isRest) return null;
-  final stepsAsync = ref.watch(effectiveCycleStepsProvider);
-  final steps = stepsAsync.value;
-  if (steps == null || steps.isEmpty) return null;
-  final nextIndexAsync = ref.watch(nextCycleStepIndexProvider);
-  final nextIndex = nextIndexAsync.value;
-  if (nextIndex == null) return null;
-  final workoutRepo = ref.watch(workoutRepositoryProvider);
-  for (var i = 1; i < steps.length; i++) {
-    final idx = (nextIndex + i) % steps.length;
-    final step = steps[idx];
-    if (step.type == CycleStepType.workout && step.workoutId != null) {
-      final result = await workoutRepo.getById(step.workoutId!);
-      return result.getOrThrow();
-    }
-  }
-  return null;
+  final nextCycle = await ref.watch(nextCycleWorkoutProvider.future);
+  if (nextCycle != null) return nextCycle;
+  return ref.watch(nextWorkoutProvider);
 }
 
 /// Index of the next step in the cycle (for UI highlighting). Null if no cycle or empty.
-/// Uses [effectiveCycleStepsProvider] so archived workouts are ignored.
 @riverpod
 Future<int?> nextCycleStepIndex(Ref ref) async {
   final stepsAsync = ref.watch(effectiveCycleStepsProvider);
@@ -315,8 +244,7 @@ Future<int?> nextCycleStepIndex(Ref ref) async {
 
   var lastStepIndex = -1;
   for (var i = 0; i < steps.length; i++) {
-    if (steps[i].type == CycleStepType.workout &&
-        steps[i].workoutId == lastWorkoutId) {
+    if (steps[i].workoutId == lastWorkoutId) {
       lastStepIndex = i;
       break;
     }
@@ -325,8 +253,7 @@ Future<int?> nextCycleStepIndex(Ref ref) async {
 }
 
 /// Number of consecutive finished executions (newest to oldest) that follow
-/// the cycle order. Rest days do not break the streak.
-/// Uses [effectiveCycleStepsProvider] when non-empty; otherwise active workouts by sortOrder.
+/// the cycle order.
 @riverpod
 Future<int> executionStreak(Ref ref) async {
   final execRepo = ref.watch(workoutExecutionRepositoryProvider);
@@ -342,10 +269,7 @@ Future<int> executionStreak(Ref ref) async {
   Map<int, int> cycleIndexById;
 
   if (steps != null && steps.isNotEmpty) {
-    cycleWorkoutIds = [
-      for (final s in steps)
-        if (s.type == CycleStepType.workout && s.workoutId != null) s.workoutId!,
-    ];
+    cycleWorkoutIds = [for (final s in steps) s.workoutId];
     cycleIndexById = {
       for (var i = 0; i < cycleWorkoutIds.length; i++) cycleWorkoutIds[i]: i,
     };

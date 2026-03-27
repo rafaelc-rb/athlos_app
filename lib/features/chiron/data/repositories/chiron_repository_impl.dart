@@ -610,38 +610,24 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
       final item = stepsList[i];
       if (item is! Map) continue;
       final map = item;
-      final typeStr = map['type']?.toString().toLowerCase();
-      if (typeStr == 'rest') {
-        cycleSteps.add(
-          TrainingCycleStep(
-            id: 0,
-            orderIndex: i,
-            type: CycleStepType.rest,
-            workoutId: null,
-          ),
-        );
-      } else if (typeStr == 'workout') {
-        final workoutId = map['workoutId'] != null
-            ? (map['workoutId'] is int
-                  ? map['workoutId'] as int
-                  : int.tryParse(map['workoutId'].toString()))
-            : null;
-        if (workoutId == null || workoutId <= 0) continue;
-        cycleSteps.add(
-          TrainingCycleStep(
-            id: 0,
-            orderIndex: i,
-            type: CycleStepType.workout,
-            workoutId: workoutId,
-          ),
-        );
-      }
+      final workoutId = map['workoutId'] != null
+          ? (map['workoutId'] is int
+                ? map['workoutId'] as int
+                : int.tryParse(map['workoutId'].toString()))
+          : null;
+      if (workoutId == null || workoutId <= 0) continue;
+      cycleSteps.add(
+        TrainingCycleStep(
+          id: 0,
+          orderIndex: i,
+          workoutId: workoutId,
+        ),
+      );
     }
     if (cycleSteps.isEmpty) {
       return {
         'success': false,
-        'error':
-            'No valid steps (use type: workout with workoutId or type: rest)',
+        'error': 'No valid steps (each step needs a workoutId)',
       };
     }
     final result = await _cycleRepo.setSteps(cycleSteps);
@@ -668,16 +654,11 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
         .toList();
     final cycleSteps = <Map<String, Object?>>[];
     for (final s in steps) {
-      if (s.type == CycleStepType.rest) {
-        cycleSteps.add({'type': 'rest'});
-      } else if (s.workoutId != null) {
-        final w = activeById[s.workoutId];
-        cycleSteps.add({
-          'type': 'workout',
-          'workoutId': s.workoutId,
-          'workoutName': w?.name ?? 'Workout #${s.workoutId}',
-        });
-      }
+      final w = activeById[s.workoutId];
+      cycleSteps.add({
+        'workoutId': s.workoutId,
+        'workoutName': w?.name ?? 'Workout #${s.workoutId}',
+      });
     }
     return {
       'success': true,

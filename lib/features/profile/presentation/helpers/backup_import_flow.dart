@@ -149,7 +149,7 @@ Future<void> runBackupImportFlow({
     ref.invalidate(cycleStepsProvider);
     ref.invalidate(effectiveCycleStepsProvider);
     ref.invalidate(cycleListItemsProvider);
-    ref.invalidate(nextCycleStepProvider);
+    ref.invalidate(nextCycleWorkoutProvider);
     ref.invalidate(nextWorkoutToStartProvider);
     ref.invalidate(nextCycleStepIndexProvider);
     ref.invalidate(executionStreakProvider);

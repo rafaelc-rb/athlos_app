@@ -479,26 +479,18 @@ List<Map<String, dynamic>> getChironToolDeclarations() {
       'description':
           'Define the workout cycle (routine order). '
               'Call after creating/archiving workouts. '
-              'Each step is { type: "workout", workoutId: N } or '
-              '{ type: "rest" }. Include only active workout IDs. '
+              'Each step is { workoutId: N }. Include only active workout IDs. '
               'Replaces the full cycle. Always call getTrainingState after.',
       'parameters': _schema(
         properties: {
           'steps': {
             'type': 'array',
-            'description': 'Ordered cycle steps',
+            'description': 'Ordered workout IDs in cycle order',
             'items': _schema(
               properties: {
-                'type': _propEnum(
-                  ['workout', 'rest'],
-                  'Step type: workout or rest',
-                ),
-                'workoutId': _propInteger(
-                  'Workout ID (required when type=workout)',
-                  nullable: true,
-                ),
+                'workoutId': _propInteger('Workout ID (from context)'),
               },
-              required: ['type'],
+              required: ['workoutId'],
             ),
           },
         },

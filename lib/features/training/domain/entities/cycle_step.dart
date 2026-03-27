@@ -1,19 +1,12 @@
-/// A step in the training cycle: either a workout or a rest day.
+/// A step in the training cycle: an ordered workout reference.
 class TrainingCycleStep {
   final int id;
   final int orderIndex;
-  final CycleStepType type;
-  final int? workoutId;
+  final int workoutId;
 
   const TrainingCycleStep({
     required this.id,
     required this.orderIndex,
-    required this.type,
-    this.workoutId,
+    required this.workoutId,
   });
-}
-
-enum CycleStepType {
-  workout,
-  rest,
 }

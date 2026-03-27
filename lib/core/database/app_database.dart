@@ -90,7 +90,7 @@ class AppDatabase extends _$AppDatabase {
   bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed && _enableDevSeed;
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -101,7 +101,7 @@ class AppDatabase extends _$AppDatabase {
       if (_shouldSeedDevData) await seedDevData(this);
     },
     onUpgrade: (m, from, to) async {
-      if (_shouldSeedDevData && from >= 3 && from <= 13) {
+      if (_shouldSeedDevData && from >= 3 && from <= 14) {
         for (final table in allTables) {
           await m.deleteTable(table.actualTableName);
         }
@@ -225,22 +225,22 @@ class AppDatabase extends _$AppDatabase {
       }
 
       if (from < 6) {
-        await m.createTable(cycleSteps);
-        // Seed cycle from current active workouts order so behaviour is unchanged until user edits.
-        final active =
-            await (select(workouts)
-                  ..where(
-                    (w) => w.isArchived.equals(false) & w.sortOrder.isNotNull(),
-                  )
-                  ..orderBy([(w) => OrderingTerm.asc(w.sortOrder)]))
-                .get();
+        // Create the old cycle_steps schema (with step_type) via raw SQL
+        // so this migration stays stable regardless of the current Drift schema.
+        await customStatement('''
+          CREATE TABLE cycle_steps (
+            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            order_index INTEGER NOT NULL,
+            step_type TEXT NOT NULL,
+            workout_id INTEGER REFERENCES workouts(id)
+          )
+        ''');
+        final active = await customSelect(
+          'SELECT id FROM workouts WHERE is_archived = 0 AND sort_order IS NOT NULL ORDER BY sort_order ASC',
+        ).get();
         for (var i = 0; i < active.length; i++) {
-          await into(cycleSteps).insert(
-            CycleStepsCompanion.insert(
-              orderIndex: i,
-              stepType: 'workout',
-              workoutId: Value(active[i].id),
-            ),
+          await customStatement(
+            "INSERT INTO cycle_steps (order_index, step_type, workout_id) VALUES ($i, 'workout', ${active[i].read<int>('id')})",
           );
         }
       }
@@ -286,6 +286,30 @@ class AppDatabase extends _$AppDatabase {
 
       if (from < 13) {
         await m.createTable(localDuplicateFeedback);
+      }
+
+      if (from < 14) {
+        // Phase 1: simplify cycle — remove rest steps, drop stepType column,
+        // make workoutId non-nullable, compact ordering.
+        await customStatement(
+          "DELETE FROM cycle_steps WHERE step_type = 'rest' OR workout_id IS NULL",
+        );
+        await customStatement('''
+          CREATE TABLE cycle_steps_tmp (
+            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            order_index INTEGER NOT NULL,
+            workout_id INTEGER NOT NULL REFERENCES workouts(id)
+          )
+        ''');
+        await customStatement('''
+          INSERT INTO cycle_steps_tmp (order_index, workout_id)
+          SELECT ROW_NUMBER() OVER (ORDER BY order_index) - 1, workout_id
+          FROM cycle_steps
+        ''');
+        await customStatement('DROP TABLE cycle_steps');
+        await customStatement(
+          'ALTER TABLE cycle_steps_tmp RENAME TO cycle_steps',
+        );
       }
     },
   );

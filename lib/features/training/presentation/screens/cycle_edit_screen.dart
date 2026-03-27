@@ -11,7 +11,7 @@ import '../../domain/entities/workout.dart';
 import '../providers/training_analytics_provider.dart';
 import '../providers/workout_notifier.dart';
 
-/// Screen to edit the training cycle: ordered steps (workout or rest).
+/// Screen to edit the training cycle: ordered workout queue.
 class CycleEditScreen extends ConsumerStatefulWidget {
   const CycleEditScreen({super.key});
 
@@ -20,19 +20,14 @@ class CycleEditScreen extends ConsumerStatefulWidget {
 }
 
 class _CycleEditScreenState extends ConsumerState<CycleEditScreen> {
-  List<({CycleStepType type, int? workoutId})> _steps = [];
+  List<int> _workoutIds = [];
   bool _syncedFromProvider = false;
 
   void _syncFromProvider(List<TrainingCycleStep> steps) {
     if (!_syncedFromProvider && mounted) {
       _syncedFromProvider = true;
       setState(() {
-        _steps = steps
-            .map((s) => (
-                  type: s.type,
-                  workoutId: s.workoutId,
-                ))
-            .toList();
+        _workoutIds = steps.map((s) => s.workoutId).toList();
       });
     }
   }
@@ -40,12 +35,11 @@ class _CycleEditScreenState extends ConsumerState<CycleEditScreen> {
   Future<void> _save() async {
     final repo = ref.read(cycleRepositoryProvider);
     final steps = [
-      for (var i = 0; i < _steps.length; i++)
+      for (var i = 0; i < _workoutIds.length; i++)
         TrainingCycleStep(
           id: 0,
           orderIndex: i,
-          type: _steps[i].type,
-          workoutId: _steps[i].workoutId,
+          workoutId: _workoutIds[i],
         ),
     ];
     final result = await repo.setSteps(steps);
@@ -65,26 +59,20 @@ class _CycleEditScreenState extends ConsumerState<CycleEditScreen> {
   void _addWorkout(int? workoutId) {
     if (workoutId == null) return;
     setState(() {
-      _steps = [..._steps, (type: CycleStepType.workout, workoutId: workoutId)];
-    });
-  }
-
-  void _addRest() {
-    setState(() {
-      _steps = [..._steps, (type: CycleStepType.rest, workoutId: null)];
+      _workoutIds = [..._workoutIds, workoutId];
     });
   }
 
   void _removeAt(int index) {
     setState(() {
-      _steps = [..._steps]..removeAt(index);
+      _workoutIds = [..._workoutIds]..removeAt(index);
     });
   }
 
   void _reorder(int oldIndex, int newIndex) {
     setState(() {
-      final item = _steps.removeAt(oldIndex);
-      _steps.insert(newIndex > oldIndex ? newIndex - 1 : newIndex, item);
+      final item = _workoutIds.removeAt(oldIndex);
+      _workoutIds.insert(newIndex > oldIndex ? newIndex - 1 : newIndex, item);
     });
   }
 
@@ -108,7 +96,7 @@ class _CycleEditScreenState extends ConsumerState<CycleEditScreen> {
         title: Text(l10n.trainingCycleTitle),
         actions: [
           TextButton(
-            onPressed: _steps.isEmpty ? null : _save,
+            onPressed: _workoutIds.isEmpty ? null : _save,
             child: Text(l10n.trainingCycleSave),
           ),
         ],
@@ -116,7 +104,7 @@ class _CycleEditScreenState extends ConsumerState<CycleEditScreen> {
       body: ListView(
         padding: const EdgeInsets.all(AthlosSpacing.md),
         children: [
-          if (_steps.isEmpty)
+          if (_workoutIds.isEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: AthlosSpacing.md),
               child: Text(
@@ -129,19 +117,17 @@ class _CycleEditScreenState extends ConsumerState<CycleEditScreen> {
           ReorderableListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: _steps.length,
+            itemCount: _workoutIds.length,
             onReorder: _reorder,
             itemBuilder: (context, index) {
-              final step = _steps[index];
-              final label = step.type == CycleStepType.rest
-                  ? l10n.trainingRest
-                  : workouts
-                      .where((w) => w.id == step.workoutId)
+              final workoutId = _workoutIds[index];
+              final label = workouts
+                      .where((w) => w.id == workoutId)
                       .map((w) => w.name)
                       .firstOrNull ??
-                      'Treino #${step.workoutId}';
+                  'Treino #$workoutId';
               return Card(
-                key: ValueKey('$index-${step.type}-${step.workoutId}'),
+                key: ValueKey('$index-$workoutId'),
                 margin: const EdgeInsets.only(bottom: AthlosSpacing.sm),
                 child: ListTile(
                   leading: ReorderableDragStartListener(
@@ -168,26 +154,12 @@ class _CycleEditScreenState extends ConsumerState<CycleEditScreen> {
             ),
           ),
           const SizedBox(height: AthlosSpacing.xs),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: workouts.isEmpty
-                      ? null
-                      : () => _showAddWorkoutPicker(context, workouts),
-                  icon: const Icon(Icons.fitness_center),
-                  label: Text(l10n.trainingCycleAddWorkout),
-                ),
-              ),
-              const SizedBox(width: AthlosSpacing.sm),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _addRest,
-                  icon: const Icon(Icons.hotel),
-                  label: Text(l10n.trainingCycleAddRest),
-                ),
-              ),
-            ],
+          OutlinedButton.icon(
+            onPressed: workouts.isEmpty
+                ? null
+                : () => _showAddWorkoutPicker(context, workouts),
+            icon: const Icon(Icons.fitness_center),
+            label: Text(l10n.trainingCycleAddWorkout),
           ),
         ],
       ),

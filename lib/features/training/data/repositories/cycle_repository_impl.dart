@@ -1,5 +1,3 @@
-import 'package:drift/drift.dart';
-
 import '../../../../core/database/app_database.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/errors/result.dart';
@@ -29,8 +27,7 @@ class CycleRepositoryImpl implements CycleRepository {
         final s = e.value;
         return CycleStepsCompanion.insert(
           orderIndex: e.key,
-          stepType: s.type == CycleStepType.rest ? 'rest' : 'workout',
-          workoutId: Value(s.workoutId),
+          workoutId: s.workoutId,
         );
       }).toList();
       await _dao.replaceAll(companions);
@@ -44,17 +41,13 @@ class CycleRepositoryImpl implements CycleRepository {
   Future<Result<void>> removeWorkoutFromCycle(int workoutId) async {
     try {
       final steps = await _dao.getAllOrdered();
-      final filtered = steps
-          .where((row) =>
-              row.stepType != 'workout' || row.workoutId != workoutId)
-          .toList();
+      final filtered =
+          steps.where((row) => row.workoutId != workoutId).toList();
       if (filtered.length == steps.length) return const Success(null);
       final companions = filtered.asMap().entries.map((e) {
-        final row = e.value;
         return CycleStepsCompanion.insert(
           orderIndex: e.key,
-          stepType: row.stepType,
-          workoutId: Value(row.workoutId),
+          workoutId: e.value.workoutId,
         );
       }).toList();
       await _dao.replaceAll(companions);
@@ -70,17 +63,14 @@ class CycleRepositoryImpl implements CycleRepository {
     try {
       final steps = await _dao.getAllOrdered();
       final companions = steps.asMap().entries.map((e) {
-        final row = e.value;
         return CycleStepsCompanion.insert(
           orderIndex: e.key,
-          stepType: row.stepType,
-          workoutId: Value(row.workoutId),
+          workoutId: e.value.workoutId,
         );
       }).toList();
       companions.add(CycleStepsCompanion.insert(
         orderIndex: steps.length,
-        stepType: 'workout',
-        workoutId: Value(workoutId),
+        workoutId: workoutId,
       ));
       await _dao.replaceAll(companions);
       return const Success(null);
@@ -91,55 +81,23 @@ class CycleRepositoryImpl implements CycleRepository {
   }
 
   @override
-  Future<Result<void>> appendRestToCycle() async {
-    try {
-      final steps = await _dao.getAllOrdered();
-      final companions = steps.asMap().entries.map((e) {
-        final row = e.value;
-        return CycleStepsCompanion.insert(
-          orderIndex: e.key,
-          stepType: row.stepType,
-          workoutId: Value(row.workoutId),
-        );
-      }).toList();
-      companions.add(CycleStepsCompanion.insert(
-        orderIndex: steps.length,
-        stepType: 'rest',
-        workoutId: const Value.absent(),
-      ));
-      await _dao.replaceAll(companions);
-      return const Success(null);
-    } on Exception catch (e) {
-      return Failure(
-          DatabaseException('Failed to append rest to cycle: $e'));
-    }
-  }
-
-  @override
   Future<Result<void>> syncWithActiveWorkoutIds(List<int> activeIds) async {
     if (activeIds.isEmpty) return const Success(null);
     try {
       final steps = await _dao.getAllOrdered();
-      final inCycle = {
-        for (final row in steps)
-          if (row.stepType == 'workout' && row.workoutId != null) row.workoutId!,
-      };
-      final toAdd =
-          activeIds.where((id) => !inCycle.contains(id)).toList();
+      final inCycle = {for (final row in steps) row.workoutId};
+      final toAdd = activeIds.where((id) => !inCycle.contains(id)).toList();
       if (toAdd.isEmpty) return const Success(null);
       final companions = steps.asMap().entries.map((e) {
-        final row = e.value;
         return CycleStepsCompanion.insert(
           orderIndex: e.key,
-          stepType: row.stepType,
-          workoutId: Value(row.workoutId),
+          workoutId: e.value.workoutId,
         );
       }).toList();
       for (var i = 0; i < toAdd.length; i++) {
         companions.add(CycleStepsCompanion.insert(
           orderIndex: steps.length + i,
-          stepType: 'workout',
-          workoutId: Value(toAdd[i]),
+          workoutId: toAdd[i],
         ));
       }
       await _dao.replaceAll(companions);
@@ -153,8 +111,6 @@ class CycleRepositoryImpl implements CycleRepository {
   TrainingCycleStep _rowToDomain(CycleStep row) => TrainingCycleStep(
         id: row.id,
         orderIndex: row.orderIndex,
-        type:
-            row.stepType == 'rest' ? CycleStepType.rest : CycleStepType.workout,
         workoutId: row.workoutId,
       );
 }

@@ -6,9 +6,10 @@ A workout and diet tracking app inspired by Greek mythology. Built with Flutter.
 
 | Document | Description |
 | --- | --- |
-| [Project Context](./docs/context.md) | Vision, modules, and future ideas |
+| [Project Context](./docs/context.md) | Vision, modules, Chiron AI, and future ideas |
 | [Architecture](./docs/architecture.md) | Stack, app structure, and evolution plan |
-| [Requirements](./docs/requirements.md) | User stories by phase (V1, V2, V3) |
+| [Requirements](./docs/requirements.md) | User stories by phase (MoSCoW) |
+| [Release](./docs/release.md) | Versioning, signing, migrations, build, and publish |
 | [Training Module](./docs/modules/training.md) | Training module features |
 | [Diet Module](./docs/modules/diet.md) | Diet module features |
 | [Development Flow](./docs/development_flow.md) | Step-by-step guide to implement features |
@@ -62,6 +63,7 @@ flutter test
 | State + DI | Riverpod (code generation) |
 | Database | SQLite via Drift |
 | Navigation | go_router |
+| AI | Gemini API free tier (Chiron assistant) |
 | Design | Material 3 (custom Greek theme) |
 | i18n | ARB files (PT-BR) |
 
@@ -80,6 +82,7 @@ lib/
 │   │   ├── domain/     # Entities + repository interfaces
 │   │   ├── data/       # Data sources, models, repositories
 │   │   └── presentation/   # Screens, widgets, controllers
+│   ├── chiron/         # AI assistant (Gemini API, function calling)
 │   ├── diet/           # Diet module (same structure)
 │   └── profile/        # User profile (same structure)
 ├── l10n/               # ARB internationalization files

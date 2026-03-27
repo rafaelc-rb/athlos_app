@@ -1,6 +1,6 @@
 # Training Module
 
-> Status: 🔨 Priority — under active development.
+> Status: ✅ Feature-complete for 1.x — polish and maintenance.
 
 ## Features
 
@@ -35,7 +35,8 @@ Pre-loaded cardio exercises include treadmill running, stationary bike, rowing m
   - **Strength**: sets, reps, rest time
   - **Cardio**: sets, duration (goal), rest time
 - **Supersets** — link two or more exercises to be executed in alternation without rest between them; rest is taken after completing one round of all linked exercises
-- **AI assist (future):** personalized workout suggestions based on user profile (goals, available equipment, history)
+- **Training cycle** — ordered rotation of active workouts (e.g. A → B → C → A); managed via setCycle
+- **AI assist via Chiron** — create, update, and archive workouts through conversational commands; Chiron uses the exercise catalog and user equipment to build workouts
 
 ### Execution Logging
 
@@ -67,13 +68,15 @@ Pre-loaded cardio exercises include treadmill running, stationary bike, rowing m
 
 ### User Training Profile
 
-Personal data tracking for progression:
+Personal data tracking for progression and AI context:
 
-- Weight
-- Height
-- Age
+- Weight, height, age
+- Gender (male / female / not informed)
 - General goal (hypertrophy, weight loss, endurance, etc.)
-- Desired body aesthetic:
-  - **Athletic** — gymnast / calisthenics style
-  - **Hypertrophy** — focus on muscle volume
-  - **Strength** — focus on load and performance
+- Desired body aesthetic (athletic, hypertrophy, strength)
+- Experience level (beginner, intermediate, advanced)
+- Training frequency (days per week)
+- Trains at gym (yes/no) — determines equipment approach
+- Available training time (minutes per session)
+- Injuries — free-text list of current injuries for exercise selection
+- Bio — accumulated notes from Chiron conversations (preferences, context)

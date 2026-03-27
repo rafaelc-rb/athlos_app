@@ -99,6 +99,18 @@ lib/
 │   │       ├── widgets/               # Module-specific components
 │   │       ├── providers/             # UI state providers (AsyncNotifiers)
 │   │       └── helpers/               # Presentation helpers (l10n, formatters)
+│   ├── chiron/                         # Chiron AI assistant (Gemini)
+│   │   ├── domain/
+│   │   │   ├── entities/              # ChironMessage, ChironToolFeedback
+│   │   │   └── repositories/          # ChironRepository interface
+│   │   ├── data/
+│   │   │   ├── repositories/          # ChironRepositoryImpl (Gemini API, function calling, prompt)
+│   │   │   ├── services/              # GeminiRestClient (HTTP), PromptBuilder (context injection)
+│   │   │   ├── helpers/               # Fuzzy matching, equipment name mapping
+│   │   │   └── datasources/           # ChironDao (message persistence)
+│   │   └── presentation/
+│   │       ├── providers/             # ChironNotifier, ChironChatState
+│   │       └── widgets/               # ChironBottomSheet, ChironMessageBubble
 │   ├── diet/                          # Diet module (same structure)
 │   └── profile/                       # User profile (shared across modules)
 ├── l10n/                              # ARB internationalization files
@@ -471,7 +483,7 @@ Development follows a **depth-first** strategy: each module is fully polished be
 
 - Flutter app with local SQLite
 - Training module fully polished — exercises, equipment, workouts, execution (strength + cardio), history, training cycles, supersets, drop sets, execution feedback, rest timer, cardio timer
-- Chiron AI assistant via Gemini free tier (Q&A chat, context-aware responses)
+- Chiron AI assistant via Gemini free tier — mythological persona, function calling (create/update/archive workouts, manage cycle, update profile, register equipment), conversational onboarding, evidence-based training advice, progress analysis, equipment management for home users, model fallback, markdown rendering, tool feedback chips
 - Hub, profile, onboarding
 - Manual data export/import for backup (JSON, merge strategy with conflict resolution) in Profile > Dados
 - Conflict Center for runtime duplicate detection and user-driven resolution (local x verified, local x local, attribute-by-attribute merge)
@@ -533,7 +545,7 @@ Supabase continues handling CRUD, auth, sync, and realtime. Go API handles premi
 
 SQLite will be structured with the same entities and relations the remote database will have. This eases future migration.
 
-> **Migration note:** The current schema version is **12**. Key milestones: V2 (cardio columns and rest rename), V3 (muscle role + movement pattern), V4–V9 (profile/training evolution), V10 (`catalog_remote_id` for verified catalog mapping), V11 (new catalog seeds including seated leg curl), V12 (local catalog governance tables). Incremental versioned migrations are in place via `onUpgrade`. See [Release — Database Migrations](./release.md#database-migrations-drift) for details.
+> **Migration note:** The current schema version is **13**. Key milestones: V2 (cardio columns and rest rename), V3 (muscle role + movement pattern), V4–V9 (profile/training evolution), V10 (`catalog_remote_id` for verified catalog mapping), V11 (new catalog seeds including seated leg curl), V12 (local catalog governance tables), V13 (Supabase governance policies fix). Incremental versioned migrations are in place via `onUpgrade`. See [Release — Database Migrations](./release.md#database-migrations-drift) for details.
 
 ### Main Entities
 

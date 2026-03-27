@@ -25,7 +25,7 @@ Format: `MAJOR.MINOR.PATCH+build` (Semantic Versioning).
 Version is set in `pubspec.yaml`:
 
 ```yaml
-version: 1.1.0+2
+version: 1.5.0+8
 #        ^^^^^ ^
 #        │     └── build number (store identifier, always increasing)
 #        └── semantic version (user-facing)
@@ -82,7 +82,7 @@ The database schema version is an integer in `app_database.dart`:
 
 ```dart
 @override
-int get schemaVersion => 12;  // increment when schema changes
+int get schemaVersion => 13;  // increment when schema changes
 ```
 
 - **Version 1** baseline.
@@ -92,6 +92,7 @@ int get schemaVersion => 12;  // increment when schema changes
 - **Version 10** canonical mapping fields (`catalog_remote_id`) on catalog tables.
 - **Version 11** catalog seed expansion (including seated leg curl entries).
 - **Version 12** local governance tables (`catalog_governance_events`, `catalog_governance_applied_rules`).
+- **Version 13** Supabase governance policies fix.
 
 ### How Migrations Work
 
@@ -134,9 +135,9 @@ int get schemaVersion => 12;  // or next version when adding a new migration
 onUpgrade: (m, from, to) async {
   // ... dev wipe block ...
 
-  if (from < 13) {
-    await seedEquipmentsV13(this);
-    await seedExercisesV13(this);
+  if (from < 14) {
+    await seedEquipmentsV14(this);
+    await seedExercisesV14(this);
   }
   // if (from < 14) { ... }
 },
@@ -214,7 +215,7 @@ Signing:
 - [x] Keystore backed up securely
 
 Database:
-- [x] Schema version set to 12 (includes catalog mapping and governance tables)
+- [x] Schema version set to 13 (includes catalog mapping, governance tables, and governance policies fix)
 - [x] Incremental migration strategy in place
 - [x] Destructive dev fallback guarded with kDebugMode (runs only in debug, never in release)
 

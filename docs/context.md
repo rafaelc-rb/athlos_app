@@ -19,7 +19,7 @@ The app is designed as a **hub-based** system: a central screen (the Hub) provid
   - **Local x Verified** pair: user can mark "not duplicate" (suppressed) or "confirmed duplicate" (verified item wins; local is remapped and deleted).
   - **Local x Local** pair: user can mark "not duplicate", "keep A", "keep B", or **attribute-by-attribute merge** (user picks each field, associations are unified, loser is remapped and deleted).
 - Global catalog governance (verified x verified conflicts, rule application across devices) is **out of scope for this project** and will be handled in a separate maintenance project.
-- The local database currently runs with schema version **12**.
+- The local database currently runs with schema version **13**.
 - Automated tests are in place for core backup flows (including duplicate resolution: suppression, confirmDuplicate, mergeAttributes), training/profile repositories, use cases, provider wiring, and error/result contracts.
 
 ## Modules
@@ -120,19 +120,36 @@ PATCH resets to 0 when MINOR increments. MINOR resets to 0 when MAJOR increments
 
 ## Chiron (AI Assistant)
 
-Chiron (Χείρων) is the app's AI assistant, inspired by the wise centaur from Greek mythology who mentored heroes like Achilles and Heracles. **Already implemented** using the Gemini API free tier (zero cost), Chiron is part of the 1.0.0 release — not a premium feature.
+Chiron (Χείρων) is the app's AI assistant — the mythological centaur who mentored Achilles, Heracles, and Jason. **Fully implemented** using the Gemini API free tier (zero cost), Chiron is part of the 1.0.0 release — not a premium feature.
 
-Current capabilities:
-- Q&A chat for exercise and training questions
-- Context-aware responses based on user profile and training data
-- Accessible via app bar icon (bottom sheet)
+Chiron speaks as the mythological character himself: wise, direct, encouraging, with occasional mythological references. He addresses users based on gender (guerreiro/guerreira, meu pupilo/minha pupila) and acts as an evidence-based personal trainer.
 
-Chiron-related ideas for future expansion:
-- **Conversational onboarding** — instead of the current form-based profile setup, Chiron could conduct a natural chat to understand the user's profile (goals, aesthetic, training style, experience level, equipment, etc.). The conversation format allows the user to ask *why* Chiron is asking each question and get contextual explanations, making the process more human and less like filling out a form. The structured setup would remain as a fallback/quick option. This approach also opens the door for Chiron to gather richer context that static forms can't capture (e.g. injury history, schedule preferences, past training experience).
-- **Multi-provider AI** — integrate multiple free-tier AI providers (e.g. Groq, Mistral, Cohere, OpenRouter) as fallbacks to multiply daily request capacity. When one provider's free tier limit is reached, Chiron routes to the next available one. This keeps AI free for users while scaling capacity without cost.
-- **Personalized workout suggestions** based on user profile, equipment, and history
+### Current Capabilities
+
+- **Q&A chat** for exercise and training questions via bottom sheet
+- **Context-aware responses** — user profile, active workouts, execution history, equipment, and exercise catalog are injected into the prompt
+- **Function calling** — Chiron can take actions on behalf of the user:
+  - Create, update, and archive workouts with exercises from the catalog
+  - Manage the training cycle (setCycle, getTrainingState)
+  - Update profile fields (gender, experience level, training frequency, gym/home, available time, injuries, bio)
+  - Register and remove equipment
+- **Conversational onboarding** — collects missing profile data naturally during conversation (one field at a time)
+- **Equipment management for home users** — asks what equipment is available, registers it, builds workouts using only registered equipment + bodyweight
+- **Progress analysis** — compares weights/reps across execution history, identifies plateaus and progression, suggests deloads or variations
+- **Evidence-based training advice** — program change recommendations only when data supports it (plateau 3+ weeks, not just time passing)
+- **Model fallback** — primary model (gemini-2.5-flash) with fallback to gemini-2.0-flash on quota exhaustion
+- **Thinking model support** — thinkingBudget configuration for gemini-2.5-flash
+- **Rate limiting** — client-side RPM guard, retry with exponential backoff and jitter
+- **Markdown rendering** — responses rendered with formatting (bold, italic, lists)
+- **Tool feedback chips** — real-time visual indicators of actions taken (e.g. "Treino criado", "Ciclo atualizado")
+- **Error handling** — distinct error bubbles, thinking indicator during processing, empty response fallback
+
+### Future Ideas
+
+- **Multi-provider AI** — integrate multiple free-tier AI providers (e.g. Groq, Mistral, Cohere, OpenRouter) as fallbacks to multiply daily request capacity
 - **Meal suggestions** based on caloric targets and food preferences (after Diet module)
-- **Trend analysis** of training and caloric data with actionable recommendations
+- **Persistent chat history** — save conversations to database for cross-session continuity
+- **Streaming responses** — SSE-based streaming for real-time text output
 
 ## Future Ideas
 

@@ -202,13 +202,15 @@ Diet module feature-complete for the free tier.
 
 ### Epic: Quíron (AI Assistant)
 
-| ID | MoSCoW | User Story | Acceptance Criteria |
-|----|--------|------------|---------------------|
-| QR-01 | Must | As a user, I want AI-generated workout suggestions based on my profile and equipment so that I get personalized training plans | Quíron considers user goal, aesthetic, owned equipment, and history |
-| QR-02 | Must | As a user, I want a Q&A chat with Quíron for exercise and nutrition questions so that I have guidance within the app | Chat interface with message history; context-aware responses |
-| QR-03 | Should | As a user, I want AI-generated meal suggestions based on my goals so that I get personalized diet plans | Quíron considers caloric targets, macros, and food preferences |
-| QR-04 | Should | As a user, I want AI trend analysis of my caloric data so that I get actionable recommendations | Quíron analyzes intake vs. expenditure trends and suggests adjustments |
-| QR-05 | Could | As a user, I want conversational onboarding guided by Quíron so that profile setup feels natural | Chat-based alternative to the form; structured setup remains as fallback |
+> **Note:** QR-01, QR-02, and QR-05 were implemented ahead of schedule in 1.x using the Gemini free tier with function calling and context injection. QR-03 and QR-04 are deferred until the Diet module is available.
+
+| ID | MoSCoW | User Story | Acceptance Criteria | Status |
+|----|--------|------------|---------------------|--------|
+| QR-01 | Must | As a user, I want AI-generated workout suggestions based on my profile and equipment so that I get personalized training plans | Quíron considers user goal, aesthetic, owned equipment, and history | ✅ Done (1.x) |
+| QR-02 | Must | As a user, I want a Q&A chat with Quíron for exercise and nutrition questions so that I have guidance within the app | Chat interface with message history; context-aware responses | ✅ Done (1.x) |
+| QR-03 | Should | As a user, I want AI-generated meal suggestions based on my goals so that I get personalized diet plans | Quíron considers caloric targets, macros, and food preferences | Deferred (needs Diet) |
+| QR-04 | Should | As a user, I want AI trend analysis of my caloric data so that I get actionable recommendations | Quíron analyzes intake vs. expenditure trends and suggests adjustments | Deferred (needs Diet) |
+| QR-05 | Could | As a user, I want conversational onboarding guided by Quíron so that profile setup feels natural | Chat-based alternative to the form; structured setup remains as fallback | ✅ Done (1.x) |
 
 ### Epic: Health Integrations
 

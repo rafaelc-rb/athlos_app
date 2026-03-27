@@ -44,8 +44,10 @@ class ProfileScreen extends ConsumerStatefulWidget {
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
+enum _EditingTab { none, overview, training }
+
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  bool _isEditing = false;
+  _EditingTab _editingTab = _EditingTab.none;
   bool _isExporting = false;
   bool _isImporting = false;
 
@@ -53,6 +55,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _nameController = TextEditingController();
   final _heightController = TextEditingController();
   final _ageController = TextEditingController();
+  final _workoutMinutesController = TextEditingController();
   final _injuriesController = TextEditingController();
   final _bioController = TextEditingController();
   Gender? _selectedGender;
@@ -69,26 +72,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _nameController.dispose();
     _heightController.dispose();
     _ageController.dispose();
+    _workoutMinutesController.dispose();
     _injuriesController.dispose();
     _bioController.dispose();
     super.dispose();
   }
 
-  void _startEditing(UserProfile profile) {
+  void _startEditingOverview(UserProfile profile) {
     _nameController.text = profile.name ?? '';
     _heightController.text = profile.height?.toString() ?? '';
     _ageController.text = profile.age?.toString() ?? '';
+    _selectedGender = profile.gender;
     _injuriesController.text = profile.injuries ?? '';
     _bioController.text = profile.bio ?? '';
-    _selectedGender = profile.gender;
+    setState(() => _editingTab = _EditingTab.overview);
+  }
+
+  void _startEditingTraining(UserProfile profile) {
     _selectedGoal = profile.goal;
     _selectedAesthetic = profile.bodyAesthetic;
     _selectedStyle = profile.trainingStyle;
     _selectedExperience = profile.experienceLevel;
     _trainingFrequency = profile.trainingFrequency;
     _availableWorkoutMinutes = profile.availableWorkoutMinutes;
+    _workoutMinutesController.text =
+        profile.availableWorkoutMinutes?.toString() ?? '60';
     _trainsAtGym = profile.trainsAtGym;
-    setState(() => _isEditing = true);
+    setState(() => _editingTab = _EditingTab.training);
   }
 
   @override
@@ -97,13 +107,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final profileAsync = ref.watch(profileProvider);
     final resolved = profileAsync.value ?? const UserProfile(id: 0);
 
+    final isEditing = _editingTab != _EditingTab.none;
+
     return DefaultTabController(
-      length: _isEditing ? 1 : 4,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.profile),
           actions: [const AppBarMenu()],
-          bottom: _isEditing
+          bottom: isEditing
               ? null
               : TabBar(
                   isScrollable: true,
@@ -117,8 +129,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
         body: profileAsync.hasError
             ? Center(child: Text(l10n.genericError))
-            : _isEditing
-            ? _buildEditView(resolved, l10n)
+            : isEditing
+            ? _editingTab == _EditingTab.overview
+                ? _buildOverviewEditView(resolved, l10n)
+                : _buildTrainingEditView(resolved, l10n)
             : TabBarView(
                 children: [
                   Skeletonizer(
@@ -246,7 +260,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           const Gap(AthlosSpacing.lg),
 
           FilledButton.icon(
-            onPressed: () => _startEditing(profile),
+            onPressed: () => _startEditingOverview(profile),
             icon: const Icon(Icons.edit),
             label: Text(l10n.edit),
           ),
@@ -331,7 +345,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           const Gap(AthlosSpacing.lg),
           FilledButton.icon(
-            onPressed: () => _startEditing(profile),
+            onPressed: () => _startEditingTraining(profile),
             icon: const Icon(Icons.edit),
             label: Text(l10n.edit),
           ),
@@ -466,7 +480,34 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-  Widget _buildEditView(UserProfile profile, AppLocalizations l10n) {
+  Widget _buildEditBottomBar(UserProfile profile, AppLocalizations l10n) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.all(AthlosSpacing.md),
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () =>
+                    setState(() => _editingTab = _EditingTab.none),
+                child: Text(l10n.cancel),
+              ),
+            ),
+            const Gap(AthlosSpacing.smd),
+            Expanded(
+              child: FilledButton(
+                onPressed: () => _saveChanges(profile),
+                child: Text(l10n.save),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverviewEditView(UserProfile profile, AppLocalizations l10n) {
     final textTheme = Theme.of(context).textTheme;
 
     return Column(
@@ -483,207 +524,244 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const Gap(AthlosSpacing.sm),
                   TextFormField(
                     controller: _nameController,
-              decoration: InputDecoration(labelText: l10n.nameLabel),
-              textCapitalization: TextCapitalization.words,
-            ),
-            const Gap(AthlosSpacing.md),
-            TextFormField(
-              controller: _heightController,
-              decoration: InputDecoration(
-                labelText: l10n.heightLabel,
-                suffixText: l10n.heightUnit,
-              ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
-              ],
-              validator: (value) {
-                if (value != null && value.isNotEmpty && double.tryParse(value) == null) {
-                  return l10n.invalidNumber;
-                }
-                return null;
-              },
-            ),
-            const Gap(AthlosSpacing.md),
-            TextFormField(
-              controller: _ageController,
-              decoration: InputDecoration(
-                labelText: l10n.ageLabel,
-                suffixText: l10n.yearsUnit,
-              ),
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              validator: (value) {
-                if (value != null && value.isNotEmpty && int.tryParse(value) == null) {
-                  return l10n.invalidNumber;
-                }
-                return null;
-              },
-            ),
-            const Gap(AthlosSpacing.md),
-            Text(l10n.profileGender, style: textTheme.titleMedium),
-            Wrap(
-              spacing: AthlosSpacing.sm,
-              children: [
-                ChoiceChip(
-                  label: Text(l10n.genderMale),
-                  selected: _selectedGender == Gender.male,
-                  onSelected: (_) =>
-                      setState(() => _selectedGender = Gender.male),
-                ),
-                ChoiceChip(
-                  label: Text(l10n.genderFemale),
-                  selected: _selectedGender == Gender.female,
-                  onSelected: (_) =>
-                      setState(() => _selectedGender = Gender.female),
-                ),
-                ChoiceChip(
-                  label: Text(l10n.setupChatPreferNotToSay),
-                  selected: _selectedGender == null,
-                  onSelected: (_) => setState(() => _selectedGender = null),
-                ),
-              ],
-            ),
-            const Gap(AthlosSpacing.lg),
-            _SectionHeader(title: l10n.profileSectionTraining),
-            const Gap(AthlosSpacing.sm),
-            GoalSelector(
-              selected: _selectedGoal,
-              onSelected: (goal) => setState(() => _selectedGoal = goal),
-            ),
-            const Gap(AthlosSpacing.md),
-            AestheticSelector(
-              selected: _selectedAesthetic,
-              onSelected: (aesthetic) =>
-                  setState(() => _selectedAesthetic = aesthetic),
-            ),
-            const Gap(AthlosSpacing.md),
-            StyleSelector(
-              selected: _selectedStyle,
-              onSelected: (style) => setState(() => _selectedStyle = style),
-            ),
-            const Gap(AthlosSpacing.md),
-            ExperienceSelector(
-              selected: _selectedExperience,
-              onSelected: (level) =>
-                  setState(() => _selectedExperience = level),
-            ),
-            const Gap(AthlosSpacing.lg),
-            Text(
-              l10n.trainingFrequencyLabel,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            Slider(
-              value: (_trainingFrequency ?? 3).toDouble(),
-              min: 1,
-              max: 7,
-              divisions: 6,
-              label: '${_trainingFrequency ?? 3}x',
-              onChanged: (v) => setState(() => _trainingFrequency = v.round()),
-            ),
-            Center(
-              child: Text('${_trainingFrequency ?? 3} ${l10n.daysPerWeek}'),
-            ),
-            const Gap(AthlosSpacing.md),
-            SwitchListTile(
-              title: Text(l10n.profileAvailableWorkoutMinutesLabel),
-              subtitle: Text(
-                l10n.profileAvailableWorkoutMinutesHint,
-                style: textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              value: _availableWorkoutMinutes != null,
-              onChanged: (v) =>
-                  setState(() => _availableWorkoutMinutes = v ? 60 : null),
-            ),
-            if (_availableWorkoutMinutes != null) ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: Slider(
-                      value: (_availableWorkoutMinutes!.toDouble()).clamp(
-                        30,
-                        120,
+                    decoration: InputDecoration(labelText: l10n.nameLabel),
+                    textCapitalization: TextCapitalization.words,
+                  ),
+                  const Gap(AthlosSpacing.md),
+                  TextFormField(
+                    controller: _heightController,
+                    decoration: InputDecoration(
+                      labelText: l10n.heightLabel,
+                      suffixText: l10n.heightUnit,
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
+                    ],
+                    validator: (value) {
+                      if (value != null &&
+                          value.isNotEmpty &&
+                          double.tryParse(value) == null) {
+                        return l10n.invalidNumber;
+                      }
+                      return null;
+                    },
+                  ),
+                  const Gap(AthlosSpacing.md),
+                  TextFormField(
+                    controller: _ageController,
+                    decoration: InputDecoration(
+                      labelText: l10n.ageLabel,
+                      suffixText: l10n.yearsUnit,
+                    ),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    validator: (value) {
+                      if (value != null &&
+                          value.isNotEmpty &&
+                          int.tryParse(value) == null) {
+                        return l10n.invalidNumber;
+                      }
+                      return null;
+                    },
+                  ),
+                  const Gap(AthlosSpacing.md),
+                  Text(l10n.profileGender, style: textTheme.titleMedium),
+                  Wrap(
+                    spacing: AthlosSpacing.sm,
+                    children: [
+                      ChoiceChip(
+                        label: Text(l10n.genderMale),
+                        selected: _selectedGender == Gender.male,
+                        onSelected: (_) =>
+                            setState(() => _selectedGender = Gender.male),
                       ),
-                      min: 30,
-                      max: 120,
-                      divisions: 6,
-                      label: '$_availableWorkoutMinutes min',
-                      onChanged: (v) =>
-                          setState(() => _availableWorkoutMinutes = v.round()),
-                    ),
+                      ChoiceChip(
+                        label: Text(l10n.genderFemale),
+                        selected: _selectedGender == Gender.female,
+                        onSelected: (_) =>
+                            setState(() => _selectedGender = Gender.female),
+                      ),
+                      ChoiceChip(
+                        label: Text(l10n.setupChatPreferNotToSay),
+                        selected: _selectedGender == null,
+                        onSelected: (_) =>
+                            setState(() => _selectedGender = null),
+                      ),
+                    ],
                   ),
-                  SizedBox(
-                    width: 48,
-                    child: Text(
-                      '$_availableWorkoutMinutes min',
-                      style: textTheme.bodySmall,
+                  const Gap(AthlosSpacing.lg),
+                  _SectionHeader(title: l10n.profileSectionHealth),
+                  const Gap(AthlosSpacing.sm),
+                  TextFormField(
+                    controller: _injuriesController,
+                    decoration: InputDecoration(
+                      labelText: l10n.injuriesLabel,
+                      hintText: l10n.injuriesHint,
+                      alignLabelWithHint: true,
                     ),
+                    maxLines: 3,
+                    textCapitalization: TextCapitalization.sentences,
                   ),
-                ],
-              ),
-            ],
-            const Gap(AthlosSpacing.md),
-            SwitchListTile(
-              title: Text(l10n.trainsAtGymLabel),
-              value: _trainsAtGym ?? false,
-              onChanged: (v) => setState(() => _trainsAtGym = v),
-            ),
-            const Gap(AthlosSpacing.lg),
-            _SectionHeader(title: l10n.profileSectionHealth),
-            const Gap(AthlosSpacing.sm),
-            TextFormField(
-              controller: _injuriesController,
-              decoration: InputDecoration(
-                labelText: l10n.injuriesLabel,
-                hintText: l10n.injuriesHint,
-                alignLabelWithHint: true,
-              ),
-              maxLines: 3,
-              textCapitalization: TextCapitalization.sentences,
-            ),
-            const Gap(AthlosSpacing.md),
-            TextFormField(
-              controller: _bioController,
-              decoration: InputDecoration(
-                labelText: l10n.bioLabel,
-                hintText: l10n.bioHint,
-                alignLabelWithHint: true,
-              ),
-              maxLines: 4,
-              textCapitalization: TextCapitalization.sentences,
-            ),
+                  const Gap(AthlosSpacing.md),
+                  TextFormField(
+                    controller: _bioController,
+                    decoration: InputDecoration(
+                      labelText: l10n.bioLabel,
+                      hintText: l10n.bioHint,
+                      alignLabelWithHint: true,
+                    ),
+                    maxLines: 4,
+                    textCapitalization: TextCapitalization.sentences,
+                  ),
                 ],
               ),
             ),
           ),
         ),
-        SafeArea(
-          top: false,
-          child: Padding(
+        _buildEditBottomBar(profile, l10n),
+      ],
+    );
+  }
+
+  Widget _buildTrainingEditView(UserProfile profile, AppLocalizations l10n) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(AthlosSpacing.md),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => setState(() => _isEditing = false),
-                    child: Text(l10n.cancel),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _SectionHeader(title: l10n.profileSectionTraining),
+                  const Gap(AthlosSpacing.sm),
+                  GoalSelector(
+                    selected: _selectedGoal,
+                    onSelected: (goal) =>
+                        setState(() => _selectedGoal = goal),
                   ),
-                ),
-                const Gap(AthlosSpacing.smd),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () => _saveChanges(profile),
-                    child: Text(l10n.save),
+                  const Gap(AthlosSpacing.md),
+                  AestheticSelector(
+                    selected: _selectedAesthetic,
+                    onSelected: (aesthetic) =>
+                        setState(() => _selectedAesthetic = aesthetic),
                   ),
-                ),
-              ],
+                  const Gap(AthlosSpacing.md),
+                  StyleSelector(
+                    selected: _selectedStyle,
+                    onSelected: (style) =>
+                        setState(() => _selectedStyle = style),
+                  ),
+                  const Gap(AthlosSpacing.md),
+                  ExperienceSelector(
+                    selected: _selectedExperience,
+                    onSelected: (level) =>
+                        setState(() => _selectedExperience = level),
+                  ),
+                  const Gap(AthlosSpacing.lg),
+                  Text(
+                    l10n.trainingFrequencyLabel,
+                    style: textTheme.titleMedium,
+                  ),
+                  Slider(
+                    value: (_trainingFrequency ?? 3).toDouble(),
+                    min: 1,
+                    max: 7,
+                    divisions: 6,
+                    label: '${_trainingFrequency ?? 3}x',
+                    onChanged: (v) =>
+                        setState(() => _trainingFrequency = v.round()),
+                  ),
+                  Center(
+                    child: Text(
+                      '${_trainingFrequency ?? 3} ${l10n.daysPerWeek}',
+                    ),
+                  ),
+                  const Gap(AthlosSpacing.md),
+                  SwitchListTile(
+                    title: Text(l10n.profileAvailableWorkoutMinutesLabel),
+                    subtitle: Text(
+                      l10n.profileAvailableWorkoutMinutesHint,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    value: _availableWorkoutMinutes != null,
+                    onChanged: (v) {
+                      setState(
+                          () => _availableWorkoutMinutes = v ? 60 : null);
+                      if (v) _workoutMinutesController.text = '60';
+                    },
+                  ),
+                  if (_availableWorkoutMinutes != null) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Slider(
+                            value:
+                                (_availableWorkoutMinutes!.toDouble()).clamp(
+                              15,
+                              120,
+                            ),
+                            min: 15,
+                            max: 120,
+                            divisions: 21,
+                            label: '$_availableWorkoutMinutes min',
+                            onChanged: (v) {
+                              final rounded = v.round();
+                              setState(
+                                  () => _availableWorkoutMinutes = rounded);
+                              _workoutMinutesController.text =
+                                  rounded.toString();
+                            },
+                          ),
+                        ),
+                        SizedBox(
+                          width: 72,
+                          child: TextFormField(
+                            controller: _workoutMinutesController,
+                            decoration: const InputDecoration(
+                              suffixText: 'min',
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: AthlosSpacing.sm,
+                                vertical: AthlosSpacing.xs,
+                              ),
+                            ),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                            onChanged: (v) {
+                              final parsed = int.tryParse(v);
+                              if (parsed != null && parsed > 0) {
+                                setState(
+                                    () => _availableWorkoutMinutes = parsed);
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const Gap(AthlosSpacing.md),
+                  SwitchListTile(
+                    title: Text(l10n.trainsAtGymLabel),
+                    value: _trainsAtGym ?? false,
+                    onChanged: (v) => setState(() => _trainsAtGym = v),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
+        _buildEditBottomBar(profile, l10n),
       ],
     );
   }
@@ -691,33 +769,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _saveChanges(UserProfile profile) async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    final name = _nameController.text.trim();
-    final injuries = _injuriesController.text.trim();
-    final bio = _bioController.text.trim();
-    final heightText = _heightController.text.trim();
-    final ageText = _ageController.text.trim();
-    final updated = UserProfile(
-      id: profile.id,
-      name: name.isEmpty ? null : name,
-      height: heightText.isEmpty ? null : double.tryParse(heightText),
-      age: ageText.isEmpty ? null : int.tryParse(ageText),
-      gender: _selectedGender,
-      goal: _selectedGoal,
-      bodyAesthetic: _selectedAesthetic,
-      trainingStyle: _selectedStyle,
-      experienceLevel: _selectedExperience,
-      trainingFrequency: _trainingFrequency,
-      availableWorkoutMinutes: _availableWorkoutMinutes,
-      trainsAtGym: _trainsAtGym,
-      injuries: injuries.isEmpty ? null : injuries,
-      bio: bio.isEmpty ? null : bio,
-      lastActiveModule: profile.lastActiveModule,
-    );
+    final UserProfile updated;
+
+    if (_editingTab == _EditingTab.overview) {
+      final name = _nameController.text.trim();
+      final heightText = _heightController.text.trim();
+      final ageText = _ageController.text.trim();
+      final injuries = _injuriesController.text.trim();
+      final bio = _bioController.text.trim();
+      updated = profile.copyWith(
+        name: () => name.isEmpty ? null : name,
+        height: () => heightText.isEmpty ? null : double.tryParse(heightText),
+        age: () => ageText.isEmpty ? null : int.tryParse(ageText),
+        gender: () => _selectedGender,
+        injuries: () => injuries.isEmpty ? null : injuries,
+        bio: () => bio.isEmpty ? null : bio,
+      );
+    } else {
+      updated = profile.copyWith(
+        goal: () => _selectedGoal,
+        bodyAesthetic: () => _selectedAesthetic,
+        trainingStyle: () => _selectedStyle,
+        experienceLevel: () => _selectedExperience,
+        trainingFrequency: () => _trainingFrequency,
+        availableWorkoutMinutes: () => _availableWorkoutMinutes,
+        trainsAtGym: () => _trainsAtGym,
+      );
+    }
 
     try {
       await ref.read(profileProvider.notifier).updateProfile(updated);
       if (mounted) {
-        setState(() => _isEditing = false);
+        setState(() => _editingTab = _EditingTab.none);
       }
     } on Exception catch (_) {
       if (mounted) {

@@ -2735,10 +2735,14 @@ class _RpeSelector extends StatelessWidget {
 
     return Row(
       children: [
-        Text(
-          l10n.rpeLabel,
-          style: textTheme.labelSmall?.copyWith(
-            color: cs.onSurfaceVariant,
+        Tooltip(
+          message: l10n.rpeTooltip,
+          triggerMode: TooltipTriggerMode.longPress,
+          child: Text(
+            l10n.rpeLabel,
+            style: textTheme.labelSmall?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
           ),
         ),
         const SizedBox(width: AthlosSpacing.sm),

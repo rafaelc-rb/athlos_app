@@ -231,121 +231,143 @@ class WorkoutExerciseTile extends StatelessWidget {
                     const SizedBox(height: AthlosSpacing.sm),
                     Row(
                       children: [
-                        _NumberField(
-                          label: l10n.setsLabel,
-                          value: entry.sets,
-                          onChanged: (v) {
-                            entry.sets = v;
-                            onChanged(entry);
-                          },
+                        Expanded(
+                          child: _NumberField(
+                            label: l10n.setsLabel,
+                            value: entry.sets,
+                            onChanged: (v) {
+                              entry.sets = v;
+                              onChanged(entry);
+                            },
+                          ),
                         ),
                         const SizedBox(width: AthlosSpacing.sm),
                         if (entry.isCardio)
-                          _NumberField(
-                            label: l10n.durationSecondsLabel,
-                            value: entry.duration ?? 60,
-                            onChanged: (v) {
-                              entry.duration = v;
-                              onChanged(entry);
-                            },
-                          )
-                        else ...[
-                          _NumberField(
-                            label: l10n.minRepsLabel,
-                            value: entry.minReps ?? 12,
-                            onChanged: (v) {
-                              entry.minReps = v;
-                              if (entry.maxReps != null &&
-                                  entry.maxReps! < v) {
-                                entry.maxReps = v;
-                              }
-                              onChanged(entry);
-                            },
+                          Expanded(
+                            child: _NumberField(
+                              label: l10n.durationSecondsLabel,
+                              value: entry.duration ?? 60,
+                              onChanged: (v) {
+                                entry.duration = v;
+                                onChanged(entry);
+                              },
+                            ),
                           ),
-                          const SizedBox(width: AthlosSpacing.xs),
-                          _NumberField(
-                            label: l10n.maxRepsLabel,
-                            value: entry.maxReps ?? entry.minReps ?? 12,
-                            onChanged: (v) {
-                              entry.maxReps = v;
-                              if (entry.minReps != null &&
-                                  entry.minReps! > v) {
-                                entry.minReps = v;
-                              }
-                              onChanged(entry);
-                            },
-                          ),
-                        ],
                         const SizedBox(width: AthlosSpacing.sm),
-                        _NumberField(
-                          label: l10n.restSecondsLabel,
-                          value: entry.rest,
-                          onChanged: (v) {
-                            entry.rest = v;
-                            onChanged(entry);
-                          },
+                        Expanded(
+                          child: _NumberField(
+                            label: l10n.restSecondsLabel,
+                            value: entry.rest,
+                            onChanged: (v) {
+                              entry.rest = v;
+                              onChanged(entry);
+                            },
+                          ),
                         ),
                       ],
                     ),
+                    if (!entry.isCardio)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                            top: AthlosSpacing.xs),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _NumberField(
+                                label: l10n.minRepsLabel,
+                                value: entry.minReps ?? 12,
+                                onChanged: (v) {
+                                  entry.minReps = v;
+                                  if (entry.maxReps != null &&
+                                      entry.maxReps! < v) {
+                                    entry.maxReps = v;
+                                  }
+                                  onChanged(entry);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: AthlosSpacing.sm),
+                            Expanded(
+                              child: _NumberField(
+                                label: l10n.maxRepsLabel,
+                                value:
+                                    entry.maxReps ?? entry.minReps ?? 12,
+                                onChanged: (v) {
+                                  entry.maxReps = v;
+                                  if (entry.minReps != null &&
+                                      entry.minReps! > v) {
+                                    entry.minReps = v;
+                                  }
+                                  onChanged(entry);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     if (!entry.isCardio)
                       Padding(
                         padding:
                             const EdgeInsets.only(top: AthlosSpacing.xs),
                         child: Row(
                           children: [
-                            GestureDetector(
-                              onTap: () {
-                                entry.isAmrap = !entry.isAmrap;
-                                onChanged(entry);
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: AthlosSpacing.sm,
-                                  vertical: AthlosSpacing.xxs,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: entry.isAmrap
-                                      ? colorScheme.tertiaryContainer
-                                      : colorScheme
-                                          .surfaceContainerHighest,
-                                  borderRadius: AthlosRadius.fullAll,
-                                  border: Border.all(
-                                    color: entry.isAmrap
-                                        ? colorScheme.tertiary
-                                            .withValues(alpha: 0.5)
-                                        : colorScheme.outline
-                                            .withValues(alpha: 0.3),
+                            Tooltip(
+                              message: l10n.amrapTooltip,
+                              triggerMode: TooltipTriggerMode.longPress,
+                              child: GestureDetector(
+                                onTap: () {
+                                  entry.isAmrap = !entry.isAmrap;
+                                  onChanged(entry);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: AthlosSpacing.sm,
+                                    vertical: AthlosSpacing.xxs,
                                   ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.whatshot,
-                                      size: 12,
+                                  decoration: BoxDecoration(
+                                    color: entry.isAmrap
+                                        ? colorScheme.tertiaryContainer
+                                        : colorScheme
+                                            .surfaceContainerHighest,
+                                    borderRadius: AthlosRadius.fullAll,
+                                    border: Border.all(
                                       color: entry.isAmrap
-                                          ? colorScheme
-                                              .onTertiaryContainer
-                                          : colorScheme
-                                              .onSurfaceVariant,
+                                          ? colorScheme.tertiary
+                                              .withValues(alpha: 0.5)
+                                          : colorScheme.outline
+                                              .withValues(alpha: 0.3),
                                     ),
-                                    const SizedBox(
-                                        width: AthlosSpacing.xs),
-                                    Text(
-                                      l10n.amrapLabel,
-                                      style: textTheme.labelSmall
-                                          ?.copyWith(
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.whatshot,
+                                        size: 12,
                                         color: entry.isAmrap
                                             ? colorScheme
                                                 .onTertiaryContainer
                                             : colorScheme
                                                 .onSurfaceVariant,
-                                        fontWeight: entry.isAmrap
-                                            ? FontWeight.w600
-                                            : null,
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(
+                                          width: AthlosSpacing.xs),
+                                      Text(
+                                        l10n.amrapLabel,
+                                        style: textTheme.labelSmall
+                                            ?.copyWith(
+                                          color: entry.isAmrap
+                                              ? colorScheme
+                                                  .onTertiaryContainer
+                                              : colorScheme
+                                                  .onSurfaceVariant,
+                                          fontWeight: entry.isAmrap
+                                              ? FontWeight.w600
+                                              : null,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -470,26 +492,23 @@ class _NumberFieldState extends State<_NumberField> {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 64,
-      child: TextField(
-        controller: _controller,
-        keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        textAlign: TextAlign.center,
-        decoration: InputDecoration(
-          labelText: widget.label,
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: AthlosSpacing.xs,
-            vertical: AthlosSpacing.sm,
-          ),
+    return TextField(
+      controller: _controller,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      textAlign: TextAlign.center,
+      decoration: InputDecoration(
+        labelText: widget.label,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AthlosSpacing.xs,
+          vertical: AthlosSpacing.sm,
         ),
-        onChanged: (text) {
-          final v = int.tryParse(text);
-          if (v != null && v > 0) widget.onChanged(v);
-        },
       ),
+      onChanged: (text) {
+        final v = int.tryParse(text);
+        if (v != null && v > 0) widget.onChanged(v);
+      },
     );
   }
 }

@@ -24,6 +24,7 @@ import '../../features/training/data/datasources/daos/cycle_step_dao.dart';
 import '../../features/training/data/datasources/daos/equipment_dao.dart';
 import '../../features/training/data/datasources/daos/exercise_dao.dart';
 import '../../features/training/data/datasources/daos/program_dao.dart';
+import '../../features/training/data/datasources/daos/progression_rule_dao.dart';
 import '../../features/training/data/datasources/daos/workout_dao.dart';
 import '../../features/training/data/datasources/daos/workout_execution_dao.dart';
 import '../../features/training/data/datasources/tables/cycle_steps_table.dart';
@@ -40,6 +41,7 @@ import '../../features/training/domain/enums/muscle_group.dart';
 import '../../features/training/domain/enums/muscle_region.dart';
 import '../../features/training/domain/enums/target_muscle.dart';
 import '../../features/training/data/datasources/tables/programs_table.dart';
+import '../../features/training/data/datasources/tables/progression_rules_table.dart';
 import '../../features/training/data/datasources/tables/workout_exercises_table.dart';
 import '../../features/training/data/datasources/tables/workout_executions_table.dart';
 import '../../features/training/data/datasources/tables/workouts_table.dart';
@@ -62,6 +64,7 @@ const _skipDevSeed = bool.fromEnvironment('SKIP_DEV_SEED');
     ExecutionSets,
     ExecutionSetSegments,
     Programs,
+    ProgressionRules,
     CycleSteps,
     UserEquipments,
     CatalogGovernanceEvents,
@@ -74,6 +77,7 @@ const _skipDevSeed = bool.fromEnvironment('SKIP_DEV_SEED');
     EquipmentDao,
     ExerciseDao,
     ProgramDao,
+    ProgressionRuleDao,
     WorkoutDao,
     WorkoutExecutionDao,
     CycleStepDao,
@@ -94,7 +98,7 @@ class AppDatabase extends _$AppDatabase {
   bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed && _enableDevSeed;
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -105,7 +109,7 @@ class AppDatabase extends _$AppDatabase {
       if (_shouldSeedDevData) await seedDevData(this);
     },
     onUpgrade: (m, from, to) async {
-      if (_shouldSeedDevData && from >= 3 && from <= 19) {
+      if (_shouldSeedDevData && from >= 3 && from <= 20) {
         for (final table in allTables) {
           await m.deleteTable(table.actualTableName);
         }
@@ -387,6 +391,22 @@ class AppDatabase extends _$AppDatabase {
         await customStatement(
           'ALTER TABLE programs ADD COLUMN deload_intensity_multiplier REAL',
         );
+      }
+
+      if (from < 20) {
+        // Phase 5: Progression rules per exercise within a program.
+        await customStatement('''
+          CREATE TABLE progression_rules (
+            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            program_id INTEGER NOT NULL REFERENCES programs(id),
+            exercise_id INTEGER NOT NULL REFERENCES exercises(id),
+            type TEXT NOT NULL,
+            value REAL NOT NULL,
+            frequency TEXT NOT NULL,
+            condition TEXT,
+            condition_value REAL
+          )
+        ''');
       }
     },
   );

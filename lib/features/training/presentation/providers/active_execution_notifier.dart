@@ -7,8 +7,12 @@ import '../../data/repositories/training_providers.dart';
 import '../../domain/entities/deload_config.dart';
 import '../../domain/entities/execution_set.dart';
 import '../../domain/entities/execution_set_segment.dart';
+import '../../domain/entities/progression_rule.dart';
 import '../../domain/entities/workout_exercise.dart';
+import '../../domain/repositories/workout_execution_repository.dart';
 import '../../domain/enums/deload_strategy.dart';
+import '../../domain/enums/progression_condition.dart';
+import '../../domain/enums/progression_type.dart';
 import '../../domain/usecases/complete_set_use_case.dart';
 import 'active_execution_state.dart';
 export 'active_execution_state.dart';
@@ -24,12 +28,13 @@ class ActiveExecution extends _$ActiveExecution {
   ActiveExecutionState? build() => null;
 
   /// Start a new execution, creating the DB record and pre-populating sets
-  /// from the workout template. Applies deload adjustments when applicable.
+  /// from the workout template. Applies deload and progression adjustments.
   Future<void> startExecution(
     int workoutId,
     List<WorkoutExercise> exercises, {
     int? programId,
     DeloadConfig? deloadConfig,
+    List<ProgressionRule> progressionRules = const [],
   }) async {
     final repo = ref.read(workoutExecutionRepositoryProvider);
     final result = await repo.start(workoutId, programId: programId);
@@ -47,15 +52,40 @@ class ActiveExecution extends _$ActiveExecution {
         (deloadConfig.strategy == DeloadStrategy.reduceIntensity ||
             deloadConfig.strategy == DeloadStrategy.reduceBoth);
 
+    final rulesByExercise = {
+      for (final r in progressionRules) r.exerciseId: r,
+    };
+
     final exerciseSets = <int, List<SetEntry>>{};
     for (final ex in exercises) {
-      final lastWeight = lastWeights[ex.exerciseId];
+      var lastWeight = lastWeights[ex.exerciseId];
       final isCardio = ex.duration != null;
-      final repsTarget = isCardio ? null : ex.targetReps;
+      var repsTarget = isCardio ? null : ex.targetReps;
+      var sets = ex.sets;
+
+      if (deloadConfig == null) {
+        final rule = rulesByExercise[ex.exerciseId];
+        if (rule != null && lastWeight != null) {
+          final shouldApply =
+              await _evaluateCondition(repo, rule, ex);
+          if (shouldApply) {
+            switch (rule.type) {
+              case ProgressionType.incrementWeight:
+                lastWeight = lastWeight + rule.value;
+              case ProgressionType.incrementReps:
+                if (repsTarget != null) {
+                  repsTarget = repsTarget + rule.value.toInt();
+                }
+              case ProgressionType.incrementSets:
+                sets = sets + rule.value.toInt();
+            }
+          }
+        }
+      }
 
       final effectiveSets = reduceVol
-          ? math.max(1, (ex.sets * deloadConfig.volumeMultiplier).ceil())
-          : ex.sets;
+          ? math.max(1, (sets * deloadConfig.volumeMultiplier).ceil())
+          : sets;
 
       final effectiveWeight = (reduceInt && lastWeight != null)
           ? lastWeight * deloadConfig.intensityMultiplier
@@ -80,6 +110,40 @@ class ActiveExecution extends _$ActiveExecution {
       exercises: exercises,
       isDeload: deloadConfig != null,
     );
+  }
+
+  Future<bool> _evaluateCondition(
+    WorkoutExecutionRepository repo,
+    ProgressionRule rule,
+    WorkoutExercise exercise,
+  ) async {
+    if (rule.condition == null) return true;
+
+    final setsResult =
+        await repo.getLastCompletedSetsForExercise(rule.exerciseId);
+    final lastSets =
+        setsResult.isSuccess ? setsResult.getOrThrow() : <ExecutionSet>[];
+    if (lastSets.isEmpty) return false;
+
+    switch (rule.condition!) {
+      case ProgressionCondition.hitsMaxReps:
+        final maxReps = exercise.maxReps;
+        if (maxReps == null) return false;
+        return lastSets.every((s) => (s.reps ?? 0) >= maxReps);
+
+      case ProgressionCondition.completesAllSets:
+        return lastSets.length >= exercise.sets;
+
+      case ProgressionCondition.rpeBelow:
+        final threshold = rule.conditionValue ?? 8;
+        final rpeSets =
+            lastSets.where((s) => s.rpe != null).toList();
+        if (rpeSets.isEmpty) return false;
+        final avgRpe =
+            rpeSets.map((s) => s.rpe!).reduce((a, b) => a + b) /
+                rpeSets.length;
+        return avgRpe < threshold;
+    }
   }
 
   /// Update local set values (weight/reps or duration/distance) without

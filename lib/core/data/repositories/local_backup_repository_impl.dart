@@ -47,6 +47,7 @@ const _tableExecutionSets = 'execution_sets';
 const _tableExecutionSetSegments = 'execution_set_segments';
 const _tableCycleSteps = 'cycle_steps';
 const _tablePrograms = 'programs';
+const _tableProgressionRules = 'progression_rules';
 const _tableUserEquipments = 'user_equipments';
 const _tableCatalogGovernanceEvents = 'catalog_governance_events';
 const _tableLocalDuplicateFeedback = 'local_duplicate_feedback';
@@ -76,6 +77,8 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       );
       final cycleSteps = await _fetchTableRows(_tableCycleSteps);
       final programs = await _fetchTableRows(_tablePrograms);
+      final progressionRules =
+          await _fetchTableRows(_tableProgressionRules);
       final userEquipments = await _fetchTableRows(_tableUserEquipments);
 
       final allEquipments = await _fetchTableRows(_tableEquipments);
@@ -171,6 +174,8 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
               .toList(),
           _tableCycleSteps: cycleSteps.map(_toJsonMap).toList(),
           _tablePrograms: programs.map(_toJsonMap).toList(),
+          _tableProgressionRules:
+              progressionRules.map(_toJsonMap).toList(),
           _tableUserEquipments: userEquipments.map(_toJsonMap).toList(),
         },
         _tableCatalogReferences: <String, dynamic>{
@@ -539,6 +544,38 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
             excludeKeys: const {'id'},
           );
           programIdMap[oldId] = newId;
+        }
+
+        // Progression Rules
+        final progressionRuleRows =
+            payload.tables[_tableProgressionRules] ?? const [];
+        for (final row in progressionRuleRows) {
+          final oldProgramId = _asInt(row['program_id']);
+          final oldExerciseId = _asInt(row['exercise_id']);
+          if (oldProgramId == null || oldExerciseId == null) continue;
+          final newProgramId = programIdMap[oldProgramId];
+          final newExerciseId = exerciseIdMap[oldExerciseId];
+          if (newProgramId == null || newExerciseId == null) {
+            failedCount++;
+            bumpReason(
+              failedReasons,
+              'progression_rule_missing_mapping',
+            );
+            continue;
+          }
+          await _insertRow(
+            _tableProgressionRules,
+            {
+              'program_id': newProgramId,
+              'exercise_id': newExerciseId,
+              'type': row['type'],
+              'value': row['value'],
+              'frequency': row['frequency'],
+              'condition': row['condition'],
+              'condition_value': row['condition_value'],
+            },
+            excludeKeys: const {'id'},
+          );
         }
 
         final executionRows =
@@ -2026,6 +2063,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       _tableExecutionSetSegments,
       _tableCycleSteps,
       _tablePrograms,
+      _tableProgressionRules,
       _tableUserEquipments,
     ];
 

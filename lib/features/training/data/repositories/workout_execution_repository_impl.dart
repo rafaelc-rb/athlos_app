@@ -204,6 +204,35 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
     }
   }
 
+  @override
+  Future<Result<List<domain.ExecutionSet>>>
+      getLastCompletedSetsForExercise(int exerciseId) async {
+    try {
+      final rows =
+          await _dao.getLastCompletedSetsForExercise(exerciseId);
+      return Success(rows
+          .map((r) => domain.ExecutionSet(
+                id: r.id,
+                executionId: r.executionId,
+                exerciseId: r.exerciseId,
+                setNumber: r.setNumber,
+                plannedReps: r.plannedReps,
+                plannedWeight: r.plannedWeight,
+                reps: r.reps,
+                weight: r.weight,
+                duration: r.duration,
+                distance: r.distance,
+                isCompleted: r.isCompleted,
+                isWarmup: r.isWarmup,
+                rpe: r.rpe,
+              ))
+          .toList());
+    } on Exception catch (e) {
+      return Failure(
+          DatabaseException('Failed to load last sets: $e'));
+    }
+  }
+
   domain.WorkoutExecution _executionToDomain(dynamic row) =>
       domain.WorkoutExecution(
         id: row.id as int,

@@ -24,6 +24,11 @@ abstract interface class WorkoutExecutionRepository {
   Future<Result<Map<int, double>>> getLastWeightsForExercises(
       List<int> exerciseIds);
 
+  /// Completed non-warmup sets from the most recent finished execution
+  /// that included [exerciseId].
+  Future<Result<List<ExecutionSet>>> getLastCompletedSetsForExercise(
+      int exerciseId);
+
   // --- Segments (drop sets) ---
   Future<Result<List<ExecutionSetSegment>>> getSegments(int executionSetId);
   Future<Result<List<ExecutionSetSegment>>> getSegmentsForExecution(

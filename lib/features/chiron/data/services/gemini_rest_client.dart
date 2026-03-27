@@ -530,6 +530,51 @@ List<Map<String, dynamic>> getChironToolDeclarations() {
       ),
     },
     {
+      'name': 'setProgressionRules',
+      'description':
+          'Replace all progression rules for a program. Each rule defines '
+              'auto-progression for one exercise (e.g. add weight or reps). '
+              'Call getTrainingState first to get the programId.',
+      'parameters': _schema(
+        properties: {
+          'programId': {'type': 'integer', 'description': 'ID of the program'},
+          'rules': {
+            'type': 'array',
+            'description': 'List of progression rule objects',
+            'items': {
+              'type': 'object',
+              'properties': {
+                'exerciseId': {'type': 'integer'},
+                'type': {
+                  'type': 'string',
+                  'enum': ['incrementWeight', 'incrementReps', 'incrementSets'],
+                },
+                'value': {
+                  'type': 'number',
+                  'description': 'Increment value (kg, reps, or sets)',
+                },
+                'frequency': {
+                  'type': 'string',
+                  'enum': ['everySession', 'everyRotation'],
+                },
+                'condition': {
+                  'type': 'string',
+                  'enum': ['hitsMaxReps', 'completesAllSets', 'rpeBelow'],
+                  'description': 'Optional condition to trigger progression',
+                },
+                'conditionValue': {
+                  'type': 'number',
+                  'description': 'Threshold for condition (e.g. RPE threshold)',
+                },
+              },
+              'required': ['exerciseId', 'type', 'value', 'frequency'],
+            },
+          },
+        },
+        required: ['programId', 'rules'],
+      ),
+    },
+    {
       'name': 'requestExtendedHistory',
       'description':
           'Load extended workout/execution history for long-term '

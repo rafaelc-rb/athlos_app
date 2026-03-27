@@ -14,7 +14,7 @@ Future<void> seedDevData(AppDatabase db) async {
   await _seedUserEquipments(db, equipmentIds);
   await _seedWorkoutsWithExercises(db, exerciseIds);
   await _seedExecutionHistory(db, exerciseIds);
-  await _seedProgram(db);
+  await _seedProgram(db, exerciseIds);
 }
 
 Future<Map<String, int>> _resolveExerciseIds(AppDatabase db) async {
@@ -447,7 +447,8 @@ class _WE {
 // Training Program (mesocycle)
 // ---------------------------------------------------------------------------
 
-Future<void> _seedProgram(AppDatabase db) async {
+Future<void> _seedProgram(
+    AppDatabase db, Map<String, int> exerciseIds) async {
   final activeWorkouts = await db.customSelect(
     'SELECT id FROM workouts WHERE is_archived = 0 ORDER BY sort_order ASC',
   ).get();
@@ -477,6 +478,29 @@ Future<void> _seedProgram(AppDatabase db) async {
         programId: Value(programId),
         orderIndex: i,
         workoutId: pplIds[i],
+      ),
+    );
+  }
+
+  // Progression rules for key compound lifts.
+  final progressionExercises = {
+    'flatBarbellBenchPress': 2.5,
+    'barbellRow': 2.5,
+    'conventionalDeadlift': 5.0,
+    'barbellBackSquat': 5.0,
+    'overheadPress': 1.25,
+  };
+  for (final entry in progressionExercises.entries) {
+    final exId = exerciseIds[entry.key];
+    if (exId == null) continue;
+    await db.into(db.progressionRules).insert(
+      ProgressionRulesCompanion.insert(
+        programId: programId,
+        exerciseId: exId,
+        type: 'incrementWeight',
+        value: entry.value,
+        frequency: 'everySession',
+        condition: const Value('completesAllSets'),
       ),
     );
   }

@@ -95,6 +95,33 @@ class WorkoutExecutionDao extends DatabaseAccessor<AppDatabase>
     return result;
   }
 
+  /// Returns completed, non-warmup sets from the most recent finished execution
+  /// that included [exerciseId]. Empty list if no history found.
+  Future<List<ExecutionSet>> getLastCompletedSetsForExercise(
+      int exerciseId) async {
+    final lastExec = await (select(workoutExecutions).join([
+      innerJoin(executionSets,
+          executionSets.executionId.equalsExp(workoutExecutions.id)),
+    ])
+          ..where(executionSets.exerciseId.equals(exerciseId) &
+              executionSets.isCompleted.equals(true) &
+              workoutExecutions.finishedAt.isNotNull())
+          ..orderBy([OrderingTerm.desc(workoutExecutions.startedAt)])
+          ..limit(1))
+        .getSingleOrNull();
+    if (lastExec == null) return [];
+
+    final execId = lastExec.readTable(workoutExecutions).id;
+    return (select(executionSets)
+          ..where((s) =>
+              s.executionId.equals(execId) &
+              s.exerciseId.equals(exerciseId) &
+              s.isCompleted.equals(true) &
+              s.isWarmup.equals(false))
+          ..orderBy([(s) => OrderingTerm.asc(s.setNumber)]))
+        .get();
+  }
+
   // --- Execution sets ---
 
   Future<List<ExecutionSet>> getSets(int executionId) =>

@@ -218,6 +218,11 @@ class _FakeWorkoutExecutionRepository implements WorkoutExecutionRepository {
     int executionId,
   ) =>
       _unsupported();
+  @override
+  Future<Result<List<ExecutionSet>>> getLastCompletedSetsForExercise(
+    int exerciseId,
+  ) =>
+      _unsupported();
 }
 
 Future<Result<T>> _unsupported<T>() async {

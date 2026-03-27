@@ -2106,5 +2106,42 @@
     "placeholders": {
       "percent": { "type": "int" }
     }
+  },
+
+  "progressionSectionTitle": "Progressão",
+  "progressionEmpty": "Sem regras de progressão",
+  "progressionEmptyHint": "Adicione regras para progredir automaticamente.",
+  "progressionAddRule": "Adicionar regra",
+  "progressionTypeLabel": "Tipo",
+  "progressionTypeIncrementWeight": "Incrementar peso",
+  "progressionTypeIncrementReps": "Incrementar reps",
+  "progressionTypeIncrementSets": "Incrementar sets",
+  "progressionValueLabel": "Valor",
+  "progressionValueHintWeight": "Ex: 2.5 (kg)",
+  "progressionValueHintReps": "Ex: 1 (rep)",
+  "progressionValueHintSets": "Ex: 1 (set)",
+  "progressionFrequencyLabel": "Frequência",
+  "progressionFrequencyEverySession": "Cada sessão",
+  "progressionFrequencyEveryRotation": "Cada rotação",
+  "progressionConditionLabel": "Condição (opcional)",
+  "progressionConditionNone": "Sempre",
+  "progressionConditionHitsMaxReps": "Atingir reps máximas",
+  "progressionConditionCompletesAllSets": "Completar todos os sets",
+  "progressionConditionRpeBelow": "RPE abaixo de",
+  "progressionConditionValueHint": "Limiar RPE",
+  "progressionExerciseLabel": "Exercício",
+  "progressionSelectExercise": "Selecionar exercício",
+  "progressionSuggested": "Sugerido: {value}",
+  "@progressionSuggested": {
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
+  "progressionApplied": "+{value}{unit}",
+  "@progressionApplied": {
+    "placeholders": {
+      "value": { "type": "String" },
+      "unit": { "type": "String" }
+    }
   }
 }

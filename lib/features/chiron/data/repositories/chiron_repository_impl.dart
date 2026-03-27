@@ -13,7 +13,12 @@ import '../../../training/domain/entities/workout_exercise.dart' as domain_we;
 import '../../../training/domain/repositories/cycle_repository.dart';
 import '../../../training/domain/repositories/equipment_repository.dart';
 import '../../../training/domain/repositories/exercise_repository.dart';
+import '../../../training/domain/entities/progression_rule.dart';
+import '../../../training/domain/enums/progression_condition.dart';
+import '../../../training/domain/enums/progression_frequency.dart';
+import '../../../training/domain/enums/progression_type.dart';
 import '../../../training/domain/repositories/program_repository.dart';
+import '../../../training/domain/repositories/progression_rule_repository.dart';
 import '../../../training/domain/repositories/workout_repository.dart';
 import '../../domain/entities/chiron_message.dart';
 import '../../domain/repositories/chiron_repository.dart';
@@ -60,6 +65,7 @@ class ChironRepositoryImpl implements ChironRepository {
     required ExerciseRepository exerciseRepo,
     required CycleRepository cycleRepo,
     required ProgramRepository programRepo,
+    required ProgressionRuleRepository progressionRuleRepo,
     required PromptBuilder promptBuilder,
   }) : _profileRepo = profileRepo,
        _equipmentRepo = equipmentRepo,
@@ -67,6 +73,7 @@ class ChironRepositoryImpl implements ChironRepository {
        _exerciseRepo = exerciseRepo,
        _cycleRepo = cycleRepo,
        _programRepo = programRepo,
+       _progressionRuleRepo = progressionRuleRepo,
        _promptBuilder = promptBuilder,
        _restClient = GeminiRestClient(apiKey: apiKey);
 
@@ -77,6 +84,7 @@ class ChironRepositoryImpl implements ChironRepository {
   final ExerciseRepository _exerciseRepo;
   final CycleRepository _cycleRepo;
   final ProgramRepository _programRepo;
+  final ProgressionRuleRepository _progressionRuleRepo;
   final PromptBuilder _promptBuilder;
 
   /// Client-side RPM guard aligned with the free tier (10 RPM for
@@ -484,6 +492,13 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
         );
       case 'getTrainingState':
         return _handleGetTrainingState();
+      case 'setProgressionRules':
+        return _handleSetProgressionRules(
+          args['programId'] is int
+              ? args['programId'] as int
+              : int.tryParse(args['programId']?.toString() ?? ''),
+          args['rules'] is List ? args['rules'] as List : null,
+        );
       default:
         return {'success': false, 'error': 'Unknown function: $name'};
     }
@@ -711,6 +726,24 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
           'intensityMultiplier': dc.intensityMultiplier,
         };
       }
+      final rulesResult =
+          await _progressionRuleRepo.getByProgram(activeProgram.id);
+      if (rulesResult.isSuccess) {
+        final rules = rulesResult.getOrThrow();
+        if (rules.isNotEmpty) {
+          programMap['progressionRules'] = rules
+              .map((r) => {
+                    'exerciseId': r.exerciseId,
+                    'type': r.type.name,
+                    'value': r.value,
+                    'frequency': r.frequency.name,
+                    if (r.condition != null) 'condition': r.condition!.name,
+                    if (r.conditionValue != null)
+                      'conditionValue': r.conditionValue,
+                  })
+              .toList();
+        }
+      }
       result['activeProgram'] = programMap;
     }
     return result;
@@ -722,6 +755,57 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
     if (value is double) return value.round();
     final parsed = int.tryParse(value.toString());
     return parsed ?? fallback;
+  }
+
+  Future<Map<String, Object?>> _handleSetProgressionRules(
+    int? programId,
+    List? rulesList,
+  ) async {
+    if (programId == null || programId <= 0) {
+      return {'success': false, 'error': 'Invalid programId'};
+    }
+    if (rulesList == null) {
+      return {'success': false, 'error': 'Missing rules list'};
+    }
+    try {
+      final rules = rulesList.map((item) {
+        final m = item as Map<String, dynamic>;
+        final exerciseId = m['exerciseId'] is int
+            ? m['exerciseId'] as int
+            : int.parse(m['exerciseId'].toString());
+        final type = ProgressionType.values.byName(
+            m['type']?.toString() ?? 'incrementWeight');
+        final value = (m['value'] is num)
+            ? (m['value'] as num).toDouble()
+            : double.parse(m['value'].toString());
+        final frequency = ProgressionFrequency.values.byName(
+            m['frequency']?.toString() ?? 'everySession');
+        final condStr = m['condition']?.toString();
+        final condition = condStr != null && condStr.isNotEmpty
+            ? ProgressionCondition.values.byName(condStr)
+            : null;
+        final condVal = m['conditionValue'] is num
+            ? (m['conditionValue'] as num).toDouble()
+            : null;
+        return ProgressionRule(
+          id: 0,
+          programId: programId,
+          exerciseId: exerciseId,
+          type: type,
+          value: value,
+          frequency: frequency,
+          condition: condition,
+          conditionValue: condVal,
+        );
+      }).toList();
+
+      final result =
+          await _progressionRuleRepo.replaceAllForProgram(programId, rules);
+      result.getOrThrow();
+      return {'success': true, 'rulesCount': rules.length};
+    } on Exception catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
   }
 
   static const int _maxBioLength = 500;

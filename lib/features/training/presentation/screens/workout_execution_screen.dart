@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/errors/result.dart';
 import '../../../../core/services/rest_timer_notification_service.dart';
 import '../../../../core/theme/athlos_custom_colors.dart';
 import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../data/repositories/training_providers.dart';
+import '../../domain/entities/progression_rule.dart';
 import '../../domain/entities/training_program.dart';
 import '../../domain/entities/workout_exercise.dart';
 import '../helpers/exercise_l10n.dart';
@@ -122,6 +125,12 @@ class _WorkoutExecutionScreenState
               (activeProgram?.isInDeload ?? false)
                   ? activeProgram?.deloadConfig
                   : null;
+          final progressionRules = programId != null
+              ? await ref
+                  .read(progressionRuleRepositoryProvider)
+                  .getByProgram(programId)
+                  .then((r) => r.getOrThrow())
+              : <ProgressionRule>[];
           await ref
               .read(activeExecutionProvider.notifier)
               .startExecution(
@@ -129,6 +138,7 @@ class _WorkoutExecutionScreenState
                 exercisesAsync.value,
                 programId: programId,
                 deloadConfig: deloadConfig,
+                progressionRules: progressionRules,
               );
         } on Exception catch (_) {
           messenger.showSnackBar(

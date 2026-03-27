@@ -32,29 +32,53 @@ No distinction between hypertrophy, strength, endurance, or deload blocks. These
 
 ### Phase 1: Simplify the Cycle
 
-**Remove `CycleStepType.rest`** — the cycle becomes a simple ordered list of workout IDs. When the user executes, they pick up the next workout in the queue. Rest is implicit.
+**Remove `CycleStepType.rest`** — the cycle becomes a simple ordered list of workout IDs. When the user executes, they pick up the next workout in the queue. Rest is implicit (the day the user doesn't train).
 
 - Remove `CycleStepType` enum
 - `cycle_steps` table becomes: `id`, `orderIndex`, `workoutId` (non-nullable)
 - Migration: drop existing rest steps, compact ordering
 - Update Chiron's `setCycle` tool accordingly
 
-### Phase 2: Training Program (Mesocycle)
+### Phase 2: Rep Ranges and Set Types
+
+Replace fixed `reps` with a range and introduce set types.
+
+#### 2a. Rep Ranges
+
+Currently `WorkoutExercise.reps` is a fixed `int` (e.g. 10). Real programs prescribe **ranges** (e.g. 8-12). The user picks a weight where they can do at least the minimum; when they hit the maximum with good form, they increase weight. This is fundamental to how progression works.
+
+- Replace `reps` (int?) with `minReps` (int?) + `maxReps` (int?) on `WorkoutExercise`
+- When min == max, it behaves as a fixed target (backward compatible)
+- Load suggestion logic: hit maxReps on all sets → suggest weight increase next session
+
+#### 2b. AMRAP Sets
+
+"As Many Reps As Possible" — common in programs like 5/3/1. The target is a minimum rep count but the user goes to near-failure.
+
+- Add `isAmrap` boolean to `WorkoutExercise` (default: false)
+- AMRAP sets show a distinct badge in execution UI
+- The recorded reps feed directly into 1RM estimation and progression decisions
+
+### Phase 3: Training Program (Mesocycle)
 
 Introduce the **Program** entity — a named, time-bound container for the training cycle.
 
 ```
 Program
 ├── name: "PPL Hipertrofia"
-├── focus: hypertrophy | strength | endurance | deload | custom
+├── focus: hypertrophy | strength | endurance | custom
 ├── durationMode: sessions | rotations
 ├── durationValue: 12 (sessions) or 4 (rotations)
 ├── currentProgress: 7 (sessions completed)
-├── deloadEvery: 4 (rotations, nullable)
+├── defaultRestSeconds: 90 (nullable — override per phase/focus)
 ├── isActive: true
 ├── createdAt / archivedAt
 └── cycle: [Push, Pull, Legs] (ordered workout IDs)
 ```
+
+**Focus is not deload.** Deload is a recovery strategy within a block, not a training goal. See Phase 4 below.
+
+**Rest adapts to focus:** hypertrophy 60-90s, strength 3-5min, endurance 30-45s. The program's `defaultRestSeconds` provides a phase-appropriate default. Per-exercise rest in the workout template still takes priority when set.
 
 **Key behaviors:**
 - Only one active program at a time
@@ -63,7 +87,30 @@ Program
 - Starting a new program archives the previous one
 - Programs are optional — users can still train without one (free cycle mode)
 
-### Phase 3: Progression Rules
+### Phase 4: Deload Strategy
+
+Deload is a recovery mechanism, **not a separate program type**. It's a temporary reduction applied to the current program.
+
+```
+DeloadConfig (part of Program, nullable)
+├── frequency: 4 (every N rotations, nullable = manual only)
+├── strategy: reduceVolume | reduceIntensity | reduceBoth
+├── volumeMultiplier: 0.6 (keep 60% of sets)
+├── intensityMultiplier: 0.5 (use 50% of working weight)
+```
+
+**How it works:**
+- **Reduce volume** — same weight, fewer sets (e.g. 4 sets → 2 sets)
+- **Reduce intensity** — same sets/reps, lighter weight (50-60% of working weight)
+- **Reduce both** — fewer sets + lighter weight
+
+**Key behaviors:**
+- When deload is due, the app/Chiron prompts: "Hora do deload. Quer uma semana leve?"
+- During deload, execution screen shows adjusted targets (dimmed original + active deload target)
+- Deload sessions count toward program progress
+- Deload is optional — user can skip or trigger manually
+
+### Phase 5: Progression Rules
 
 Per-exercise progression rules within a program:
 
@@ -73,61 +120,80 @@ ProgressionRule
 ├── exerciseId
 ├── type: incrementWeight | incrementReps | incrementSets
 ├── value: 2.5 (kg) or 1 (rep/set)
-├── frequency: everySession | everyRotation | everyWeek
+├── frequency: everySession | everyRotation
+├── condition: hitsMaxReps | completesAllSets | rpeBelow (nullable)
 ```
 
 **Key behaviors:**
 - When starting a session, the app suggests the target weight/reps based on progression rules + last execution
+- Progression triggers respect conditions (e.g. only increase weight if user hit maxReps on all working sets last session)
 - Chiron can create progression rules when building a program
 - Rules are optional — users who don't set them get the current behavior (manual)
 
-### Phase 4: Training Metrics
+### Phase 6: Training Metrics
 
 New data points and computed analytics to enrich the training experience.
 
-#### 4a. RPE / RIR (optional per set)
+#### 6a. RPE / RIR (optional per set)
 
 - Add optional `rpe` field (integer 1-10) to `ExecutionSet`
 - UI: small optional input after completing a set (skip = not recorded)
 - Chiron uses RPE data for better load recommendations
+- Progression rules can use RPE as condition (e.g. increase weight when RPE < 7)
 
-#### 4b. Estimated 1RM and PRs
+#### 6b. Estimated 1RM and PRs
 
 - Computed from execution history using Epley formula: `1RM = weight × (1 + reps/30)`
+- For bodyweight exercises: use total load (body weight + added weight) in the formula
 - Show per-exercise PR badge in history and exercise detail
 - Chiron can reference 1RM for percentage-based programming
 
-#### 4c. Weekly Volume per Muscle Group
+#### 6c. Weekly Volume per Muscle Group
 
-- Aggregate sets × muscle group from executions in the last 7 days
+- Aggregate working sets (excluding warmup) × muscle group from executions in the last 7 days
 - Display on Training Home dashboard (optional card)
 - Flag under-volume or over-volume based on experience level guidelines
+- Typical targets: beginner 10-14 sets/muscle/week, intermediate 14-20, advanced 20+
 
-#### 4d. Bodyweight as Load for Bodyweight Exercises
+#### 6d. Bodyweight Exercise Support
 
-- For exercises marked as bodyweight (pull-ups, dips, etc.), total load = body weight (from profile) + added weight (from execution)
-- Used in volume and 1RM calculations
+Currently, the `Exercise` entity has no way to indicate it's a bodyweight exercise. This is needed for accurate load and volume calculations.
 
-### Phase 5: Warmup Sets
+- Add `isBodyweight` boolean to `Exercise` (default: false)
+- Seed existing bodyweight exercises (pull-up, dip, push-up, etc.) with `isBodyweight: true`
+- **Load calculation:** total load = profile weight + set weight (added weight / ballast)
+  - `set.weight` = 0 or null → pure bodyweight (load = body weight)
+  - `set.weight` = 10 → weighted bodyweight with 10kg ballast (load = body weight + 10)
+- Used in volume totals, 1RM estimation, and progression tracking
+
+### Phase 7: Warmup Sets
 
 - Add `isWarmup` boolean to `ExecutionSet` (default: false)
 - Warmup sets are visually distinct during execution (dimmed, smaller)
-- Excluded from volume calculations, load suggestions, and progression tracking
+- Excluded from volume calculations, load suggestions, progression tracking, and PR detection
 - Optional: Chiron can suggest a warmup ramp based on the working weight
 
-### Phase 6: Execution Notes per Exercise
+### Phase 8: Execution Notes per Exercise
 
 - Add optional `notes` field to `ExecutionSet` (or per exercise within execution)
 - Allows context like "shoulder pain on last rep", "try wider grip next time"
 - Chiron can read these notes for future recommendations
 
-### Phase 7: Body Weight Timeline
+### Phase 9: Body Weight Timeline
 
 - New `body_metrics` table: `id`, `weight`, `bodyFatPercent` (nullable), `recordedAt`
 - Profile `weight` becomes a convenience getter for the latest record
 - Weekly prompt to record weight (dismissible, non-intrusive)
 - Chart view in Profile showing weight trend over time
 - Chiron uses the timeline for cutting/bulking analysis
+- Bodyweight exercise load calculations reference the latest recorded weight
+
+## Future Considerations (low priority)
+
+These are real concepts in weight training but add complexity disproportionate to their value for most users. Documented here for future reference.
+
+- **Tempo / cadence** — prescribed speed per exercise phase (e.g. 3-1-2-0: 3s eccentric, 1s pause, 2s concentric, 0s pause). Common in advanced hypertrophy programs. Would require a tempo field on `WorkoutExercise`.
+- **L/R tracking for unilateral exercises** — recording left and right sides separately to detect strength imbalances. The app has `isUnilateral` on `WorkoutExercise` but execution logs a single load value. Would require splitting `ExecutionSet` into per-side records or adding a `side` field.
 
 ## Chiron Integration
 
@@ -138,9 +204,12 @@ With periodization, Chiron gains **proactive triggers**:
 - "Teu agachamento deveria estar em 75kg essa semana pela progressão. Bora?"
 - "Teu volume de peito tá em 8 séries/semana — abaixo do ideal pra hipertrofia. Quer que eu ajuste?"
 - "Teu peso caiu 2kg nas últimas 3 semanas. Se tá em cutting, tá funcionando. Se não, revisa a dieta."
+- "Teu RPE tá abaixo de 7 nos últimos 3 treinos de supino. Hora de subir a carga."
+- "Bati pull-up 80kg (corpo + 10kg lastro) × 8. Novo PR! 1RM estimado: 101kg."
 
 New Chiron tools:
 - `createProgram` / `archiveProgram`
+- `triggerDeload` / `skipDeload`
 - `setProgressionRule`
 - `getWeeklyVolume`
 - `getEstimated1RM`
@@ -148,20 +217,23 @@ New Chiron tools:
 ## UX Principles
 
 - **All new features are optional** — casual users are unaffected
-- **No new mandatory fields** — RPE, warmup toggle, notes are all skippable
+- **No new mandatory fields** — RPE, warmup toggle, AMRAP, notes are all skippable
 - **Calculated metrics are passive** — shown in dedicated screens/cards, never blocking flows
 - **Progressive disclosure** — program/periodization is there for who wants it; free cycle mode remains the default
 - **Chiron as guide** — advanced features are discoverable through conversation ("Chiron, monta um programa pra mim")
+- **No UI pollution** — advanced fields (RPE, notes) appear as collapsed/optional inputs, not as mandatory form fields
 
 ## Migration Strategy
 
 Each phase is a separate schema version bump. Phases are independent enough to ship incrementally:
 
 1. Phase 1 (cycle simplification) can ship alone — it's a fix, not a feature
-2. Phase 2 (program) depends on Phase 1
-3. Phase 3 (progression) depends on Phase 2
-4. Phases 4-7 (metrics) are independent of each other and of Phases 2-3
+2. Phase 2 (rep ranges, AMRAP) is independent — improves workout templates
+3. Phase 3 (program) depends on Phase 1
+4. Phase 4 (deload) depends on Phase 3
+5. Phase 5 (progression) depends on Phase 3
+6. Phases 6-9 (metrics, warmup, notes, body weight) are independent of each other
 
-Recommended order: **1 → 4a → 5 → 6 → 2 → 3 → 4b → 4c → 4d → 7**
+Recommended order: **1 → 2 → 6a → 7 → 8 → 3 → 4 → 5 → 6b → 6c → 6d → 9**
 
-Rationale: start with the fix (1), then low-effort high-value additions (RPE, warmup, notes), then the bigger structural changes (program, progression), then computed metrics, then body weight timeline (which benefits from Diet module later).
+Rationale: start with the fix (1), then the fundamental model improvement (2: rep ranges), then low-effort high-value additions (RPE, warmup, notes), then the bigger structural changes (program, deload, progression), then computed metrics, then body weight timeline (which benefits from Diet module later).

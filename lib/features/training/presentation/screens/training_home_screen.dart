@@ -103,7 +103,7 @@ class _OverviewSubTab extends ConsumerWidget {
   }
 }
 
-// ── Stat pills (streak + this week) ──────────────────────────────────
+// ── Stat pills (frequency + cycle) ───────────────────────────────────
 
 class _StatPillsRow extends ConsumerWidget {
   final AppLocalizations l10n;
@@ -112,91 +112,173 @@ class _StatPillsRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    final streakAsync = ref.watch(executionStreakProvider);
-    final thisWeekAsync = ref.watch(thisWeekSessionCountProvider);
-    final profileAsync = ref.watch(profileProvider);
-    final trainingFrequency = profileAsync.value?.trainingFrequency;
-
-    final streak = streakAsync.value ?? 0;
-    final thisWeek = thisWeekAsync.value ?? 0;
-
-    return Row(
-      children: [
-        Expanded(
-          child: _StatPill(
-            icon: Icons.local_fire_department,
-            iconColor: streak > 0 ? colorScheme.error : colorScheme.onSurfaceVariant,
-            label: l10n.dashboardStreakLabel,
-            value: l10n.dashboardStreakDays(streak),
-            textTheme: textTheme,
-            colorScheme: colorScheme,
-          ),
-        ),
-        const Gap(AthlosSpacing.sm),
-        Expanded(
-          child: _StatPill(
-            icon: Icons.calendar_today,
-            iconColor: colorScheme.primary,
-            label: l10n.dashboardThisWeekLabel,
-            value: trainingFrequency != null
-                ? l10n.dashboardThisWeekProgress(thisWeek, trainingFrequency)
-                : l10n.dashboardThisWeekCount(thisWeek),
-            textTheme: textTheme,
-            colorScheme: colorScheme,
-          ),
-        ),
-      ],
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: _FrequencyPill(l10n: l10n)),
+          const Gap(AthlosSpacing.sm),
+          Expanded(child: _CycleStreakPill(l10n: l10n)),
+        ],
+      ),
     );
   }
 }
 
-class _StatPill extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String label;
-  final String value;
-  final TextTheme textTheme;
-  final ColorScheme colorScheme;
+class _FrequencyPill extends ConsumerWidget {
+  final AppLocalizations l10n;
 
-  const _StatPill({
-    required this.icon,
-    required this.iconColor,
-    required this.label,
-    required this.value,
-    required this.textTheme,
-    required this.colorScheme,
-  });
+  const _FrequencyPill({required this.l10n});
 
   @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AthlosSpacing.md,
-          vertical: AthlosSpacing.sm,
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: iconColor),
-            const Gap(AthlosSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    final thisWeek = ref.watch(thisWeekSessionCountProvider).value ?? 0;
+    final profileAsync = ref.watch(profileProvider);
+    final target =
+        profileAsync.value?.trainingFrequency ?? kDefaultTrainingFrequency;
+    final consistencyStreak =
+        ref.watch(consistencyStreakProvider).value ?? 0;
+
+    final dotCount = thisWeek > target ? thisWeek : target;
+
+    return Tooltip(
+      message: l10n.dashboardConsistencyTooltip(target),
+      triggerMode: TooltipTriggerMode.tap,
+      preferBelow: true,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(AthlosSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
+                  Icon(Icons.calendar_today,
+                      size: 16, color: colorScheme.primary),
+                  const Gap(AthlosSpacing.xs),
                   Text(
-                    label,
+                    l10n.dashboardFrequencyTitle,
                     style: textTheme.labelSmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  Text(value, style: textTheme.titleSmall),
                 ],
               ),
-            ),
-          ],
+              const Gap(AthlosSpacing.sm),
+              Row(
+                children: [
+                  ...List.generate(dotCount, (i) {
+                    final isFilled = i < thisWeek;
+                    return Padding(
+                      padding:
+                          const EdgeInsets.only(right: AthlosSpacing.xxs),
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isFilled
+                              ? colorScheme.primary
+                              : colorScheme.surfaceContainerHighest,
+                        ),
+                      ),
+                    );
+                  }),
+                  const Gap(AthlosSpacing.xs),
+                  Text(
+                    l10n.dashboardFrequencyProgress(thisWeek, target),
+                    style: textTheme.titleSmall,
+                  ),
+                ],
+              ),
+              const Gap(AthlosSpacing.sm),
+              Row(
+                children: [
+                  Icon(
+                    Icons.local_fire_department,
+                    size: 14,
+                    color: consistencyStreak > 0
+                        ? colorScheme.error
+                        : colorScheme.onSurfaceVariant,
+                  ),
+                  const Gap(AthlosSpacing.xxs),
+                  Text(
+                    l10n.dashboardConsistencyStreak(consistencyStreak),
+                    style: textTheme.bodySmall?.copyWith(
+                      color: consistencyStreak > 0
+                          ? colorScheme.onSurface
+                          : colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CycleStreakPill extends ConsumerWidget {
+  final AppLocalizations l10n;
+
+  const _CycleStreakPill({required this.l10n});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    final cycleStreak = ref.watch(executionStreakProvider).value ?? 0;
+    final isActive = cycleStreak > 0;
+
+    return Tooltip(
+      message: l10n.dashboardCycleTooltip,
+      triggerMode: TooltipTriggerMode.tap,
+      preferBelow: true,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(AthlosSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.repeat, size: 16, color: colorScheme.primary),
+                  const Gap(AthlosSpacing.xs),
+                  Text(
+                    l10n.dashboardCycleTitle,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Row(
+                children: [
+                  Icon(
+                    Icons.workspace_premium,
+                    size: 20,
+                    color: isActive
+                        ? const Color(0xFFD4AF37)
+                        : colorScheme.onSurfaceVariant,
+                  ),
+                  const Gap(AthlosSpacing.xs),
+                  Text(
+                    l10n.dashboardCycleStreakCount(cycleStreak),
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -343,14 +425,17 @@ class _VolumeRow extends StatelessWidget {
     required this.textTheme,
   });
 
+  static const _volumeGood = Color(0xFF4CAF50);
+  static const _volumeOver = Color(0xFFE67E22);
+
   @override
   Widget build(BuildContext context) {
     final fraction = (sets / targetMax).clamp(0.0, 1.0);
     final statusColor = sets < targetMin
         ? colorScheme.error
         : sets > targetMax
-            ? colorScheme.tertiary
-            : colorScheme.primary;
+            ? _volumeOver
+            : _volumeGood;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AthlosSpacing.xs),

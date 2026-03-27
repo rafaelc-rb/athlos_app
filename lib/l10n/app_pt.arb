@@ -2235,28 +2235,35 @@
   "trainingStartNext": "Iniciar treino",
   "@trainingStartNext": { "description": "Button to start the next workout in the cycle" },
 
-  "dashboardStreakLabel": "Sequência",
-  "@dashboardStreakLabel": { "description": "Label for streak stat pill" },
-  "dashboardStreakDays": "{count} dias",
-  "@dashboardStreakDays": {
-    "description": "Streak count in days",
-    "placeholders": { "count": { "type": "int" } }
-  },
-  "dashboardThisWeekLabel": "Esta semana",
-  "@dashboardThisWeekLabel": { "description": "Label for this-week stat pill" },
-  "dashboardThisWeekProgress": "{done}/{target}",
-  "@dashboardThisWeekProgress": {
+  "dashboardFrequencyTitle": "Frequência",
+  "@dashboardFrequencyTitle": { "description": "Title for the frequency stat pill" },
+  "dashboardFrequencyProgress": "{done}/{target}",
+  "@dashboardFrequencyProgress": {
     "description": "This week sessions done vs target",
     "placeholders": {
       "done": { "type": "int" },
       "target": { "type": "int" }
     }
   },
-  "dashboardThisWeekCount": "{count} treinos",
-  "@dashboardThisWeekCount": {
-    "description": "This week sessions when no frequency target",
+  "dashboardConsistencyStreak": "{count} sem.",
+  "@dashboardConsistencyStreak": {
+    "description": "Consistency streak in weeks (abbreviated)",
     "placeholders": { "count": { "type": "int" } }
   },
+  "dashboardConsistencyTooltip": "Semanas consecutivas em que atingiu a meta de {target} treinos. A semana atual conta assim que a meta é atingida.",
+  "@dashboardConsistencyTooltip": {
+    "description": "Tooltip explaining the consistency streak metric",
+    "placeholders": { "target": { "type": "int" } }
+  },
+  "dashboardCycleTitle": "Ciclo",
+  "@dashboardCycleTitle": { "description": "Title for the cycle streak stat pill" },
+  "dashboardCycleStreakCount": "{count} treinos",
+  "@dashboardCycleStreakCount": {
+    "description": "Cycle streak count in consecutive workouts",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "dashboardCycleTooltip": "Treinos consecutivos seguindo a ordem correta do ciclo (ex: A → B → C → A).",
+  "@dashboardCycleTooltip": { "description": "Tooltip explaining the cycle streak metric" },
   "dashboardVolumeTargetRange": "{min}–{max}",
   "@dashboardVolumeTargetRange": {
     "description": "Volume target range display",

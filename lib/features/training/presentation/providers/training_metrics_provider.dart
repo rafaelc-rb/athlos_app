@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/errors/result.dart';
 import '../../../profile/presentation/providers/body_metric_notifier.dart';
+import '../../../profile/presentation/providers/profile_notifier.dart';
 import '../../data/repositories/training_providers.dart';
 import '../../domain/helpers/training_metrics.dart';
 import 'exercise_notifier.dart';
@@ -33,14 +34,12 @@ class ExercisePR {
 Future<ExercisePR?> exercisePR(Ref ref, int exerciseId) async {
   final execRepo = ref.watch(workoutExecutionRepositoryProvider);
   final exercises = await ref.watch(exerciseListProvider.future);
-  final exercise =
-      exercises.where((e) => e.id == exerciseId).firstOrNull;
+  final exercise = exercises.where((e) => e.id == exerciseId).firstOrNull;
   if (exercise == null) return null;
 
   final profileWeight = await ref.watch(latestBodyWeightProvider.future);
 
-  final setsResult =
-      await execRepo.getAllCompletedSetsForExercise(exerciseId);
+  final setsResult = await execRepo.getAllCompletedSetsForExercise(exerciseId);
   if (!setsResult.isSuccess) return null;
   final sets = setsResult.getOrThrow();
   if (sets.isEmpty) return null;
@@ -150,6 +149,48 @@ Future<int> thisWeekSessionCount(Ref ref) async {
       .length;
 }
 
+/// Default training frequency when the user hasn't set one.
+const kDefaultTrainingFrequency = 3;
+
+/// Consecutive weeks where the user completed at least
+/// [trainingFrequency] sessions (Mon–Sun), starting from the current
+/// week and walking backwards. The current week counts as soon as
+/// the target is reached.
+@riverpod
+Future<int> consistencyStreak(Ref ref) async {
+  final execRepo = ref.watch(workoutExecutionRepositoryProvider);
+  final profile = await ref.watch(profileProvider.future);
+  final target = profile?.trainingFrequency ?? kDefaultTrainingFrequency;
+
+  final allResult = await execRepo.getAll();
+  if (!allResult.isSuccess) return 0;
+  final all = allResult.getOrThrow();
+  final finished = all.where((e) => e.finishedAt != null).toList();
+  if (finished.isEmpty) return 0;
+
+  final now = DateTime.now();
+  final thisMonday =
+      DateTime(now.year, now.month, now.day - (now.weekday - 1));
+
+  var streak = 0;
+  var weekStart = thisMonday;
+
+  while (true) {
+    final weekEnd = weekStart.add(const Duration(days: 7));
+    final count = finished
+        .where((e) =>
+            !e.startedAt.isBefore(weekStart) && e.startedAt.isBefore(weekEnd))
+        .length;
+    if (count >= target) {
+      streak++;
+      weekStart = weekStart.subtract(const Duration(days: 7));
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
 // ── Phase 10: Progress Visualization providers ──────────────────────
 
 /// A data point for the per-exercise load chart.
@@ -179,15 +220,12 @@ Future<List<LoadDataPoint>> exerciseLoadHistory(
 }) async {
   final execRepo = ref.watch(workoutExecutionRepositoryProvider);
   final exercises = await ref.watch(exerciseListProvider.future);
-  final exercise =
-      exercises.where((e) => e.id == exerciseId).firstOrNull;
+  final exercise = exercises.where((e) => e.id == exerciseId).firstOrNull;
   if (exercise == null) return [];
 
-  final profileWeight =
-      await ref.watch(latestBodyWeightProvider.future);
+  final profileWeight = await ref.watch(latestBodyWeightProvider.future);
 
-  final result =
-      await execRepo.getCompletedSetsWithDateForExercise(exerciseId);
+  final result = await execRepo.getCompletedSetsWithDateForExercise(exerciseId);
   if (!result.isSuccess) return [];
   var rows = result.getOrThrow();
 
@@ -207,8 +245,7 @@ Future<List<LoadDataPoint>> exerciseLoadHistory(
     );
     final e1rm = estimated1RM(weight: load, reps: r.set.reps);
     if (e1rm == null) continue;
-    final dayKey =
-        '${r.date.year}-${r.date.month}-${r.date.day}';
+    final dayKey = '${r.date.year}-${r.date.month}-${r.date.day}';
     final existing = byDay[dayKey];
     if (existing == null || e1rm > existing.estimated1RM) {
       byDay[dayKey] = LoadDataPoint(
@@ -251,15 +288,17 @@ Future<List<ExercisePRRecord>> allExercisePRs(Ref ref) async {
   for (final ex in exercises) {
     final pr = await ref.watch(exercisePRProvider(ex.id).future);
     if (pr != null) {
-      prs.add(ExercisePRRecord(
-        exerciseId: ex.id,
-        exerciseName: ex.name,
-        muscleGroup: ex.muscleGroup.name,
-        isVerified: ex.isVerified,
-        best1RM: pr.best1RM,
-        weight: pr.weight,
-        reps: pr.reps,
-      ));
+      prs.add(
+        ExercisePRRecord(
+          exerciseId: ex.id,
+          exerciseName: ex.name,
+          muscleGroup: ex.muscleGroup.name,
+          isVerified: ex.isVerified,
+          best1RM: pr.best1RM,
+          weight: pr.weight,
+          reps: pr.reps,
+        ),
+      );
     }
   }
   prs.sort((a, b) => b.best1RM.compareTo(a.best1RM));
@@ -268,8 +307,10 @@ Future<List<ExercisePRRecord>> allExercisePRs(Ref ref) async {
 
 /// Weekly volume per muscle group over [weeks] weeks (for trend chart).
 @riverpod
-Future<Map<String, List<({DateTime weekStart, int sets})>>>
-    weeklyVolumeTrend(Ref ref, {int weeks = 8}) async {
+Future<Map<String, List<({DateTime weekStart, int sets})>>> weeklyVolumeTrend(
+  Ref ref, {
+  int weeks = 8,
+}) async {
   final execRepo = ref.watch(workoutExecutionRepositoryProvider);
   final exercises = await ref.watch(exerciseListProvider.future);
   final exerciseMap = {for (final e in exercises) e.id: e};

@@ -98,7 +98,7 @@ class AppDatabase extends _$AppDatabase {
   bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed && _enableDevSeed;
 
   @override
-  int get schemaVersion => 20;
+  int get schemaVersion => 21;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -109,7 +109,7 @@ class AppDatabase extends _$AppDatabase {
       if (_shouldSeedDevData) await seedDevData(this);
     },
     onUpgrade: (m, from, to) async {
-      if (_shouldSeedDevData && from >= 3 && from <= 20) {
+      if (_shouldSeedDevData && from >= 3 && from <= 21) {
         for (final table in allTables) {
           await m.deleteTable(table.actualTableName);
         }
@@ -405,6 +405,22 @@ class AppDatabase extends _$AppDatabase {
             frequency TEXT NOT NULL,
             condition TEXT,
             condition_value REAL
+          )
+        ''');
+      }
+
+      if (from < 21) {
+        // Phase 6d: Bodyweight exercise flag.
+        await customStatement(
+          'ALTER TABLE exercises ADD COLUMN is_bodyweight INTEGER NOT NULL DEFAULT 0',
+        );
+        await customStatement('''
+          UPDATE exercises SET is_bodyweight = 1
+          WHERE name IN (
+            'pushUp','declinePushUp','inclinePushUp','kneePushUp',
+            'pullUp','chinUp','invertedRow','pikePushUp',
+            'diamondPushUp','dip','crunch','plank',
+            'hangingLegRaise','gluteBridge'
           )
         ''');
       }

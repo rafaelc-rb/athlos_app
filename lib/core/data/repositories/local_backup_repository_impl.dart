@@ -2246,6 +2246,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         'movement_pattern': row['movement_pattern'],
         'description': row['description'],
         'is_verified': 0,
+        'is_bodyweight': row['is_bodyweight'] ?? 0,
       },
     };
   }

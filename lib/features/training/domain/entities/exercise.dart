@@ -28,6 +28,10 @@ class Exercise {
   final String? description;
   final bool isVerified;
 
+  /// True for exercises performed with body weight (pull-up, dip, push-up…).
+  /// Affects load calculation: total load = profile weight + added weight.
+  final bool isBodyweight;
+
   /// Muscles this exercise targets, loaded from the junction table.
   final List<ExerciseMuscleFocus> muscles;
 
@@ -39,6 +43,7 @@ class Exercise {
     this.movementPattern,
     this.description,
     this.isVerified = false,
+    this.isBodyweight = false,
     this.muscles = const [],
   });
 

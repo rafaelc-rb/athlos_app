@@ -33,6 +33,7 @@ Future<void> seedExercises(AppDatabase db) async {
             type: Value(item.type),
             movementPattern: Value(item.movementPattern),
             isVerified: const Value(true),
+            isBodyweight: Value(item.isBodyweight),
             description: const Value.absent(),
           ),
         );
@@ -94,6 +95,7 @@ class _SeedExercise {
   final MovementPattern? movementPattern;
   final List<_MF> muscles;
   final List<String> equipmentKeys;
+  final bool isBodyweight;
 
   const _SeedExercise(
     this.name,
@@ -102,6 +104,7 @@ class _SeedExercise {
     this.movementPattern,
     this.muscles = const [],
     this.equipmentKeys = const [],
+    this.isBodyweight = false,
   });
 }
 
@@ -137,6 +140,7 @@ final _seedItems = [
       equipmentKeys: ['dumbbell', 'flatBench']),
   _SeedExercise('pushUp', MuscleGroup.chest,
       movementPattern: MovementPattern.push,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.pectoralisMajor, MuscleRegion.mid),
         _s(TargetMuscle.anteriorDeltoid),
@@ -165,6 +169,7 @@ final _seedItems = [
       equipmentKeys: ['dumbbell', 'adjustableBench']),
   _SeedExercise('declinePushUp', MuscleGroup.chest,
       movementPattern: MovementPattern.push,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.pectoralisMajor, MuscleRegion.upper),
         _s(TargetMuscle.anteriorDeltoid),
@@ -172,11 +177,13 @@ final _seedItems = [
       ]),
   _SeedExercise('inclinePushUp', MuscleGroup.chest,
       movementPattern: MovementPattern.push,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.pectoralisMajor, MuscleRegion.lower),
       ]),
   _SeedExercise('kneePushUp', MuscleGroup.chest,
       movementPattern: MovementPattern.push,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.pectoralisMajor, MuscleRegion.mid),
         _s(TargetMuscle.anteriorDeltoid),
@@ -186,6 +193,7 @@ final _seedItems = [
   // ── Back ──
   _SeedExercise('pullUp', MuscleGroup.back,
       movementPattern: MovementPattern.pull,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.latissimusDorsi),
         _s(TargetMuscle.bicepsBrachii),
@@ -227,6 +235,7 @@ final _seedItems = [
       equipmentKeys: ['dumbbell', 'flatBench']),
   _SeedExercise('chinUp', MuscleGroup.back,
       movementPattern: MovementPattern.pull,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.latissimusDorsi),
         _s(TargetMuscle.bicepsBrachii),
@@ -235,6 +244,7 @@ final _seedItems = [
       equipmentKeys: ['pullUpBar']),
   _SeedExercise('invertedRow', MuscleGroup.back,
       movementPattern: MovementPattern.pull,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.rhomboids),
         _p(TargetMuscle.latissimusDorsi),
@@ -286,6 +296,7 @@ final _seedItems = [
       equipmentKeys: ['dumbbell']),
   _SeedExercise('pikePushUp', MuscleGroup.shoulders,
       movementPattern: MovementPattern.push,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.anteriorDeltoid),
         _p(TargetMuscle.lateralDeltoid),
@@ -438,12 +449,14 @@ final _seedItems = [
       equipmentKeys: ['dumbbell']),
   _SeedExercise('diamondPushUp', MuscleGroup.triceps,
       movementPattern: MovementPattern.push,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.tricepsBrachii),
         _s(TargetMuscle.pectoralisMajor),
       ]),
   _SeedExercise('dip', MuscleGroup.triceps,
       movementPattern: MovementPattern.push,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.tricepsBrachii),
         _s(TargetMuscle.pectoralisMajor),
@@ -542,7 +555,7 @@ final _seedItems = [
         _s(TargetMuscle.bicepsFemoris),
       ],
       equipmentKeys: ['barbell', 'flatBench']),
-  _SeedExercise('gluteBridge', MuscleGroup.glutes,
+  _SeedExercise('gluteBridge', MuscleGroup.glutes, isBodyweight: true,
       movementPattern: MovementPattern.hinge,
       muscles: [
         _p(TargetMuscle.gluteusMaximus),
@@ -587,17 +600,17 @@ final _seedItems = [
       ]),
 
   // ── Abs ──
-  _SeedExercise('crunch', MuscleGroup.abs,
+  _SeedExercise('crunch', MuscleGroup.abs, isBodyweight: true,
       movementPattern: MovementPattern.isolation,
       muscles: [
         _p(TargetMuscle.rectusAbdominis, MuscleRegion.upper),
       ]),
-  _SeedExercise('plank', MuscleGroup.abs, muscles: [
+  _SeedExercise('plank', MuscleGroup.abs, isBodyweight: true, muscles: [
     _p(TargetMuscle.rectusAbdominis),
     _p(TargetMuscle.transverseAbdominis),
     _s(TargetMuscle.obliques),
   ]),
-  _SeedExercise('hangingLegRaise', MuscleGroup.abs,
+  _SeedExercise('hangingLegRaise', MuscleGroup.abs, isBodyweight: true,
       movementPattern: MovementPattern.isolation,
       muscles: [
         _p(TargetMuscle.rectusAbdominis, MuscleRegion.lower),

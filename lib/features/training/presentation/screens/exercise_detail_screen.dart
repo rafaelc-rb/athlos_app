@@ -20,6 +20,7 @@ import '../helpers/equipment_l10n.dart';
 import '../helpers/exercise_l10n.dart';
 import '../providers/equipment_notifier.dart';
 import '../providers/exercise_notifier.dart';
+import '../providers/training_metrics_provider.dart';
 import '../widgets/equipment_search_picker.dart';
 
 const _placeholderExercise = Exercise(
@@ -147,6 +148,19 @@ class ExerciseDetailScreen extends ConsumerWidget {
                   textTheme: textTheme,
                 ),
               ],
+              if (displayExercise.isBodyweight) ...[
+                const Gap(AthlosSpacing.md),
+                _buildInfoSection(
+                  context,
+                  icon: Icons.accessibility_new,
+                  title: l10n.bodyweightExercise,
+                  value: '',
+                  colorScheme: colorScheme,
+                  textTheme: textTheme,
+                ),
+              ],
+              const Gap(AthlosSpacing.lg),
+              _PRSection(exerciseId: exerciseId),
               const Gap(AthlosSpacing.lg),
               _EquipmentSection(exerciseId: exerciseId),
               const Gap(AthlosSpacing.lg),
@@ -925,6 +939,71 @@ class _VariationsSection extends ConsumerWidget {
           },
         ),
       ],
+    );
+  }
+}
+
+class _PRSection extends ConsumerWidget {
+  final int exerciseId;
+  const _PRSection({required this.exerciseId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    final prAsync = ref.watch(exercisePRProvider(exerciseId));
+
+    return prAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (pr) {
+        if (pr == null) return const SizedBox.shrink();
+        final e1rmStr = pr.best1RM.toStringAsFixed(1);
+        final weightStr =
+            pr.weight % 1 == 0 ? pr.weight.toInt().toString() : pr.weight.toStringAsFixed(1);
+        return Card(
+          color: colorScheme.primaryContainer,
+          child: Padding(
+            padding: const EdgeInsets.all(AthlosSpacing.md),
+            child: Row(
+              children: [
+                Icon(Icons.emoji_events,
+                    color: colorScheme.primary, size: 28),
+                const Gap(AthlosSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.prBadge,
+                        style: textTheme.titleSmall?.copyWith(
+                          color: colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        l10n.prEstimated1rm(e1rmStr),
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                      Text(
+                        l10n.prBestSet(weightStr, pr.reps),
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onPrimaryContainer
+                              .withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

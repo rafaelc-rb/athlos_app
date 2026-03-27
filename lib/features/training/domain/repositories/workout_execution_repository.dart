@@ -29,6 +29,11 @@ abstract interface class WorkoutExecutionRepository {
   Future<Result<List<ExecutionSet>>> getLastCompletedSetsForExercise(
       int exerciseId);
 
+  /// All completed non-warmup sets for [exerciseId] across all finished
+  /// executions (for PR detection and 1RM history).
+  Future<Result<List<ExecutionSet>>> getAllCompletedSetsForExercise(
+      int exerciseId);
+
   // --- Segments (drop sets) ---
   Future<Result<List<ExecutionSetSegment>>> getSegments(int executionSetId);
   Future<Result<List<ExecutionSetSegment>>> getSegmentsForExecution(

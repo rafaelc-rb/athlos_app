@@ -2143,5 +2143,32 @@
       "value": { "type": "String" },
       "unit": { "type": "String" }
     }
-  }
+  },
+
+  "prBadge": "PR",
+  "prEstimated1rm": "1RM est.: {value} kg",
+  "@prEstimated1rm": {
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
+  "prBestSet": "Melhor set: {weight} kg × {reps}",
+  "@prBestSet": {
+    "placeholders": {
+      "weight": { "type": "String" },
+      "reps": { "type": "int" }
+    }
+  },
+  "prNewRecord": "Novo recorde pessoal!",
+  "bodyweightExercise": "Exercício de peso corporal",
+  "weeklyVolume": "Volume semanal",
+  "weeklyVolumeSets": "{count} sets",
+  "@weeklyVolumeSets": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "volumeUnderTarget": "Abaixo do alvo",
+  "volumeOnTarget": "No alvo",
+  "volumeOverTarget": "Acima do alvo"
 }

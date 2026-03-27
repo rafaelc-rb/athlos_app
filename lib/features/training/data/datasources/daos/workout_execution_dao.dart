@@ -122,6 +122,23 @@ class WorkoutExecutionDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
+  /// All completed, non-warmup sets for [exerciseId] across all finished
+  /// executions. Used for PR detection and 1RM history.
+  Future<List<ExecutionSet>> getAllCompletedSetsForExercise(
+      int exerciseId) async {
+    return (select(executionSets).join([
+      innerJoin(workoutExecutions,
+          workoutExecutions.id.equalsExp(executionSets.executionId)),
+    ])
+          ..where(executionSets.exerciseId.equals(exerciseId) &
+              executionSets.isCompleted.equals(true) &
+              executionSets.isWarmup.equals(false) &
+              workoutExecutions.finishedAt.isNotNull())
+          ..orderBy([OrderingTerm.desc(workoutExecutions.startedAt)]))
+        .map((row) => row.readTable(executionSets))
+        .get();
+  }
+
   // --- Execution sets ---
 
   Future<List<ExecutionSet>> getSets(int executionId) =>

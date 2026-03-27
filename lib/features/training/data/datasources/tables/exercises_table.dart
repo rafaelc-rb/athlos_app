@@ -14,4 +14,5 @@ class Exercises extends Table {
   TextColumn get movementPattern => textEnum<MovementPattern>().nullable()();
   TextColumn get description => text().nullable()();
   BoolColumn get isVerified => boolean().withDefault(const Constant(false))();
+  BoolColumn get isBodyweight => boolean().withDefault(const Constant(false))();
 }

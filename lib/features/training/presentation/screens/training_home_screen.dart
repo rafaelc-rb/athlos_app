@@ -16,7 +16,10 @@ import '../helpers/duration_format.dart';
 import '../providers/equipment_notifier.dart';
 import '../providers/exercise_notifier.dart';
 import '../providers/program_notifier.dart';
+import '../../domain/enums/muscle_group.dart';
+import '../helpers/exercise_l10n.dart';
 import '../providers/training_analytics_provider.dart';
+import '../providers/training_metrics_provider.dart';
 import '../providers/workout_notifier.dart';
 
 /// Training module — Home / Dashboard tab.
@@ -48,6 +51,9 @@ class TrainingHomeScreen extends ConsumerWidget {
         children: [
           // Active program card
           _ActiveProgramCard(activeProgramAsync: activeProgramAsync),
+          const Gap(AthlosSpacing.md),
+
+          const _WeeklyVolumeCard(),
           const Gap(AthlosSpacing.md),
 
           // Summary section (sessions analytics)
@@ -665,3 +671,74 @@ class _ProgramHomeProgress extends ConsumerWidget {
     );
   }
 }
+
+class _WeeklyVolumeCard extends ConsumerWidget {
+  const _WeeklyVolumeCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    final volumeAsync = ref.watch(weeklyVolumePerMuscleGroupProvider);
+
+    return volumeAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (volume) {
+        if (volume.isEmpty) return const SizedBox.shrink();
+        final sorted = volume.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AthlosSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.bar_chart,
+                        size: 20, color: colorScheme.primary),
+                    const Gap(AthlosSpacing.xs),
+                    Text(
+                      l10n.weeklyVolume,
+                      style: textTheme.titleSmall,
+                    ),
+                  ],
+                ),
+                const Gap(AthlosSpacing.sm),
+                Wrap(
+                  spacing: AthlosSpacing.sm,
+                  runSpacing: AthlosSpacing.xs,
+                  children: sorted.map((e) {
+                    final group = MuscleGroup.values
+                        .where((g) => g.name == e.key)
+                        .firstOrNull;
+                    final label = group != null
+                        ? localizedMuscleGroupName(group, l10n)
+                        : e.key;
+                    return Chip(
+                      avatar: Text(
+                        '${e.value}',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSecondaryContainer,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      label: Text(label),
+                      visualDensity: VisualDensity.compact,
+                      materialTapTargetSize:
+                          MaterialTapTargetSize.shrinkWrap,
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+

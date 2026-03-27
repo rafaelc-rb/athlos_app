@@ -38,7 +38,28 @@ class _VolumeTrendChartScreenState
     final target = volumeTargetForLevel(experienceLevel);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.volumeTrendTitle)),
+      appBar: AppBar(
+        title: Text(l10n.volumeTrendTitle),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            tooltip: l10n.weeklyVolumeTooltip,
+            onPressed: () => showDialog<void>(
+              context: context,
+              builder: (dialogContext) => AlertDialog(
+                title: Text(l10n.weeklyVolume),
+                content: Text(l10n.volumeTrendDescription),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: Text(l10n.okButton),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
       body: trendAsync.when(
         loading: () =>
             const Center(child: CircularProgressIndicator()),
@@ -65,6 +86,13 @@ class _VolumeTrendChartScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Text(
+                  l10n.volumeTrendSubtitle,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const Gap(AthlosSpacing.sm),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -81,13 +109,6 @@ class _VolumeTrendChartScreenState
                               ),
                             ))
                         .toList(),
-                  ),
-                ),
-                const Gap(AthlosSpacing.sm),
-                Text(
-                  l10n.volumeTrendDescription,
-                  style: textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const Gap(AthlosSpacing.sm),

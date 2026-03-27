@@ -2127,9 +2127,9 @@
   },
 
   "prBadge": "PR",
-  "prTooltip": "Recorde Pessoal — a maior carga estimada para 1 repetição (1RM) já registada num exercício.",
+  "prTooltip": "Recorde Pessoal (PR) — o maior peso estimado para 1 repetição máxima (1RM) num exercício.",
   "@prTooltip": { "description": "Tooltip explaining what PR means" },
-  "prEstimated1rm": "1RM est.: {value} kg",
+  "prEstimated1rm": "1RM estimado: {value} kg",
   "@prEstimated1rm": {
     "placeholders": {
       "value": { "type": "String" }
@@ -2185,10 +2185,16 @@
   "loadChartRangeAll": "Todo",
 
   "prHistoryTitle": "Recordes pessoais",
+  "prHistorySubtitle": "Maior 1RM estimado em cada exercício.",
+  "@prHistorySubtitle": { "description": "Brief inline subtitle on the PR history screen" },
+  "prHistoryDescription": "Se fez 80 kg × 8 reps, provavelmente conseguiria levantar ~100 kg numa única repetição. Essa estimativa é o 1RM. O PR é o seu maior 1RM estimado em cada exercício — útil para acompanhar evolução de força.",
+  "@prHistoryDescription": { "description": "Full explanatory text shown in the info dialog" },
   "prHistoryEmpty": "Nenhum recorde pessoal registado. Complete treinos para detectar PRs automaticamente.",
 
-  "volumeTrendTitle": "Volume semanal por grupo muscular",
-  "volumeTrendDescription": "Volume é o total de séries de trabalho (excluindo aquecimento) por grupo muscular.",
+  "volumeTrendTitle": "Volume semanal",
+  "volumeTrendSubtitle": "Séries de trabalho por grupo muscular.",
+  "@volumeTrendSubtitle": { "description": "Brief inline subtitle on the volume trend screen" },
+  "volumeTrendDescription": "Volume é o total de séries de trabalho (excluindo aquecimento) por grupo muscular. As linhas tracejadas indicam a faixa recomendada para o seu nível de experiência.",
   "volumeTrendLegendMin": "Mín. recomendado ({value})",
   "@volumeTrendLegendMin": {
     "description": "Legend label for the minimum target line",

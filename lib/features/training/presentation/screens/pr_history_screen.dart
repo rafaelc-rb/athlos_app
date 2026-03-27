@@ -23,7 +23,28 @@ class PRHistoryScreen extends ConsumerWidget {
     final prsAsync = ref.watch(allExercisePRsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.prHistoryTitle)),
+      appBar: AppBar(
+        title: Text(l10n.prHistoryTitle),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            tooltip: l10n.prTooltip,
+            onPressed: () => showDialog<void>(
+              context: context,
+              builder: (dialogContext) => AlertDialog(
+                title: Text(l10n.prHistoryTitle),
+                content: Text(l10n.prHistoryDescription),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: Text(l10n.okButton),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
       body: prsAsync.when(
         loading: () =>
             const Center(child: CircularProgressIndicator()),
@@ -55,9 +76,21 @@ class PRHistoryScreen extends ConsumerWidget {
 
           return ListView.builder(
             padding: const EdgeInsets.all(AthlosSpacing.md),
-            itemCount: groups.length,
+            itemCount: groups.length + 1,
             itemBuilder: (ctx, i) {
-              final group = groups[i];
+              if (i == 0) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: AthlosSpacing.sm),
+                  child: Text(
+                    l10n.prHistorySubtitle,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                );
+              }
+              final idx = i - 1;
+              final group = groups[idx];
               final groupEnum = MuscleGroup.values
                   .where((g) => g.name == group.key)
                   .firstOrNull;
@@ -67,7 +100,7 @@ class PRHistoryScreen extends ConsumerWidget {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (i > 0) const Gap(AthlosSpacing.md),
+                  if (idx > 0) const Gap(AthlosSpacing.md),
                   Text(
                     groupLabel,
                     style: textTheme.titleSmall?.copyWith(
@@ -112,7 +145,7 @@ class _PRTile extends StatelessWidget {
             color: colorScheme.tertiary, size: 28),
         title: Text(name),
         subtitle: Text(
-          '${l10n.prEstimated1rm}: $e1rmStr kg  •  $weightStr kg × ${pr.reps}',
+          '$weightStr kg × ${pr.reps}  •  ${l10n.prEstimated1rm(e1rmStr)}',
           style: textTheme.bodySmall,
         ),
         onTap: () => context.push(

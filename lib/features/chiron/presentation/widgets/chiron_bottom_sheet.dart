@@ -136,20 +136,35 @@ class _ChironSheetState extends ConsumerState<_ChironSheet> {
                               final message =
                                   chatState.messages[reverseIndex];
                               final isNewest = index == 0;
+                              final isLastError = isNewest &&
+                                  !chatState.isStreaming &&
+                                  chatState.hasError;
                               return ChironMessageBubble(
                                 key: ValueKey(reverseIndex),
                                 message: message,
                                 isStreaming:
                                     isNewest && chatState.isStreaming,
+                                isError: isLastError,
                               );
                             },
                           ),
                         ),
-                        if (chatState.lastResponseToolFeedback.isNotEmpty)
+                        if (chatState.isStreaming) ...[
+                          if (chatState.lastResponseToolFeedback.isNotEmpty)
+                            _buildToolFeedbackChips(
+                              l10n,
+                              colorScheme,
+                              chatState.lastResponseToolFeedback,
+                            ),
+                          _buildThinkingIndicator(l10n, colorScheme),
+                        ] else if (chatState.lastResponseToolFeedback
+                            .any(_isMutationTool))
                           _buildToolFeedbackChips(
                             l10n,
                             colorScheme,
-                            chatState.lastResponseToolFeedback,
+                            chatState.lastResponseToolFeedback
+                                .where(_isMutationTool)
+                                .toList(),
                           ),
                       ],
                     ),
@@ -202,29 +217,83 @@ class _ChironSheetState extends ConsumerState<_ChironSheet> {
     );
   }
 
+  static const _readOnlyTools = {
+    'requestExtendedHistory',
+    'getTrainingState',
+  };
+
+  static bool _isMutationTool(ChironToolFeedback f) =>
+      f.success && !_readOnlyTools.contains(f.toolName);
+
   String _toolFeedbackLabel(AppLocalizations l10n, String toolName) {
     switch (toolName) {
       case 'createWorkout':
         return l10n.chironToolFeedbackCreateWorkout;
+      case 'updateWorkout':
+        return l10n.chironToolFeedbackUpdateWorkout;
       case 'archiveWorkout':
         return l10n.chironToolFeedbackArchiveWorkout;
+      case 'setCycle':
+        return l10n.chironToolFeedbackSetCycle;
       case 'updateBio':
         return l10n.chironToolFeedbackUpdateBio;
-      case 'updateInjuries':
-        return l10n.chironToolFeedbackUpdateInjuries;
+      case 'setInjuries':
+        return l10n.chironToolFeedbackSetInjuries;
       case 'updateExperienceLevel':
         return l10n.chironToolFeedbackUpdateExperienceLevel;
       case 'updateGender':
         return l10n.chironToolFeedbackUpdateGender;
       case 'updateTrainingFrequency':
         return l10n.chironToolFeedbackUpdateTrainingFrequency;
+      case 'updateTrainsAtGym':
+        return l10n.chironToolFeedbackUpdateTrainsAtGym;
+      case 'updateAvailableMinutes':
+        return l10n.chironToolFeedbackUpdateAvailableMinutes;
       case 'registerEquipment':
         return l10n.chironToolFeedbackRegisterEquipment;
       case 'removeEquipment':
         return l10n.chironToolFeedbackRemoveEquipment;
+      case 'requestExtendedHistory':
+        return l10n.chironToolFeedbackRequestExtendedHistory;
+      case 'getTrainingState':
+        return l10n.chironToolFeedbackGetTrainingState;
       default:
         return toolName;
     }
+  }
+
+  Widget _buildThinkingIndicator(
+    AppLocalizations l10n,
+    ColorScheme colorScheme,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AthlosSpacing.md,
+        vertical: AthlosSpacing.sm,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: colorScheme.primary,
+            ),
+          ),
+          const Gap(AthlosSpacing.sm),
+          Text(
+            l10n.chironThinking,
+            style: TextStyle(
+              fontSize: 13,
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildHandle(ColorScheme colorScheme) {

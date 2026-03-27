@@ -11,6 +11,7 @@ class ChironToolFeedback {
 class ChironChatState {
   final List<ChironMessage> messages;
   final bool isStreaming;
+  final bool hasError;
   /// Tool invocations from the last response (for UI chips).
   final List<ChironToolFeedback> lastResponseToolFeedback;
   /// When createWorkout succeeded, the new workout id for deep link.
@@ -19,6 +20,7 @@ class ChironChatState {
   const ChironChatState({
     this.messages = const [],
     this.isStreaming = false,
+    this.hasError = false,
     this.lastResponseToolFeedback = const [],
     this.lastCreatedWorkoutId,
   });
@@ -26,6 +28,7 @@ class ChironChatState {
   ChironChatState copyWith({
     List<ChironMessage>? messages,
     bool? isStreaming,
+    bool? hasError,
     List<ChironToolFeedback>? lastResponseToolFeedback,
     int? lastCreatedWorkoutId,
     bool clearCreatedWorkoutId = false,
@@ -33,6 +36,7 @@ class ChironChatState {
       ChironChatState(
         messages: messages ?? this.messages,
         isStreaming: isStreaming ?? this.isStreaming,
+        hasError: hasError ?? this.hasError,
         lastResponseToolFeedback:
             lastResponseToolFeedback ?? this.lastResponseToolFeedback,
         lastCreatedWorkoutId: clearCreatedWorkoutId

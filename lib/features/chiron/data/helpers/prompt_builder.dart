@@ -9,6 +9,7 @@ import '../../../training/domain/repositories/equipment_repository.dart';
 import '../../../training/domain/repositories/exercise_repository.dart';
 import '../../../training/domain/repositories/workout_execution_repository.dart';
 import '../../../training/domain/repositories/workout_repository.dart';
+import 'chiron_equipment_names.dart';
 import '../seeds/chiron_context_seed.dart';
 
 /// Builds a structured context string from user data for the Gemini prompt.
@@ -19,7 +20,7 @@ class PromptBuilder {
       chironExtendedRecentExecutionsLimit;
   static const int maxWorkouts = chironDefaultWorkoutsLimit;
   static const int maxWorkoutsExtended = chironExtendedWorkoutsLimit;
-  static const int maxExerciseNamesInContext = 100;
+  static const int maxExerciseNamesInContext = 80;
 
   final UserProfileRepository _profileRepo;
   final EquipmentRepository _equipmentRepo;
@@ -33,15 +34,16 @@ class PromptBuilder {
     required WorkoutRepository workoutRepo,
     required WorkoutExecutionRepository executionRepo,
     required ExerciseRepository exerciseRepo,
-  })  : _profileRepo = profileRepo,
-        _equipmentRepo = equipmentRepo,
-        _workoutRepo = workoutRepo,
-        _executionRepo = executionRepo,
-        _exerciseRepo = exerciseRepo;
+  }) : _profileRepo = profileRepo,
+       _equipmentRepo = equipmentRepo,
+       _workoutRepo = workoutRepo,
+       _executionRepo = executionRepo,
+       _exerciseRepo = exerciseRepo;
 
   Future<String> build({bool extended = false}) async {
-    final recentExecutionsLimit =
-        extended ? maxRecentExecutionsExtended : maxRecentExecutions;
+    final recentExecutionsLimit = extended
+        ? maxRecentExecutionsExtended
+        : maxRecentExecutions;
     final workoutsLimit = extended ? maxWorkoutsExtended : maxWorkouts;
 
     // Parallel fetch of all independent data sources
@@ -71,11 +73,14 @@ class PromptBuilder {
 
     final sections = <String>[];
 
+    final profile = profileResult.isSuccess ? profileResult.getOrThrow() : null;
+
     // --- Profile ---
     _buildProfile(profileResult, sections);
 
     // --- Equipment ---
-    _buildEquipment(equipResult, sections);
+    final isHomeUser = profile?.trainsAtGym == false;
+    _buildEquipment(equipResult, sections, isHomeUser: isHomeUser);
 
     // --- Active Workouts (with exercises, no N+1) ---
     await _buildWorkouts(
@@ -97,9 +102,7 @@ class PromptBuilder {
     // --- Exercise catalog names ---
     _buildCatalog(allExercises, sections);
 
-    return sections.isEmpty
-        ? 'No data available yet.'
-        : sections.join('\n\n');
+    return sections.isEmpty ? 'No data available yet.' : sections.join('\n\n');
   }
 
   void _buildProfile(
@@ -126,7 +129,8 @@ class PromptBuilder {
     }
     if (profile.experienceLevel != null) {
       lines.add(
-          '- Experience level: ${_humanize(profile.experienceLevel!.name)}');
+        '- Experience level: ${_humanize(profile.experienceLevel!.name)}',
+      );
     }
     if (profile.gender != null) {
       lines.add('- Gender: ${_humanize(profile.gender!.name)}');
@@ -136,7 +140,8 @@ class PromptBuilder {
     }
     if (profile.availableWorkoutMinutes != null) {
       lines.add(
-          '- Available workout time: ${profile.availableWorkoutMinutes} min');
+        '- Available workout time: ${profile.availableWorkoutMinutes} min',
+      );
     }
     if (profile.trainsAtGym != null) {
       lines.add('- Trains at gym: ${profile.trainsAtGym! ? "Yes" : "No"}');
@@ -152,13 +157,26 @@ class PromptBuilder {
 
   void _buildEquipment(
     Result<List<Equipment>> equipResult,
-    List<String> sections,
-  ) {
+    List<String> sections, {
+    bool isHomeUser = false,
+  }) {
     if (!equipResult.isSuccess) return;
     final equipment = equipResult.getOrThrow();
     if (equipment.isNotEmpty) {
-      final names = equipment.map((e) => e.name).join(', ');
+      final names = equipment
+          .map(
+            (e) => chironEquipmentDisplayName(
+              canonicalName: e.name,
+              isVerified: e.isVerified,
+            ),
+          )
+          .join(', ');
       sections.add('## Registered Equipment\n$names');
+    } else if (isHomeUser) {
+      sections.add(
+        '## Registered Equipment\n'
+        'No equipment registered. User trains at home — ask what they have.',
+      );
     } else {
       sections.add('## Registered Equipment\nNo equipment registered.');
     }
@@ -167,9 +185,9 @@ class PromptBuilder {
   Future<void> _buildWorkouts(
     Result<List<Workout>> workoutResult,
     Map<int, String> exerciseMap,
-    List<String> sections,
-    {required int maxItems}
-  ) async {
+    List<String> sections, {
+    required int maxItems,
+  }) async {
     if (!workoutResult.isSuccess) return;
     final workouts = workoutResult.getOrThrow();
     final workoutsToShow = workouts.take(maxItems).toList();
@@ -193,8 +211,10 @@ class PromptBuilder {
         }
       }
       final exStr = exNames.isNotEmpty ? ' → ${exNames.join(", ")}' : '';
-      lines.add('- id=${w.id} ${w.name} (${age}d, '
-          '${exNames.length} ex)$exStr');
+      lines.add(
+        '- id=${w.id} ${w.name} (${age}d, '
+        '${exNames.length} ex)$exStr',
+      );
     }
     sections.add(lines.join('\n'));
   }
@@ -203,9 +223,9 @@ class PromptBuilder {
     Result<List<WorkoutExecution>> execResult,
     Result<List<Workout>> workoutResult,
     Map<int, String> exerciseMap,
-    List<String> sections,
-    {required int maxItems}
-  ) async {
+    List<String> sections, {
+    required int maxItems,
+  }) async {
     if (!execResult.isSuccess) return;
     final executions = execResult.getOrThrow();
     final recent = executions
@@ -233,28 +253,29 @@ class PromptBuilder {
       final duration = exec.duration != null
           ? _formatDuration(exec.duration!)
           : '?';
-      final wName = workoutNames[exec.workoutId] ?? 'Workout #${exec.workoutId}';
-      final dateFmt =
-          exec.startedAt.toLocal().toString().substring(0, 10);
+      final wName =
+          workoutNames[exec.workoutId] ?? 'Workout #${exec.workoutId}';
+      final dateFmt = exec.startedAt.toLocal().toString().substring(0, 10);
 
       final setsResult = setResults[i];
       if (setsResult.isSuccess) {
         final sets = setsResult.getOrThrow();
-        final exerciseGroups = <int, List<String>>{};
+        final bestByExercise = <int, String>{};
         for (final s in sets.where((s) => s.isCompleted)) {
           final label = s.weight != null
               ? '${s.weight}kg×${s.reps ?? 0}'
               : s.duration != null
                   ? '${s.duration}s'
-                  : '${s.reps ?? 0} reps';
-          exerciseGroups
-              .putIfAbsent(s.exerciseId, () => [])
-              .add(label);
+                  : '${s.reps ?? 0}r';
+          final prev = bestByExercise[s.exerciseId];
+          if (prev == null) bestByExercise[s.exerciseId] = label;
         }
-        final summary = exerciseGroups.entries.map((e) {
-          final exName = exerciseMap[e.key] ?? 'ex#${e.key}';
-          return '$exName: ${e.value.join(", ")}';
-        }).join(' | ');
+        final summary = bestByExercise.entries
+            .map((e) {
+              final exName = exerciseMap[e.key] ?? '#${e.key}';
+              return '$exName ${e.value}';
+            })
+            .join(', ');
         lines.add('- $dateFmt $wName ($duration) [$summary]');
       } else {
         lines.add('- $dateFmt $wName ($duration)');
@@ -268,11 +289,10 @@ class PromptBuilder {
     final names = allExercises.map((e) => e.name).toList();
     final shown = names.take(maxExerciseNamesInContext).toList();
     final overflow = names.length > maxExerciseNamesInContext
-        ? ' (+${names.length - maxExerciseNamesInContext})'
+        ? ' +${names.length - maxExerciseNamesInContext}'
         : '';
     sections.add(
-      '## Catalog (${names.length} exercises)\n'
-      'Exact names for createWorkout: ${shown.join(", ")}$overflow',
+      '## Catalog (${names.length}$overflow)\n${shown.join("; ")}',
     );
   }
 

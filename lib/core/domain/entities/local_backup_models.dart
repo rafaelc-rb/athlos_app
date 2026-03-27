@@ -1,15 +1,6 @@
-enum BackupConflictType {
-  profile,
-  equipment,
-  exercise,
-  workout,
-}
+enum BackupConflictType { profile, equipment, exercise, workout }
 
-enum BackupConflictResolution {
-  keepExisting,
-  overwriteExisting,
-  keepBoth,
-}
+enum BackupConflictResolution { keepExisting, overwriteExisting, keepBoth }
 
 enum BackupPendingReviewType {
   missingCanonicalReference,
@@ -18,27 +9,25 @@ enum BackupPendingReviewType {
   governanceConflict,
 }
 
-enum BackupPendingReviewResolution {
-  linkSuggested,
-  createCustom,
-  skip,
-}
+enum BackupConflictDecisionScope { userLocal, catalogGovernance }
 
-enum BackupImportResultStatus {
-  created,
-  updated,
-  skipped,
-  failed,
+enum BackupConflictDetectedFrom { importPreview, runtimeScan, catalogSync }
+
+enum BackupPendingReviewResolution { linkSuggested, createCustom, skip }
+
+enum BackupImportResultStatus { created, updated, skipped, failed }
+
+enum RuntimeDuplicateDecision {
+  notDuplicate,
+  confirmDuplicate,
+  mergeAttributes,
 }
 
 class BackupExportData {
   final String fileName;
   final String jsonContent;
 
-  const BackupExportData({
-    required this.fileName,
-    required this.jsonContent,
-  });
+  const BackupExportData({required this.fileName, required this.jsonContent});
 }
 
 class BackupImportConflict {
@@ -112,19 +101,34 @@ class BackupCatalogReference {
 class BackupPendingReview {
   final String reviewId;
   final BackupPendingReviewType type;
+  final BackupConflictDecisionScope decisionScope;
+  final BackupConflictDetectedFrom detectedFrom;
   final BackupConflictType entityType;
   final String importedLabel;
   final String? existingLabel;
   final String? suggestedLabel;
   final double? similarityScore;
+  final int? leftEntityId;
+  final int? rightEntityId;
+
+  final bool isLeftVerified;
+  final bool isRightVerified;
 
   const BackupPendingReview({
     required this.reviewId,
     required this.type,
+    this.decisionScope = BackupConflictDecisionScope.userLocal,
+    this.detectedFrom = BackupConflictDetectedFrom.importPreview,
     required this.entityType,
     required this.importedLabel,
     this.existingLabel,
     this.suggestedLabel,
     this.similarityScore,
+    this.leftEntityId,
+    this.rightEntityId,
+    this.isLeftVerified = false,
+    this.isRightVerified = false,
   });
+
+  bool get hasVerifiedSide => isLeftVerified || isRightVerified;
 }

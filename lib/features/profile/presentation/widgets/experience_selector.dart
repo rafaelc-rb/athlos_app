@@ -7,6 +7,7 @@ import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/enums/experience_level.dart';
+import '../helpers/profile_l10n.dart';
 
 /// Selector for [ExperienceLevel].
 class ExperienceSelector extends StatelessWidget {
@@ -38,8 +39,7 @@ class ExperienceSelector extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: AthlosSpacing.sm),
             child: Card(
               clipBehavior: Clip.antiAlias,
-              elevation:
-                  isSelected ? AthlosElevation.sm : AthlosElevation.none,
+              elevation: isSelected ? AthlosElevation.sm : AthlosElevation.none,
               color: isSelected
                   ? colorScheme.primaryContainer
                   : colorScheme.surfaceContainerLow,
@@ -103,11 +103,13 @@ class ExperienceSelector extends StatelessWidget {
                         child: shouldShowHelp
                             ? Padding(
                                 padding: const EdgeInsets.only(
-                                    top: AthlosSpacing.smd),
+                                  top: AthlosSpacing.smd,
+                                ),
                                 child: Container(
                                   width: double.infinity,
-                                  padding:
-                                      const EdgeInsets.all(AthlosSpacing.smd),
+                                  padding: const EdgeInsets.all(
+                                    AthlosSpacing.smd,
+                                  ),
                                   decoration: BoxDecoration(
                                     borderRadius: AthlosRadius.smAll,
                                     color: colorScheme.surfaceContainerHighest
@@ -126,10 +128,8 @@ class ExperienceSelector extends StatelessWidget {
                                       Expanded(
                                         child: Text(
                                           _impactFor(level, l10n),
-                                          style:
-                                              textTheme.bodySmall?.copyWith(
-                                            color:
-                                                colorScheme.onSurfaceVariant,
+                                          style: textTheme.bodySmall?.copyWith(
+                                            color: colorScheme.onSurfaceVariant,
                                             height: 1.4,
                                           ),
                                         ),
@@ -152,29 +152,17 @@ class ExperienceSelector extends StatelessWidget {
   }
 
   IconData _iconFor(ExperienceLevel level) => switch (level) {
-        ExperienceLevel.beginner => Icons.emoji_events_outlined,
-        ExperienceLevel.intermediate => Icons.trending_up,
-        ExperienceLevel.advanced => Icons.military_tech,
-      };
+    ExperienceLevel.beginner => Icons.emoji_events_outlined,
+    ExperienceLevel.intermediate => Icons.trending_up,
+    ExperienceLevel.advanced => Icons.military_tech,
+  };
 
   String _titleFor(ExperienceLevel level, AppLocalizations l10n) =>
-      switch (level) {
-        ExperienceLevel.beginner => l10n.experienceBeginner,
-        ExperienceLevel.intermediate => l10n.experienceIntermediate,
-        ExperienceLevel.advanced => l10n.experienceAdvanced,
-      };
+      localizedExperienceLevelName(level, l10n);
 
   String _descriptionFor(ExperienceLevel level, AppLocalizations l10n) =>
-      switch (level) {
-        ExperienceLevel.beginner => l10n.experienceBeginnerDesc,
-        ExperienceLevel.intermediate => l10n.experienceIntermediateDesc,
-        ExperienceLevel.advanced => l10n.experienceAdvancedDesc,
-      };
+      localizedExperienceLevelDescription(level, l10n);
 
   String _impactFor(ExperienceLevel level, AppLocalizations l10n) =>
-      switch (level) {
-        ExperienceLevel.beginner => l10n.experienceBeginnerImpact,
-        ExperienceLevel.intermediate => l10n.experienceIntermediateImpact,
-        ExperienceLevel.advanced => l10n.experienceAdvancedImpact,
-      };
+      localizedExperienceLevelImpact(level, l10n);
 }

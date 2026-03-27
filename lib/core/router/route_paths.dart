@@ -12,6 +12,7 @@ abstract final class RoutePaths {
   // Profile
   static const profile = '/profile';
   static const profileSetup = '/profile/setup';
+  static const profileConflicts = '/profile/conflicts';
 
   // Training module
   static const training = '/training';
@@ -28,9 +29,6 @@ abstract final class RoutePaths {
   // e.g. '${trainingHistory}/$id'
   // :workoutId used via string interpolation
   // e.g. '${trainingWorkouts}/$id' and '${trainingWorkouts}/$id/edit'
-
-  // Chiron AI assistant
-  static const chiron = '/chiron';
 
   // Diet module (future)
   static const diet = '/diet';

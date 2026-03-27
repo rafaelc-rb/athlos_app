@@ -42,6 +42,54 @@ class ExerciseDao extends DatabaseAccessor<AppDatabase>
     return null;
   }
 
+  /// Fuzzy name lookup: tries exact (case-insensitive), then normalized
+  /// (diacritics removed), then containment match.
+  Future<int?> findIdByNameFuzzy(String name) async {
+    final input = name.trim().toLowerCase();
+    if (input.isEmpty) return null;
+    final inputNorm = _removeDiacritics(input);
+
+    final all = await select(exercises).get();
+
+    // Pass 1: exact case-insensitive match
+    for (final row in all) {
+      if (row.name.trim().toLowerCase() == input) return row.id;
+    }
+
+    // Pass 2: diacritics-normalized exact match
+    for (final row in all) {
+      final rowNorm = _removeDiacritics(row.name.trim().toLowerCase());
+      if (rowNorm == inputNorm) return row.id;
+    }
+
+    // Pass 3: containment — pick the candidate whose length is closest to input
+    int? bestId;
+    var bestDelta = 999;
+    for (final row in all) {
+      final rowNorm = _removeDiacritics(row.name.trim().toLowerCase());
+      if (rowNorm.contains(inputNorm) || inputNorm.contains(rowNorm)) {
+        final delta = (rowNorm.length - inputNorm.length).abs();
+        if (delta < bestDelta) {
+          bestId = row.id;
+          bestDelta = delta;
+        }
+      }
+    }
+    return bestId;
+  }
+
+  static String _removeDiacritics(String s) {
+    const withDiacritics =
+        'àáâãäåèéêëìíîïòóôõöùúûüýñçÀÁÂÃÄÅÈÉÊËÌÍÎÏÒÓÔÕÖÙÚÛÜÝÑÇ';
+    const withoutDiacritics =
+        'aaaaaaeeeeiiiioooooouuuuyncAAAAAAEEEEIIIIOOOOOUUUUYNC';
+    var result = s;
+    for (var i = 0; i < withDiacritics.length; i++) {
+      result = result.replaceAll(withDiacritics[i], withoutDiacritics[i]);
+    }
+    return result;
+  }
+
   Future<List<Exercise>> getByMuscleGroup(MuscleGroup group) =>
       (select(exercises)..where((e) => e.muscleGroup.equalsValue(group))).get();
 

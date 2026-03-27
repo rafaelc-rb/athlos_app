@@ -31,12 +31,10 @@ Manages app state and dependency injection in a single package. Swapping `LocalD
 
 Type-safe ORM for SQLite with code generation. Native support for relations (essential for Athlos entities), built-in migration system to update the schema without data loss, and generates reusable SQL for the future PostgreSQL migration.
 
-### Supabase (catalog governance in local-first phase)
+### Supabase (catalog sync in local-first phase)
 
-Even in the local-first phase, Supabase is used for verified catalog consistency workflows:
+Even in the local-first phase, Supabase is available for catalog data sync (seed updates, verified item references). Global catalog governance (verified x verified conflict resolution, rule propagation across devices) is **deferred to a separate maintenance project** and is not part of the current app scope.
 
-- Receives critical governance events generated during import reconciliation.
-- Stores governance rules that can be applied idempotently across devices.
 - Does not replace local Drift as the source of truth for personal workout/profile history in 1.x.
 
 ### go_router (navigation)
@@ -475,7 +473,8 @@ Development follows a **depth-first** strategy: each module is fully polished be
 - Training module fully polished — exercises, equipment, workouts, execution (strength + cardio), history, training cycles, supersets, drop sets, execution feedback, rest timer, cardio timer
 - Chiron AI assistant via Gemini free tier (Q&A chat, context-aware responses)
 - Hub, profile, onboarding
-- Manual data export/import for backup (JSON, merge strategy with conflict resolution)
+- Manual data export/import for backup (JSON, merge strategy with conflict resolution) in Profile > Dados
+- Conflict Center for runtime duplicate detection and user-driven resolution (local x verified, local x local, attribute-by-attribute merge)
 - Zero infrastructure cost — everything runs on-device
 - Published to stores (Google Play / App Store) to build a user base
 

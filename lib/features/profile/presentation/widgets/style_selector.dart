@@ -7,6 +7,7 @@ import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/enums/training_style.dart';
+import '../helpers/profile_l10n.dart';
 
 /// Selector for [TrainingStyle].
 ///
@@ -107,10 +108,14 @@ class StyleSelector extends StatelessWidget {
                         curve: Curves.easeInOut,
                         child: shouldShowHelp
                             ? Padding(
-                                padding: const EdgeInsets.only(top: AthlosSpacing.smd),
+                                padding: const EdgeInsets.only(
+                                  top: AthlosSpacing.smd,
+                                ),
                                 child: Container(
                                   width: double.infinity,
-                                  padding: const EdgeInsets.all(AthlosSpacing.smd),
+                                  padding: const EdgeInsets.all(
+                                    AthlosSpacing.smd,
+                                  ),
                                   decoration: BoxDecoration(
                                     borderRadius: AthlosRadius.smAll,
                                     color: colorScheme.surfaceContainerHighest
@@ -129,10 +134,8 @@ class StyleSelector extends StatelessWidget {
                                       Expanded(
                                         child: Text(
                                           _impactFor(style, l10n),
-                                          style:
-                                              textTheme.bodySmall?.copyWith(
-                                            color:
-                                                colorScheme.onSurfaceVariant,
+                                          style: textTheme.bodySmall?.copyWith(
+                                            color: colorScheme.onSurfaceVariant,
                                             height: 1.4,
                                           ),
                                         ),
@@ -155,33 +158,18 @@ class StyleSelector extends StatelessWidget {
   }
 
   IconData _iconFor(TrainingStyle style) => switch (style) {
-        TrainingStyle.traditional => Icons.fitness_center,
-        TrainingStyle.calisthenics => Icons.sports_gymnastics,
-        TrainingStyle.functional => Icons.sports_martial_arts,
-        TrainingStyle.hybrid => Icons.sync_alt,
-      };
+    TrainingStyle.traditional => Icons.fitness_center,
+    TrainingStyle.calisthenics => Icons.sports_gymnastics,
+    TrainingStyle.functional => Icons.sports_martial_arts,
+    TrainingStyle.hybrid => Icons.sync_alt,
+  };
 
   String _titleFor(TrainingStyle style, AppLocalizations l10n) =>
-      switch (style) {
-        TrainingStyle.traditional => l10n.styleTraditional,
-        TrainingStyle.calisthenics => l10n.styleCalisthenics,
-        TrainingStyle.functional => l10n.styleFunctional,
-        TrainingStyle.hybrid => l10n.styleHybrid,
-      };
+      localizedTrainingStyleName(style, l10n);
 
   String _descriptionFor(TrainingStyle style, AppLocalizations l10n) =>
-      switch (style) {
-        TrainingStyle.traditional => l10n.styleTraditionalDesc,
-        TrainingStyle.calisthenics => l10n.styleCalisthenicsDesc,
-        TrainingStyle.functional => l10n.styleFunctionalDesc,
-        TrainingStyle.hybrid => l10n.styleHybridDesc,
-      };
+      localizedTrainingStyleDescription(style, l10n);
 
   String _impactFor(TrainingStyle style, AppLocalizations l10n) =>
-      switch (style) {
-        TrainingStyle.traditional => l10n.styleTraditionalImpact,
-        TrainingStyle.calisthenics => l10n.styleCalisthenicsImpact,
-        TrainingStyle.functional => l10n.styleFunctionalImpact,
-        TrainingStyle.hybrid => l10n.styleHybridImpact,
-      };
+      localizedTrainingStyleImpact(style, l10n);
 }

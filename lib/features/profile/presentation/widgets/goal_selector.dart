@@ -7,6 +7,7 @@ import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/enums/training_goal.dart';
+import '../helpers/profile_l10n.dart';
 
 /// Selector for [TrainingGoal].
 ///
@@ -107,10 +108,14 @@ class GoalSelector extends StatelessWidget {
                         curve: Curves.easeInOut,
                         child: shouldShowHelp
                             ? Padding(
-                                padding: const EdgeInsets.only(top: AthlosSpacing.smd),
+                                padding: const EdgeInsets.only(
+                                  top: AthlosSpacing.smd,
+                                ),
                                 child: Container(
                                   width: double.infinity,
-                                  padding: const EdgeInsets.all(AthlosSpacing.smd),
+                                  padding: const EdgeInsets.all(
+                                    AthlosSpacing.smd,
+                                  ),
                                   decoration: BoxDecoration(
                                     borderRadius: AthlosRadius.smAll,
                                     color: colorScheme.surfaceContainerHighest
@@ -129,10 +134,8 @@ class GoalSelector extends StatelessWidget {
                                       Expanded(
                                         child: Text(
                                           _impactFor(goal, l10n),
-                                          style:
-                                              textTheme.bodySmall?.copyWith(
-                                            color:
-                                                colorScheme.onSurfaceVariant,
+                                          style: textTheme.bodySmall?.copyWith(
+                                            color: colorScheme.onSurfaceVariant,
                                             height: 1.4,
                                           ),
                                         ),
@@ -155,35 +158,19 @@ class GoalSelector extends StatelessWidget {
   }
 
   IconData _iconFor(TrainingGoal goal) => switch (goal) {
-        TrainingGoal.hypertrophy => Icons.fitness_center,
-        TrainingGoal.weightLoss => Icons.local_fire_department,
-        TrainingGoal.endurance => Icons.directions_run,
-        TrainingGoal.strength => Icons.bolt,
-        TrainingGoal.generalFitness => Icons.favorite,
-      };
+    TrainingGoal.hypertrophy => Icons.fitness_center,
+    TrainingGoal.weightLoss => Icons.local_fire_department,
+    TrainingGoal.endurance => Icons.directions_run,
+    TrainingGoal.strength => Icons.bolt,
+    TrainingGoal.generalFitness => Icons.favorite,
+  };
 
-  String _titleFor(TrainingGoal goal, AppLocalizations l10n) => switch (goal) {
-        TrainingGoal.hypertrophy => l10n.goalHypertrophy,
-        TrainingGoal.weightLoss => l10n.goalWeightLoss,
-        TrainingGoal.endurance => l10n.goalEndurance,
-        TrainingGoal.strength => l10n.goalStrength,
-        TrainingGoal.generalFitness => l10n.goalGeneralFitness,
-      };
+  String _titleFor(TrainingGoal goal, AppLocalizations l10n) =>
+      localizedTrainingGoalName(goal, l10n);
 
   String _descriptionFor(TrainingGoal goal, AppLocalizations l10n) =>
-      switch (goal) {
-        TrainingGoal.hypertrophy => l10n.goalHypertrophyDesc,
-        TrainingGoal.weightLoss => l10n.goalWeightLossDesc,
-        TrainingGoal.endurance => l10n.goalEnduranceDesc,
-        TrainingGoal.strength => l10n.goalStrengthDesc,
-        TrainingGoal.generalFitness => l10n.goalGeneralFitnessDesc,
-      };
+      localizedTrainingGoalDescription(goal, l10n);
 
-  String _impactFor(TrainingGoal goal, AppLocalizations l10n) => switch (goal) {
-        TrainingGoal.hypertrophy => l10n.goalHypertrophyImpact,
-        TrainingGoal.weightLoss => l10n.goalWeightLossImpact,
-        TrainingGoal.endurance => l10n.goalEnduranceImpact,
-        TrainingGoal.strength => l10n.goalStrengthImpact,
-        TrainingGoal.generalFitness => l10n.goalGeneralFitnessImpact,
-      };
+  String _impactFor(TrainingGoal goal, AppLocalizations l10n) =>
+      localizedTrainingGoalImpact(goal, l10n);
 }

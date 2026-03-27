@@ -101,8 +101,11 @@ The first store release. Training module feature-complete, fully local, zero cos
 
 | ID | MoSCoW | User Story | Acceptance Criteria |
 |----|--------|------------|---------------------|
-| BK-01 | Should | As a user, I want to export all my data to a file so that I have a backup in case I lose my phone | Export generates a human-readable JSON backup (user data + canonical catalog references), and file can be shared/saved via OS share sheet |
-| BK-02 | Should | As a user, I want to import data from a backup file so that I can restore my data on a new device | Import uses merge semantics (does not wipe local data), resolves conflicts item-by-item (and profile field-by-field), remaps relationships safely, and uses governance flow for unresolved verified catalog conflicts |
+| BK-01 | Should | As a user, I want to export all my data to a file so that I have a backup in case I lose my phone | Export generates a human-readable JSON backup (user data + canonical catalog references), and file can be shared/saved via OS share sheet. Export and Import buttons live in Profile > Dados |
+| BK-02 | Should | As a user, I want to import data from a backup file so that I can restore my data on a new device | Import uses merge semantics (does not wipe local data), resolves conflicts item-by-item (and profile field-by-field), remaps relationships safely |
+| BK-03 | Should | As a user, I want the app to detect possible duplicate items so that I can clean up my data | Runtime scanner detects fuzzy duplicate equipment/exercises. Results shown in **Conflict Center** (Profile > Dados) |
+| BK-04 | Should | As a user, I want to resolve duplicates between a verified catalog item and my custom item so that only one remains | Local x Verified: "not duplicate" (suppressed) or "confirmed duplicate" (verified wins, custom remapped and removed) |
+| BK-05 | Should | As a user, I want to resolve duplicates between two custom items choosing which to keep or merging attributes | Local x Local: "not duplicate", "keep A", "keep B", or attribute-by-attribute merge (user picks each field; associations unified; loser remapped and removed) |
 
 ---
 

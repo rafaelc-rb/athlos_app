@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/hub/presentation/screens/hub_screen.dart';
 import '../../features/profile/presentation/providers/profile_notifier.dart';
+import '../../features/profile/presentation/screens/conflict_center_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/profile/presentation/screens/profile_setup_screen.dart';
 import '../../features/training/presentation/screens/execution_detail_screen.dart';
@@ -81,6 +82,10 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: RoutePaths.profile,
         builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.profileConflicts,
+        builder: (context, state) => const ConflictCenterScreen(),
       ),
 
       // Training module — shell with bottom navigation

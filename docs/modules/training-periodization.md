@@ -188,6 +188,32 @@ Currently, the `Exercise` entity has no way to indicate it's a bodyweight exerci
 - Chiron uses the timeline for cutting/bulking analysis
 - Bodyweight exercise load calculations reference the latest recorded weight
 
+### Phase 10: Progress Visualization
+
+Charts and records computed from existing execution data — zero additional user input.
+
+#### 10a. Per-Exercise Load Chart
+
+- Line chart showing weight (or estimated 1RM) over time for a selected exercise
+- Accessible from exercise detail or execution history
+- Time range: last 30 days / 90 days / all time
+
+#### 10b. PR History
+
+- Dedicated screen listing personal records across all exercises
+- Auto-detected from execution history (heaviest weight, most reps at a given weight, highest estimated 1RM)
+- PR badge shown inline in execution history entries
+
+#### 10c. Weekly Volume Trend
+
+- Bar/line chart showing total working sets per muscle group across weeks
+- Accessible from Training Home dashboard (tapping the volume card from Phase 6c)
+- Highlights under-volume and over-volume zones
+
+**UI approach:** charts live in **dedicated detail screens** reached by tapping summary cards or exercise entries — never on the main flow. Training Home shows at most 1-2 small summary cards (e.g. "volume this week", "recent PR"); tapping drills into the chart. The principle is: **surface → summary card, drill-down → full chart**. No carousels, no chart walls.
+
+> **Note:** progress data (PRs, volume trends, consistency streaks) are the natural input for the future **Kleos** gamification module — achievements, streaks, and challenges built on top of real training metrics.
+
 ## Future Considerations (low priority)
 
 These are real concepts in weight training but add complexity disproportionate to their value for most users. Documented here for future reference.
@@ -233,7 +259,8 @@ Each phase is a separate schema version bump. Phases are independent enough to s
 4. Phase 4 (deload) depends on Phase 3
 5. Phase 5 (progression) depends on Phase 3
 6. Phases 6-9 (metrics, warmup, notes, body weight) are independent of each other
+7. Phase 10 (charts) depends on Phases 6b, 6c; benefits from 9
 
-Recommended order: **1 → 2 → 6a → 7 → 8 → 3 → 4 → 5 → 6b → 6c → 6d → 9**
+Recommended order: **1 → 2 → 6a → 7 → 8 → 3 → 4 → 5 → 6b → 6c → 6d → 9 → 10**
 
-Rationale: start with the fix (1), then the fundamental model improvement (2: rep ranges), then low-effort high-value additions (RPE, warmup, notes), then the bigger structural changes (program, deload, progression), then computed metrics, then body weight timeline (which benefits from Diet module later).
+Rationale: start with the fix (1), then the fundamental model improvement (2: rep ranges), then low-effort high-value additions (RPE, warmup, notes), then the bigger structural changes (program, deload, progression), then computed metrics, then body weight timeline, and finally visualization (which needs the computed data to exist first). Kleos gamification comes later as a separate module built on top of these metrics.

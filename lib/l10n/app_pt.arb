@@ -2127,6 +2127,8 @@
   },
 
   "prBadge": "PR",
+  "prTooltip": "Recorde Pessoal — a maior carga estimada para 1 repetição (1RM) já registada num exercício.",
+  "@prTooltip": { "description": "Tooltip explaining what PR means" },
   "prEstimated1rm": "1RM est.: {value} kg",
   "@prEstimated1rm": {
     "placeholders": {
@@ -2143,6 +2145,8 @@
   "prNewRecord": "Novo recorde pessoal!",
   "bodyweightExercise": "Exercício de peso corporal",
   "weeklyVolume": "Volume semanal",
+  "weeklyVolumeTooltip": "Séries de trabalho (excl. aquecimento) por grupo muscular nos últimos 7 dias.",
+  "@weeklyVolumeTooltip": { "description": "Tooltip explaining the weekly volume card" },
   "weeklyVolumeSets": "{count} sets",
   "@weeklyVolumeSets": {
     "placeholders": {
@@ -2184,6 +2188,18 @@
   "prHistoryEmpty": "Nenhum recorde pessoal registado. Complete treinos para detectar PRs automaticamente.",
 
   "volumeTrendTitle": "Volume semanal por grupo muscular",
+  "volumeTrendDescription": "Volume é o total de séries de trabalho (excluindo aquecimento) por grupo muscular.",
+  "volumeTrendLegendMin": "Mín. recomendado ({value})",
+  "@volumeTrendLegendMin": {
+    "description": "Legend label for the minimum target line",
+    "placeholders": { "value": { "type": "int" } }
+  },
+  "volumeTrendLegendMax": "Máx. recomendado ({value})",
+  "@volumeTrendLegendMax": {
+    "description": "Legend label for the maximum target line",
+    "placeholders": { "value": { "type": "int" } }
+  },
+  "@volumeTrendDescription": { "description": "Explanatory text shown on the volume trend chart screen" },
 
   "programCompletedTitle": "Programa concluído!",
   "programCompletedMessage": "Completou todas as sessões planeadas de \"{programName}\". Quer arquivar o programa ou continuar a treinar?",

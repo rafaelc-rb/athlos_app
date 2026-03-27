@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:intl/intl.dart' as intl;
 
+import 'dart:math' as math;
+
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../profile/presentation/providers/profile_notifier.dart';
 import '../../domain/enums/muscle_group.dart';
 import '../helpers/exercise_l10n.dart';
 import '../providers/training_metrics_provider.dart';
@@ -30,6 +33,9 @@ class _VolumeTrendChartScreenState
     final textTheme = Theme.of(context).textTheme;
 
     final trendAsync = ref.watch(weeklyVolumeTrendProvider());
+    final profileAsync = ref.watch(profileProvider);
+    final experienceLevel = profileAsync.value?.experienceLevel?.name;
+    final target = volumeTargetForLevel(experienceLevel);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.volumeTrendTitle)),
@@ -77,7 +83,30 @@ class _VolumeTrendChartScreenState
                         .toList(),
                   ),
                 ),
-                const Gap(AthlosSpacing.lg),
+                const Gap(AthlosSpacing.sm),
+                Text(
+                  l10n.volumeTrendDescription,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const Gap(AthlosSpacing.sm),
+                Row(
+                  children: [
+                    _LegendItem(
+                      color: colorScheme.primary.withValues(alpha: 0.6),
+                      label: l10n.volumeTrendLegendMin(target.min),
+                      textTheme: textTheme,
+                    ),
+                    const Gap(AthlosSpacing.md),
+                    _LegendItem(
+                      color: colorScheme.tertiary.withValues(alpha: 0.6),
+                      label: l10n.volumeTrendLegendMax(target.max),
+                      textTheme: textTheme,
+                    ),
+                  ],
+                ),
+                const Gap(AthlosSpacing.md),
                 Expanded(
                   child: points.length < 2
                       ? Center(
@@ -85,7 +114,7 @@ class _VolumeTrendChartScreenState
                               style: textTheme.bodyMedium),
                         )
                       : _buildBarChart(
-                          points, selected, colorScheme, textTheme),
+                          points, target, colorScheme, textTheme),
                 ),
               ],
             ),
@@ -97,13 +126,13 @@ class _VolumeTrendChartScreenState
 
   Widget _buildBarChart(
     List<({DateTime weekStart, int sets})> points,
-    String muscleGroup,
+    ({int min, int max}) target,
     ColorScheme colorScheme,
     TextTheme textTheme,
   ) {
     final dateFormat = intl.DateFormat.MMMd();
     final maxSets = points.map((p) => p.sets).reduce((a, b) => a > b ? a : b);
-    final target = volumeTargetForLevel(null);
+    final chartMax = math.max(maxSets, target.max) + 2;
 
     return BarChart(
       BarChartData(
@@ -168,7 +197,7 @@ class _VolumeTrendChartScreenState
             ),
           ),
         ),
-        maxY: (maxSets + 2).toDouble(),
+        maxY: chartMax.toDouble(),
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
@@ -218,4 +247,32 @@ String _muscleGroupLabel(String name, AppLocalizations l10n) {
       MuscleGroup.values.where((g) => g.name == name).firstOrNull;
   if (group != null) return localizedMuscleGroupName(group, l10n);
   return name;
+}
+
+class _LegendItem extends StatelessWidget {
+  final Color color;
+  final String label;
+  final TextTheme textTheme;
+
+  const _LegendItem({
+    required this.color,
+    required this.label,
+    required this.textTheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 16,
+          height: 2,
+          decoration: BoxDecoration(color: color),
+        ),
+        const Gap(AthlosSpacing.xs),
+        Text(label, style: textTheme.labelSmall),
+      ],
+    );
+  }
 }

@@ -350,7 +350,11 @@ class _WeeklyVolumeCard extends ConsumerWidget {
         if (volume.isEmpty) return const SizedBox.shrink();
         final sorted = volume.entries.toList()
           ..sort((a, b) => b.value.compareTo(a.value));
-        return Card(
+        return Tooltip(
+          message: l10n.weeklyVolumeTooltip,
+          triggerMode: TooltipTriggerMode.longPress,
+          preferBelow: true,
+          child: Card(
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: () => context.push(RoutePaths.trainingVolumeTrend),
@@ -402,6 +406,7 @@ class _WeeklyVolumeCard extends ConsumerWidget {
               ),
             ),
           ),
+        ),
         );
       },
     );
@@ -503,34 +508,39 @@ class _RecentPRCard extends ConsumerWidget {
         final e1rmStr = top.best1RM % 1 == 0
             ? top.best1RM.toInt().toString()
             : top.best1RM.toStringAsFixed(1);
-        return Card(
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () => context.push(RoutePaths.trainingPRHistory),
-            child: Padding(
-              padding: const EdgeInsets.all(AthlosSpacing.md),
-              child: Row(
-                children: [
-                  Icon(Icons.emoji_events,
-                      color: colorScheme.tertiary, size: 24),
-                  const Gap(AthlosSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(l10n.prBadge, style: textTheme.titleSmall),
-                        Text(
-                          '$name — $e1rmStr kg',
-                          style: textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
+        return Tooltip(
+          message: l10n.prTooltip,
+          triggerMode: TooltipTriggerMode.longPress,
+          preferBelow: true,
+          child: Card(
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => context.push(RoutePaths.trainingPRHistory),
+              child: Padding(
+                padding: const EdgeInsets.all(AthlosSpacing.md),
+                child: Row(
+                  children: [
+                    Icon(Icons.emoji_events,
+                        color: colorScheme.tertiary, size: 24),
+                    const Gap(AthlosSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(l10n.prBadge, style: textTheme.titleSmall),
+                          Text(
+                            '$name — $e1rmStr kg',
+                            style: textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  Icon(Icons.chevron_right,
-                      size: 20, color: colorScheme.onSurfaceVariant),
-                ],
+                    Icon(Icons.chevron_right,
+                        size: 20, color: colorScheme.onSurfaceVariant),
+                  ],
+                ),
               ),
             ),
           ),

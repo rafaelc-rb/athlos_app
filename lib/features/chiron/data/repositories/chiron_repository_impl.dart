@@ -509,7 +509,14 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
       if (exerciseName == null || exerciseName.isEmpty) continue;
 
       final sets = _parseInt(map['sets'], 3);
-      final reps = map['reps'] != null ? _parseInt(map['reps'], 10) : null;
+      final minReps = map['minReps'] != null
+          ? _parseInt(map['minReps'], 10)
+          : (map['reps'] != null ? _parseInt(map['reps'], 10) : null);
+      final maxReps = map['maxReps'] != null
+          ? _parseInt(map['maxReps'], minReps ?? 10)
+          : minReps;
+      final isAmrap = map['isAmrap'] == true ||
+          map['isAmrap']?.toString().toLowerCase() == 'true';
       final restSeconds = map['restSeconds'] != null
           ? _parseInt(map['restSeconds'], 90)
           : 90;
@@ -541,7 +548,9 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
           exerciseId: exercise.id,
           order: i,
           sets: sets,
-          reps: reps,
+          minReps: minReps,
+          maxReps: maxReps,
+          isAmrap: isAmrap,
           rest: restSeconds,
           duration: durationSeconds,
           groupId: null,
@@ -848,7 +857,14 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
         if (exerciseName == null || exerciseName.isEmpty) continue;
 
         final sets = _parseInt(map['sets'], 3);
-        final reps = map['reps'] != null ? _parseInt(map['reps'], 10) : null;
+        final minReps = map['minReps'] != null
+            ? _parseInt(map['minReps'], 10)
+            : (map['reps'] != null ? _parseInt(map['reps'], 10) : null);
+        final maxReps = map['maxReps'] != null
+            ? _parseInt(map['maxReps'], minReps ?? 10)
+            : minReps;
+        final isAmrap = map['isAmrap'] == true ||
+            map['isAmrap']?.toString().toLowerCase() == 'true';
         final restSeconds = map['restSeconds'] != null
             ? _parseInt(map['restSeconds'], 90)
             : 90;
@@ -880,7 +896,9 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
             exerciseId: exercise.id,
             order: i,
             sets: sets,
-            reps: reps,
+            minReps: minReps,
+            maxReps: maxReps,
+            isAmrap: isAmrap,
             rest: restSeconds,
             duration: durationSeconds,
             groupId: null,

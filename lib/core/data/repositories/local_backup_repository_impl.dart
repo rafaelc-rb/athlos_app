@@ -492,12 +492,15 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
             bumpReason(failedReasons, 'workout_exercise_missing_mapping');
             continue;
           }
+          final legacyReps = row['reps'];
           await _insertRow(_tableWorkoutExercises, {
             'workout_id': newWorkoutId,
             'exercise_id': newExerciseId,
             'order': row['order'],
             'sets': row['sets'],
-            'reps': row['reps'],
+            'min_reps': row['min_reps'] ?? legacyReps,
+            'max_reps': row['max_reps'] ?? legacyReps,
+            'is_amrap': row['is_amrap'] ?? 0,
             'rest': row['rest'],
             'duration': row['duration'],
             'group_id': row['group_id'],

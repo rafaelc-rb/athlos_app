@@ -37,13 +37,14 @@ class ActiveExecution extends _$ActiveExecution {
     for (final ex in exercises) {
       final lastWeight = lastWeights[ex.exerciseId];
       final isCardio = ex.duration != null;
+      final repsTarget = isCardio ? null : ex.targetReps;
       exerciseSets[ex.exerciseId] = List.generate(
         ex.sets,
         (i) => SetEntry(
           setNumber: i + 1,
-          plannedReps: isCardio ? null : ex.reps,
+          plannedReps: repsTarget,
           plannedWeight: isCardio ? null : lastWeight,
-          reps: isCardio ? null : ex.reps,
+          reps: repsTarget,
           duration: isCardio ? ex.duration : null,
         ),
       );

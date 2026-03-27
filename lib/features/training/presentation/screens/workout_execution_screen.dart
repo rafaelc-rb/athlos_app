@@ -718,7 +718,9 @@ class _WorkoutExecutionScreenState
                     colorScheme,
                     Theme.of(context).extension<AthlosCustomColors>()!,
                     _currentReps,
-                    exercise.reps ?? 0),
+                    exercise.minReps ?? 0,
+                    exercise.maxReps ?? 0,
+                    exercise.isAmrap),
               ),
 
               const SizedBox(height: AthlosSpacing.md),
@@ -1081,7 +1083,9 @@ class _WorkoutExecutionScreenState
       custom: Theme.of(context).extension<AthlosCustomColors>()!,
       l10n: l10n,
       completedReps: completedReps,
-      plannedReps: exercise.reps ?? 0,
+      minReps: exercise.minReps ?? 0,
+      maxReps: exercise.maxReps ?? 0,
+      isAmrap: exercise.isAmrap,
     );
     if (feedback == null) return null;
 

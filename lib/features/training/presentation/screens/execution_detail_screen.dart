@@ -450,7 +450,9 @@ class _ExerciseBreakdown extends StatelessWidget {
       custom: Theme.of(context).extension<AthlosCustomColors>()!,
       l10n: l10n,
       completedReps: completed.map((s) => s.reps!).toList(),
-      plannedReps: plannedReps,
+      minReps: plannedReps,
+      maxReps: plannedReps,
+      isAmrap: false,
     );
     if (feedback == null) return null;
 
@@ -539,9 +541,10 @@ class _SetRow extends StatelessWidget {
 
   Widget _buildStrengthRow(BuildContext context) {
     final customColors = Theme.of(context).extension<AthlosCustomColors>()!;
+    final planned = setEntry.plannedReps ?? 0;
     final statusColor = setEntry.isCompleted
         ? (repsDeviationColor(colorScheme, customColors, setEntry.reps ?? 0,
-                setEntry.plannedReps ?? 0) ??
+                planned, planned, false) ??
             colorScheme.primary)
         : colorScheme.onSurfaceVariant;
     final diff = (setEntry.reps ?? 0) - (setEntry.plannedReps ?? 0);

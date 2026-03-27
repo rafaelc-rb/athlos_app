@@ -1,12 +1,20 @@
-/// Configuration of an exercise within a workout (sets, reps, rest).
+/// Configuration of an exercise within a workout (sets, rep range, rest).
 class WorkoutExercise {
   final int workoutId;
   final int exerciseId;
   final int order;
   final int sets;
 
-  /// Target reps per set. Null for cardio exercises.
-  final int? reps;
+  /// Minimum target reps per set. Null for cardio exercises.
+  final int? minReps;
+
+  /// Maximum target reps per set. Null for cardio exercises.
+  /// When equal to [minReps], behaves as a fixed target.
+  final int? maxReps;
+
+  /// Whether the last set (or all sets) should be performed as
+  /// "As Many Reps As Possible" — user goes to near-failure.
+  final bool isAmrap;
 
   /// Rest time between sets in seconds.
   final int rest;
@@ -29,11 +37,31 @@ class WorkoutExercise {
     required this.exerciseId,
     required this.order,
     required this.sets,
-    this.reps,
+    this.minReps,
+    this.maxReps,
+    this.isAmrap = false,
     required this.rest,
     this.duration,
     this.groupId,
     this.isUnilateral = false,
     this.notes,
   });
+
+  /// Whether this is a rep range (min != max) rather than a fixed target.
+  bool get isRepRange =>
+      minReps != null && maxReps != null && minReps != maxReps;
+
+  /// Display-friendly rep string: "10", "8-12", or "5+" (AMRAP).
+  String get repsDisplay {
+    if (minReps == null) return '';
+    if (isAmrap) return '$minReps+';
+    if (maxReps != null && maxReps != minReps) return '$minReps-$maxReps';
+    return '$minReps';
+  }
+
+  /// The rep target used for execution planning.
+  /// AMRAP: minReps (minimum before going to failure).
+  /// Range: maxReps (target to reach for progression).
+  /// Fixed: minReps (same as maxReps).
+  int? get targetReps => isAmrap ? minReps : (maxReps ?? minReps);
 }

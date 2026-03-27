@@ -393,10 +393,19 @@ List<Map<String, dynamic>> getChironToolDeclarations() {
                   'Exercise name from the Catalog section in context',
                 ),
                 'sets': _propInteger('Number of sets'),
-                'reps': _propInteger(
-                  'Reps per set (for cardio use 0 and fill durationSeconds)',
+                'minReps': _propInteger(
+                  'Minimum reps per set (lower bound of rep range). Null for cardio.',
                   nullable: true,
                 ),
+                'maxReps': _propInteger(
+                  'Maximum reps per set (upper bound of rep range, same as minReps for fixed target). Null for cardio.',
+                  nullable: true,
+                ),
+                'isAmrap': {
+                  'type': 'boolean',
+                  'description':
+                      'True for AMRAP (As Many Reps As Possible) — user goes to near-failure. Default false.',
+                },
                 'restSeconds': _propInteger(
                   'Rest between sets in seconds',
                   nullable: true,
@@ -442,7 +451,18 @@ List<Map<String, dynamic>> getChironToolDeclarations() {
                   'Exercise name from the Catalog section in context',
                 ),
                 'sets': _propInteger('Number of sets'),
-                'reps': _propInteger('Reps per set', nullable: true),
+                'minReps': _propInteger(
+                  'Minimum reps per set (rep range lower bound)',
+                  nullable: true,
+                ),
+                'maxReps': _propInteger(
+                  'Maximum reps per set (rep range upper bound)',
+                  nullable: true,
+                ),
+                'isAmrap': {
+                  'type': 'boolean',
+                  'description': 'AMRAP set (go to near-failure)',
+                },
                 'restSeconds': _propInteger(
                   'Rest between sets in seconds',
                   nullable: true,

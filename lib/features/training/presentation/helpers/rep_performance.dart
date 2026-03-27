@@ -3,50 +3,66 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/athlos_custom_colors.dart';
 import '../../../../l10n/app_localizations.dart';
 
-/// Returns a color reflecting how far [actual] reps deviate from [planned].
+/// Returns a color reflecting how far [actual] reps deviate from the
+/// planned range [minPlanned]..[maxPlanned].
 ///
-/// Tolerance bands based on autoregulation (RPE/RIR) guidelines:
-/// - ±1 rep  → null (neutral / on-target)
-/// - ±2–3    → warning (attention — weight may be inadequate)
-/// - ±4+     → error (weight clearly wrong)
+/// For AMRAP, anything at or above [minPlanned] is on-target.
 Color? repsDeviationColor(
-    ColorScheme cs, AthlosCustomColors custom, int actual, int planned) {
-  final diff = actual - planned;
-  if (diff.abs() >= 4) return cs.error;
-  if (diff.abs() >= 2) return custom.warning;
+  ColorScheme cs,
+  AthlosCustomColors custom,
+  int actual,
+  int minPlanned,
+  int maxPlanned,
+  bool isAmrap,
+) {
+  if (isAmrap) {
+    final below = minPlanned - actual;
+    if (below >= 4) return cs.error;
+    if (below >= 2) return custom.warning;
+    return null;
+  }
+  if (actual >= minPlanned && actual <= maxPlanned) return null;
+  final diff = actual < minPlanned
+      ? minPlanned - actual
+      : actual - maxPlanned;
+  if (diff >= 4) return cs.error;
+  if (diff >= 2) return custom.warning;
   return null;
 }
 
-/// Feedback about load adjustment based on aggregate rep performance.
+/// Feedback about load adjustment based on aggregate rep performance
+/// across completed sets.
 ///
-/// [completedReps] and [plannedReps] are parallel lists for each completed set.
-/// Returns null when performance is in the ideal zone (no feedback needed).
+/// Returns null when performance is in the ideal zone.
 ({String message, Color color})? loadFeedback({
   required ColorScheme cs,
   required AthlosCustomColors custom,
   required AppLocalizations l10n,
   required List<int> completedReps,
-  required int plannedReps,
+  required int minReps,
+  required int maxReps,
+  required bool isAmrap,
 }) {
   if (completedReps.isEmpty) return null;
 
-  final avgDiff =
-      completedReps.map((r) => r - plannedReps).reduce((a, b) => a + b) /
-          completedReps.length;
+  final avg = completedReps.reduce((a, b) => a + b) / completedReps.length;
 
-  if (avgDiff <= -4) {
+  if (avg < minReps - 3) {
     return (message: l10n.executionFeedbackWeightTooHigh, color: cs.error);
   }
-  if (avgDiff <= -2) {
+  if (avg < minReps - 1) {
     return (
       message: l10n.executionFeedbackWeightSlightlyHigh,
       color: custom.warning,
     );
   }
-  if (avgDiff >= 4) {
+
+  if (isAmrap) return null;
+
+  if (avg > maxReps + 3) {
     return (message: l10n.executionFeedbackWeightTooLight, color: cs.error);
   }
-  if (avgDiff >= 2) {
+  if (avg > maxReps + 1) {
     return (
       message: l10n.executionFeedbackWeightTooLight,
       color: custom.warning,

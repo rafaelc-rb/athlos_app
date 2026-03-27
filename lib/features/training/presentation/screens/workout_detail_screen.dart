@@ -25,7 +25,8 @@ final _placeholderExercises = List.generate(
     exerciseId: 0,
     order: i,
     sets: 3,
-    reps: 10,
+    minReps: 10,
+    maxReps: 10,
     rest: 60,
   ),
 );
@@ -515,7 +516,7 @@ class _ExerciseDetailTile extends ConsumerWidget {
   String _exerciseSubtitle(WorkoutExercise ex, String groupName) {
     final config = ex.duration != null
         ? '${ex.sets}×${formatDuration(ex.duration!)}  •  ${ex.rest}s'
-        : '${ex.sets}×${ex.reps}  •  ${ex.rest}s';
+        : '${ex.sets}×${ex.repsDisplay}  •  ${ex.rest}s';
     return groupName.isNotEmpty ? '$groupName  •  $config' : config;
   }
 }

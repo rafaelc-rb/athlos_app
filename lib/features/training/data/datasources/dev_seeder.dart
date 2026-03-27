@@ -81,14 +81,13 @@ Future<void> _seedWorkoutsWithExercises(
         ),
       );
   await _insertWorkoutExercises(db, pushId, exerciseIds, [
-    _WE('flatBarbellBenchPress', order: 0, sets: 4, reps: 8, rest: 90),
-    _WE('inclineBarbellBenchPress', order: 1, sets: 3, reps: 10, rest: 75),
-    _WE('dumbbellFly', order: 2, sets: 3, reps: 12, rest: 60),
-    _WE('overheadPress', order: 3, sets: 4, reps: 8, rest: 90),
-    // Superset: lateral raise + face pull
-    _WE('lateralRaise', order: 4, sets: 3, reps: 15, rest: 45, groupId: 1),
-    _WE('facePull', order: 5, sets: 3, reps: 15, rest: 60, groupId: 1),
-    _WE('tricepsPushdown', order: 6, sets: 3, reps: 12, rest: 60),
+    _WE('flatBarbellBenchPress', order: 0, sets: 4, minReps: 6, maxReps: 8, rest: 90),
+    _WE('inclineBarbellBenchPress', order: 1, sets: 3, minReps: 8, maxReps: 12, rest: 75),
+    _WE('dumbbellFly', order: 2, sets: 3, minReps: 10, maxReps: 15, rest: 60),
+    _WE('overheadPress', order: 3, sets: 4, minReps: 6, maxReps: 8, rest: 90),
+    _WE('lateralRaise', order: 4, sets: 3, minReps: 12, maxReps: 15, rest: 45, groupId: 1),
+    _WE('facePull', order: 5, sets: 3, minReps: 12, maxReps: 15, rest: 60, groupId: 1),
+    _WE('tricepsPushdown', order: 6, sets: 3, minReps: 10, maxReps: 12, rest: 60),
   ]);
 
   // --- Pull Day ---
@@ -100,13 +99,12 @@ Future<void> _seedWorkoutsWithExercises(
         ),
       );
   await _insertWorkoutExercises(db, pullId, exerciseIds, [
-    _WE('pullUp', order: 0, sets: 4, reps: 8, rest: 90),
-    _WE('barbellRow', order: 1, sets: 4, reps: 8, rest: 90),
-    _WE('latPulldown', order: 2, sets: 3, reps: 10, rest: 75),
-    _WE('seatedCableRow', order: 3, sets: 3, reps: 12, rest: 60),
-    // Superset: barbell curl + hammer curl
-    _WE('barbellCurl', order: 4, sets: 3, reps: 10, rest: 45, groupId: 1),
-    _WE('hammerCurl', order: 5, sets: 3, reps: 12, rest: 60, groupId: 1),
+    _WE('pullUp', order: 0, sets: 4, minReps: 6, maxReps: 10, rest: 90),
+    _WE('barbellRow', order: 1, sets: 4, minReps: 6, maxReps: 8, rest: 90),
+    _WE('latPulldown', order: 2, sets: 3, minReps: 8, maxReps: 12, rest: 75),
+    _WE('seatedCableRow', order: 3, sets: 3, minReps: 10, maxReps: 12, rest: 60),
+    _WE('barbellCurl', order: 4, sets: 3, minReps: 8, maxReps: 12, rest: 45, groupId: 1),
+    _WE('hammerCurl', order: 5, sets: 3, minReps: 10, maxReps: 12, rest: 60, groupId: 1),
   ]);
 
   // --- Leg Day ---
@@ -118,12 +116,12 @@ Future<void> _seedWorkoutsWithExercises(
         ),
       );
   await _insertWorkoutExercises(db, legId, exerciseIds, [
-    _WE('barbellSquat', order: 0, sets: 4, reps: 8, rest: 120),
-    _WE('legPress', order: 1, sets: 3, reps: 12, rest: 90),
-    _WE('romanianDeadlift', order: 2, sets: 3, reps: 10, rest: 90),
-    _WE('bulgarianSplitSquat', order: 3, sets: 3, reps: 10, rest: 75),
-    _WE('hipThrust', order: 4, sets: 3, reps: 12, rest: 75),
-    _WE('standingCalfRaise', order: 5, sets: 4, reps: 15, rest: 45),
+    _WE('barbellSquat', order: 0, sets: 4, minReps: 5, maxReps: 5, rest: 120, isAmrap: true),
+    _WE('legPress', order: 1, sets: 3, minReps: 8, maxReps: 12, rest: 90),
+    _WE('romanianDeadlift', order: 2, sets: 3, minReps: 8, maxReps: 10, rest: 90),
+    _WE('bulgarianSplitSquat', order: 3, sets: 3, minReps: 8, maxReps: 12, rest: 75),
+    _WE('hipThrust', order: 4, sets: 3, minReps: 10, maxReps: 12, rest: 75),
+    _WE('standingCalfRaise', order: 5, sets: 4, minReps: 12, maxReps: 20, rest: 45),
   ]);
 
   // --- Cardio Day ---
@@ -169,7 +167,9 @@ Future<void> _insertWorkoutExercises(
           exerciseId: Value(exId),
           order: Value(e.order),
           sets: Value(e.sets),
-          reps: Value(e.reps),
+          minReps: Value(e.minReps),
+          maxReps: Value(e.maxReps),
+          isAmrap: Value(e.isAmrap),
           rest: Value(e.rest),
           duration: Value(e.duration),
           groupId: Value(e.groupId),
@@ -417,7 +417,9 @@ class _WE {
   final String exerciseName;
   final int order;
   final int sets;
-  final int? reps;
+  final int? minReps;
+  final int? maxReps;
+  final bool isAmrap;
   final int rest;
   final int? duration;
   final int? groupId;
@@ -426,7 +428,9 @@ class _WE {
     this.exerciseName, {
     required this.order,
     required this.sets,
-    this.reps,
+    this.minReps,
+    this.maxReps,
+    this.isAmrap = false,
     required this.rest,
     this.duration,
     this.groupId,

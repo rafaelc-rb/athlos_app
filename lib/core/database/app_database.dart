@@ -90,7 +90,7 @@ class AppDatabase extends _$AppDatabase {
   bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed && _enableDevSeed;
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -101,7 +101,7 @@ class AppDatabase extends _$AppDatabase {
       if (_shouldSeedDevData) await seedDevData(this);
     },
     onUpgrade: (m, from, to) async {
-      if (_shouldSeedDevData && from >= 3 && from <= 14) {
+      if (_shouldSeedDevData && from >= 3 && from <= 15) {
         for (final table in allTables) {
           await m.deleteTable(table.actualTableName);
         }
@@ -309,6 +309,23 @@ class AppDatabase extends _$AppDatabase {
         await customStatement('DROP TABLE cycle_steps');
         await customStatement(
           'ALTER TABLE cycle_steps_tmp RENAME TO cycle_steps',
+        );
+      }
+
+      if (from < 15) {
+        // Phase 2: rep ranges + AMRAP — replace reps with minReps/maxReps,
+        // add isAmrap. Existing fixed reps → min == max.
+        await customStatement(
+          'ALTER TABLE workout_exercises RENAME COLUMN reps TO min_reps',
+        );
+        await customStatement(
+          'ALTER TABLE workout_exercises ADD COLUMN max_reps INTEGER',
+        );
+        await customStatement(
+          'UPDATE workout_exercises SET max_reps = min_reps',
+        );
+        await customStatement(
+          'ALTER TABLE workout_exercises ADD COLUMN is_amrap INTEGER NOT NULL DEFAULT 0',
         );
       }
     },

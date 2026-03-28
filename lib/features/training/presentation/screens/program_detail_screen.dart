@@ -26,44 +26,27 @@ class ProgramDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
     final programsAsync = ref.watch(programListProvider);
     final program = programsAsync.value
         ?.where((p) => p.id == programId)
         .firstOrNull;
 
     if (program == null) {
-      return Scaffold(
-        appBar: AppBar(title: Text(l10n.trainingModule)),
-        body: const Center(child: CircularProgressIndicator()),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(program.name),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: l10n.trainingEditProgram,
-            onPressed: () =>
-                context.push(RoutePaths.trainingProgramEdit(programId)),
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(AthlosSpacing.md),
-        children: [
-          _ProgramHeader(program: program),
-          const Gap(AthlosSpacing.lg),
-          _ProgressionSection(programId: programId),
-          const Gap(AthlosSpacing.lg),
-          _DeloadSection(program: program),
-          const Gap(AthlosSpacing.lg),
-          _ActionsSection(program: program),
-          const Gap(AthlosSpacing.fabClearance),
-        ],
-      ),
+    return ListView(
+      padding: const EdgeInsets.all(AthlosSpacing.md),
+      children: [
+        _ProgramHeader(program: program),
+        const Gap(AthlosSpacing.lg),
+        _ProgressionSection(programId: programId),
+        const Gap(AthlosSpacing.lg),
+        _DeloadSection(program: program),
+        const Gap(AthlosSpacing.lg),
+        _ActionsSection(program: program),
+        const Gap(AthlosSpacing.fabClearance),
+      ],
     );
   }
 }
@@ -377,6 +360,13 @@ class _ActionsSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        OutlinedButton.icon(
+          onPressed: () =>
+              context.push(RoutePaths.trainingProgramEdit(program.id)),
+          icon: const Icon(Icons.edit_outlined),
+          label: Text(l10n.trainingEditProgram),
+        ),
+        const Gap(AthlosSpacing.sm),
         if (program.isInDeload)
           OutlinedButton.icon(
             onPressed: () => _confirmEndDeload(context, ref),

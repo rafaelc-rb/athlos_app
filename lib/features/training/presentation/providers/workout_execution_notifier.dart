@@ -1,9 +1,12 @@
+import 'dart:convert';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/errors/result.dart';
 import '../../data/repositories/training_providers.dart';
 import '../../domain/entities/execution_set.dart';
 import '../../domain/entities/execution_set_segment.dart';
+import '../../domain/entities/workout_exercise.dart';
 import '../../domain/entities/workout_execution.dart';
 import 'workout_notifier.dart';
 
@@ -67,5 +70,39 @@ Future<List<ExecutionSet>> executionSetsWithSegments(
         }
         return s;
       })
+      .toList();
+}
+
+/// Resolves the exercise configuration for a past execution.
+/// Prefers the JSON snapshot saved at execution time; falls back to the
+/// live workout template for older executions without a snapshot.
+@riverpod
+Future<List<WorkoutExercise>> executionExerciseConfig(
+    Ref ref, WorkoutExecution execution) async {
+  final snapshot = execution.exerciseConfigSnapshot;
+  if (snapshot != null && snapshot.isNotEmpty) {
+    return _parseExerciseSnapshot(execution.workoutId, snapshot);
+  }
+  return ref.watch(workoutExercisesProvider(execution.workoutId).future);
+}
+
+List<WorkoutExercise> _parseExerciseSnapshot(
+    int workoutId, String jsonSnapshot) {
+  final list = (jsonDecode(jsonSnapshot) as List).cast<Map<String, dynamic>>();
+  return list
+      .map((e) => WorkoutExercise(
+            workoutId: workoutId,
+            exerciseId: e['exerciseId'] as int,
+            order: e['order'] as int? ?? 0,
+            sets: e['sets'] as int,
+            minReps: e['minReps'] as int?,
+            maxReps: e['maxReps'] as int?,
+            isAmrap: e['isAmrap'] as bool? ?? false,
+            rest: e['rest'] as int? ?? 0,
+            duration: e['duration'] as int?,
+            groupId: e['groupId'] as int?,
+            isUnilateral: e['isUnilateral'] as bool? ?? false,
+            notes: e['notes'] as String?,
+          ))
       .toList();
 }

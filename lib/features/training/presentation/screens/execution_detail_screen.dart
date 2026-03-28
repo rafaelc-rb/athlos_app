@@ -81,11 +81,11 @@ class ExecutionDetailScreen extends ConsumerWidget {
     final workoutName =
         workoutAsync?.value?.name ?? l10n.unknownWorkout;
 
-    final workoutExercisesAsync = execution != null
-        ? ref.watch(workoutExercisesProvider(execution.workoutId))
+    final exerciseConfigAsync = execution != null
+        ? ref.watch(executionExerciseConfigProvider(execution))
         : null;
     final unilateralMap = <int, bool>{};
-    if (workoutExercisesAsync?.value case final List<WorkoutExercise> wes) {
+    if (exerciseConfigAsync?.value case final List<WorkoutExercise> wes) {
       for (final we in wes) {
         unilateralMap[we.exerciseId] = we.isUnilateral;
       }

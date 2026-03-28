@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../chiron/presentation/widgets/chiron_bottom_sheet.dart';
 import '../../../../core/errors/result.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/athlos_radius.dart';
@@ -30,6 +31,9 @@ class TrainingWorkoutsScreen extends ConsumerWidget {
     final programAsync = ref.watch(activeProgramProvider);
     final program = programAsync.value;
 
+    final nextWorkoutAsync = ref.watch(nextWorkoutToStartProvider);
+    final nextWorkout = nextWorkoutAsync.value;
+
     return Scaffold(
       body: program == null
           ? Center(
@@ -38,6 +42,29 @@ class TrainingWorkoutsScreen extends ConsumerWidget {
                   : Text(l10n.genericError),
             )
           : _ActiveProgramCycleView(programId: program.id),
+      floatingActionButton: _StartNextWorkoutFab(nextWorkout: nextWorkout),
+    );
+  }
+}
+
+// ── Start Next Workout FAB ────────────────────────────────────────────
+
+class _StartNextWorkoutFab extends StatelessWidget {
+  final dynamic nextWorkout;
+
+  const _StartNextWorkoutFab({this.nextWorkout});
+
+  @override
+  Widget build(BuildContext context) {
+    if (nextWorkout == null) return const SizedBox.shrink();
+
+    return FloatingActionButton(
+      heroTag: 'workouts_fab',
+      onPressed: () => context.push(
+        '${RoutePaths.trainingWorkouts}/${nextWorkout.id}/execute',
+      ),
+      tooltip: nextWorkout.name,
+      child: const Icon(Icons.play_arrow),
     );
   }
 }
@@ -100,6 +127,101 @@ class _ActiveProgramCycleViewState
     _saveOrder();
   }
 
+  void _showAddWorkoutPicker(
+    BuildContext context,
+    List<Workout> workouts,
+    List<int> cycleWorkoutIds,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        minChildSize: 0.3,
+        maxChildSize: 0.85,
+        expand: false,
+        builder: (ctx, scrollController) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(AthlosSpacing.md),
+                child: Text(
+                  l10n.trainingCycleAddWorkout,
+                  style: Theme.of(ctx).textTheme.titleMedium,
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  children: [
+                    ...workouts.map((w) {
+                      final isInCycle = cycleWorkoutIds.contains(w.id);
+                      return ListTile(
+                        leading: Icon(
+                          isInCycle
+                              ? Icons.check_circle
+                              : Icons.fitness_center,
+                          color: isInCycle
+                              ? colorScheme.primary
+                              : colorScheme.onSurfaceVariant,
+                        ),
+                        title: Text(w.name),
+                        subtitle:
+                            w.description != null && w.description!.isNotEmpty
+                                ? Text(
+                                    w.description!,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  )
+                                : null,
+                        onTap: () {
+                          _addWorkout(w.id);
+                          Navigator.of(ctx).pop();
+                        },
+                      );
+                    }),
+                    const Divider(),
+                    ListTile(
+                      leading: Icon(Icons.edit_note,
+                          color: colorScheme.primary),
+                      title: Text(
+                        l10n.trainingWorkoutActionCreateManual,
+                        style: TextStyle(color: colorScheme.primary),
+                      ),
+                      onTap: () {
+                        Navigator.of(ctx).pop();
+                        context.push(RoutePaths.trainingWorkoutNew);
+                      },
+                    ),
+                    ListTile(
+                      leading: Icon(Icons.auto_awesome,
+                          color: colorScheme.primary),
+                      title: Text(
+                        l10n.chironCreateWorkoutShortcut,
+                        style: TextStyle(color: colorScheme.primary),
+                      ),
+                      onTap: () {
+                        Navigator.of(ctx).pop();
+                        showChironSheet(
+                          context,
+                          initialMessage: l10n.chironAskToCreateWorkout,
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final programAsync = ref.watch(activeProgramProvider);
@@ -118,52 +240,79 @@ class _ActiveProgramCycleViewState
     final ids = _workoutIds ?? [];
     final workoutMap = {for (final w in workouts) w.id: w};
 
+    final l10n = AppLocalizations.of(context)!;
+
+    if (ids.isEmpty && !stepsAsync.isLoading) {
+      return Column(
+        children: [
+          if (program != null) _ProgramHeader(program: program),
+          Expanded(
+            child: _EmptyCycleMessage(
+              workouts: workouts,
+              onAddWorkout: _addWorkout,
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       children: [
         if (program != null) _ProgramHeader(program: program),
         Expanded(
-          child: ids.isEmpty && !stepsAsync.isLoading
-              ? _EmptyCycleMessage(
-                  workouts: workouts,
-                  onAddWorkout: _addWorkout,
-                )
-              : ReorderableListView.builder(
-                  padding: const EdgeInsets.fromLTRB(
-                    AthlosSpacing.sm,
-                    AthlosSpacing.xs,
-                    AthlosSpacing.sm,
-                    AthlosSpacing.fabClearance,
+          child: ReorderableListView.builder(
+            padding: const EdgeInsets.fromLTRB(
+              AthlosSpacing.sm,
+              AthlosSpacing.xs,
+              AthlosSpacing.sm,
+              AthlosSpacing.fabClearance,
+            ),
+            itemCount: ids.length + 1,
+            onReorder: (oldIndex, newIndex) {
+              if (oldIndex >= ids.length || newIndex > ids.length) return;
+              _reorder(oldIndex, newIndex);
+            },
+            itemBuilder: (context, index) {
+              if (index == ids.length) {
+                return Padding(
+                  key: const ValueKey('add-workout-btn'),
+                  padding: const EdgeInsets.only(
+                    top: AthlosSpacing.xs,
+                    right: AthlosSpacing.xs,
                   ),
-                  itemCount: ids.length,
-                  onReorder: _reorder,
-                  itemBuilder: (context, index) {
-                    final workoutId = ids[index];
-                    final workout = workoutMap[workoutId];
-                    final isNext = workoutId == nextWorkoutId;
-                    return _CycleWorkoutCard(
-                      key: ValueKey('cycle-$index-$workoutId'),
-                      index: index,
-                      workoutName:
-                          workout?.name ?? 'Treino #$workoutId',
-                      workoutDescription: workout?.description,
-                      isNext: isNext,
-                      onTap: workout != null
-                          ? () => context.push(
-                                '${RoutePaths.trainingWorkouts}/${workout.id}',
-                              )
-                          : null,
-                      onStart: () => context.push(
-                        '${RoutePaths.trainingWorkouts}/$workoutId/execute',
-                      ),
-                      onRemove: () => _removeAt(index),
-                    );
-                  },
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          _showAddWorkoutPicker(context, workouts, ids),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: Text(l10n.trainingCycleAddWorkout),
+                    ),
+                  ),
+                );
+              }
+
+              final workoutId = ids[index];
+              final workout = workoutMap[workoutId];
+              final isNext = workoutId == nextWorkoutId;
+              return _CycleWorkoutCard(
+                key: ValueKey('cycle-$index-$workoutId'),
+                index: index,
+                workoutName: workout?.name ?? 'Treino #$workoutId',
+                workoutDescription: workout?.description,
+                isNext: isNext,
+                onTap: workout != null
+                    ? () => context.push(
+                          '${RoutePaths.trainingWorkouts}/${workout.id}',
+                        )
+                    : null,
+                onStart: () => context.push(
+                  '${RoutePaths.trainingWorkouts}/$workoutId/execute',
                 ),
-        ),
-        _AddWorkoutBar(
-          workouts: workouts,
-          cycleWorkoutIds: ids,
-          onAdd: _addWorkout,
+                onRemove: () => _removeAt(index),
+              );
+            },
+          ),
         ),
       ],
     );
@@ -172,13 +321,13 @@ class _ActiveProgramCycleViewState
 
 // ── Program header (name + focus, inline) ─────────────────────────────
 
-class _ProgramHeader extends StatelessWidget {
+class _ProgramHeader extends ConsumerWidget {
   final dynamic program;
 
   const _ProgramHeader({required this.program});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final l10n = AppLocalizations.of(context)!;
@@ -190,45 +339,95 @@ class _ProgramHeader extends StatelessWidget {
       ProgramFocus.custom => l10n.programFocusCustom,
     };
 
+    final programId = program.id as int;
+    final progressAsync = ref.watch(programProgressProvider(programId));
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AthlosSpacing.md,
         AthlosSpacing.sm,
-        AthlosSpacing.md,
+        AthlosSpacing.xs,
         AthlosSpacing.xs,
       ),
-      child: Row(
+      child: Column(
         children: [
-          Icon(Icons.auto_awesome, color: colorScheme.primary, size: 18),
-          const Gap(AthlosSpacing.sm),
-          Expanded(
-            child: Text(
-              program.name as String,
-              style: textTheme.titleMedium,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+          Row(
+            children: [
+              Icon(Icons.auto_awesome, color: colorScheme.primary, size: 18),
+              const Gap(AthlosSpacing.sm),
+              Expanded(
+                child: Text(
+                  program.name as String,
+                  style: textTheme.titleMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AthlosSpacing.sm,
+                  vertical: AthlosSpacing.xxs,
+                ),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  borderRadius: AthlosRadius.smAll,
+                ),
+                child: Text(
+                  focusLabel,
+                  style: textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ),
+              if (program.isInDeload as bool) ...[
+                const Gap(AthlosSpacing.xxs),
+                Icon(Icons.spa, size: 16, color: colorScheme.tertiary),
+              ],
+              IconButton(
+                icon: Icon(
+                  Icons.settings_outlined,
+                  size: 20,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                tooltip: l10n.programAdvancedSettings,
+                visualDensity: VisualDensity.compact,
+                onPressed: () =>
+                    context.push(RoutePaths.trainingProgramDetail(programId)),
+              ),
+            ],
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AthlosSpacing.sm,
-              vertical: AthlosSpacing.xxs,
-            ),
-            decoration: BoxDecoration(
-              color: colorScheme.primaryContainer,
-              borderRadius: AthlosRadius.smAll,
-            ),
-            child: Text(
-              focusLabel,
-              style: textTheme.labelSmall?.copyWith(
-                color: colorScheme.onPrimaryContainer,
+          const Gap(AthlosSpacing.xs),
+          progressAsync.when(
+            data: (progress) => Padding(
+              padding: const EdgeInsets.only(right: AthlosSpacing.sm),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: AthlosRadius.smAll,
+                      child: LinearProgressIndicator(
+                        value: progress.fraction,
+                        minHeight: 4,
+                        backgroundColor: colorScheme.surfaceContainerHighest,
+                      ),
+                    ),
+                  ),
+                  const Gap(AthlosSpacing.sm),
+                  Text(
+                    '${progress.completedSessions}/${progress.totalSessions}',
+                    style: textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
             ),
+            loading: () => const Padding(
+              padding: EdgeInsets.only(right: AthlosSpacing.sm),
+              child: LinearProgressIndicator(minHeight: 4),
+            ),
+            error: (_, _) => const SizedBox.shrink(),
           ),
-          if (program.isInDeload as bool) ...[
-            const Gap(AthlosSpacing.xs),
-            Icon(Icons.spa, size: 16, color: colorScheme.tertiary),
-          ],
         ],
       ),
     );
@@ -338,96 +537,6 @@ class _CycleWorkoutCard extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Add workout bar (bottom) ──────────────────────────────────────────
-
-class _AddWorkoutBar extends StatelessWidget {
-  final List<Workout> workouts;
-  final List<int> cycleWorkoutIds;
-  final void Function(int workoutId) onAdd;
-
-  const _AddWorkoutBar({
-    required this.workouts,
-    required this.cycleWorkoutIds,
-    required this.onAdd,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AthlosSpacing.md,
-        vertical: AthlosSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        border: Border(
-          top: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: OutlinedButton.icon(
-          onPressed: workouts.isEmpty
-              ? null
-              : () => _showAddWorkoutPicker(context),
-          icon: const Icon(Icons.add),
-          label: Text(l10n.trainingCycleAddWorkout),
-        ),
-      ),
-    );
-  }
-
-  void _showAddWorkoutPicker(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(AthlosSpacing.md),
-              child: Text(
-                l10n.trainingCycleAddWorkout,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            ...workouts.map((w) {
-              final isInCycle = cycleWorkoutIds.contains(w.id);
-              return ListTile(
-                leading: Icon(
-                  isInCycle ? Icons.check_circle : Icons.fitness_center,
-                  color: isInCycle
-                      ? colorScheme.primary
-                      : colorScheme.onSurfaceVariant,
-                ),
-                title: Text(w.name),
-                subtitle: w.description != null && w.description!.isNotEmpty
-                    ? Text(
-                        w.description!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      )
-                    : null,
-                onTap: () {
-                  onAdd(w.id);
-                  Navigator.of(context).pop();
-                },
-              );
-            }),
-            const SizedBox(height: AthlosSpacing.md),
-          ],
         ),
       ),
     );

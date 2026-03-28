@@ -941,7 +941,7 @@
   "@trainingWorkoutNewAction": {
     "description": "Main button label that opens menu: create manual, Chiron, configure cycle"
   },
-  "trainingWorkoutActionCreateManual": "Criar treino",
+  "trainingWorkoutActionCreateManual": "Criar novo treino",
   "@trainingWorkoutActionCreateManual": {
     "description": "FAB/menu option: create workout manually"
   },
@@ -1859,7 +1859,7 @@
   "@chironAskToCreateWorkout": {
     "description": "Pre-filled message to ask Chiron to create a workout (shortcut)"
   },
-  "chironCreateWorkoutShortcut": "Pedir ao Quíron para montar",
+  "chironCreateWorkoutShortcut": "Pedir um novo treino ao Quíron",
   "@chironCreateWorkoutShortcut": {
     "description": "Button when no active workouts: open Chiron to create first plan"
   },

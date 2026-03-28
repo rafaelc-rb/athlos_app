@@ -9,20 +9,16 @@ import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/training_providers.dart';
-import '../../domain/entities/cycle_step.dart';
 import '../../domain/entities/progression_rule.dart';
 import '../../domain/entities/training_program.dart';
-import '../../domain/entities/workout.dart';
 import '../../domain/enums/deload_strategy.dart';
 import '../../domain/enums/program_focus.dart';
 import '../../domain/enums/progression_type.dart';
 import '../helpers/exercise_l10n.dart';
 import '../providers/exercise_notifier.dart';
 import '../providers/program_notifier.dart';
-import '../providers/training_analytics_provider.dart';
-import '../providers/workout_notifier.dart';
 
-/// Unified view of a training program: header, cycle, progression, deload.
+/// Advanced settings for a training program: header, progression, deload, actions.
 class ProgramDetailScreen extends ConsumerWidget {
   final int programId;
 
@@ -59,8 +55,6 @@ class ProgramDetailScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(AthlosSpacing.md),
         children: [
           _ProgramHeader(program: program),
-          const Gap(AthlosSpacing.lg),
-          _CycleSection(programId: programId),
           const Gap(AthlosSpacing.lg),
           _ProgressionSection(programId: programId),
           const Gap(AthlosSpacing.lg),
@@ -184,172 +178,6 @@ class _ProgramHeader extends ConsumerWidget {
               loading: () => const LinearProgressIndicator(),
               error: (_, _) => const SizedBox.shrink(),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Cycle Section ────────────────────────────────────────────────────
-
-class _CycleSection extends ConsumerStatefulWidget {
-  final int programId;
-
-  const _CycleSection({required this.programId});
-
-  @override
-  ConsumerState<_CycleSection> createState() => _CycleSectionState();
-}
-
-class _CycleSectionState extends ConsumerState<_CycleSection> {
-  List<int>? _workoutIds;
-
-  void _syncFromSteps(List<TrainingCycleStep> steps) {
-    if (_workoutIds == null) {
-      _workoutIds = steps.map((s) => s.workoutId).toList();
-    }
-  }
-
-  Future<void> _saveOrder() async {
-    if (_workoutIds == null) return;
-    final repo = ref.read(cycleRepositoryProvider);
-    final steps = [
-      for (var i = 0; i < _workoutIds!.length; i++)
-        TrainingCycleStep(id: 0, orderIndex: i, workoutId: _workoutIds![i]),
-    ];
-    final result = await repo.setSteps(steps, widget.programId);
-    result.getOrThrow();
-    ref.invalidate(cycleStepsProvider);
-    ref.invalidate(cycleStepsForProgramProvider(widget.programId));
-  }
-
-  void _addWorkout(int workoutId) {
-    setState(() {
-      _workoutIds = [...?_workoutIds, workoutId];
-    });
-    _saveOrder();
-  }
-
-  void _removeAt(int index) {
-    setState(() {
-      _workoutIds = [...?_workoutIds]..removeAt(index);
-    });
-    _saveOrder();
-  }
-
-  void _reorder(int oldIndex, int newIndex) {
-    setState(() {
-      if (oldIndex < newIndex) newIndex -= 1;
-      final ids = [...?_workoutIds];
-      final item = ids.removeAt(oldIndex);
-      ids.insert(newIndex, item);
-      _workoutIds = ids;
-    });
-    _saveOrder();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    final stepsAsync =
-        ref.watch(cycleStepsForProgramProvider(widget.programId));
-    final workoutsAsync = ref.watch(workoutListProvider);
-    final workouts = workoutsAsync.value ?? [];
-
-    stepsAsync.whenData(_syncFromSteps);
-
-    final ids = _workoutIds ?? [];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          l10n.programCycleSection,
-          style: textTheme.titleSmall?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const Gap(AthlosSpacing.xs),
-        if (ids.isEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AthlosSpacing.sm),
-            child: Text(
-              l10n.programCycleHint,
-              style: textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ReorderableListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: ids.length,
-          onReorder: _reorder,
-          itemBuilder: (context, index) {
-            final workoutId = ids[index];
-            final label = workouts
-                    .where((w) => w.id == workoutId)
-                    .map((w) => w.name)
-                    .firstOrNull ??
-                'Treino #$workoutId';
-            return Card(
-              key: ValueKey('cycle-$index-$workoutId'),
-              margin: const EdgeInsets.only(bottom: AthlosSpacing.xs),
-              child: ListTile(
-                leading: ReorderableDragStartListener(
-                  index: index,
-                  child: Icon(
-                    Icons.drag_handle,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                title: Text(label),
-                trailing: IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => _removeAt(index),
-                ),
-              ),
-            );
-          },
-        ),
-        const Gap(AthlosSpacing.sm),
-        OutlinedButton.icon(
-          onPressed: workouts.isEmpty
-              ? null
-              : () => _showAddWorkoutPicker(context, workouts),
-          icon: const Icon(Icons.add),
-          label: Text(l10n.trainingCycleAddWorkout),
-        ),
-      ],
-    );
-  }
-
-  void _showAddWorkoutPicker(BuildContext context, List<Workout> workouts) {
-    final l10n = AppLocalizations.of(context)!;
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(AthlosSpacing.md),
-              child: Text(
-                l10n.trainingCycleAddWorkout,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            ...workouts.map((w) => ListTile(
-                  title: Text(w.name),
-                  onTap: () {
-                    _addWorkout(w.id);
-                    Navigator.of(context).pop();
-                  },
-                )),
           ],
         ),
       ),

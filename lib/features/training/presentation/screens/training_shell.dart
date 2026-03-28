@@ -7,7 +7,6 @@ import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../core/widgets/app_bar_menu.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../providers/program_notifier.dart';
 import 'equipment_screen.dart';
 import 'program_detail_screen.dart';
 import 'program_form_screen.dart';
@@ -128,11 +127,7 @@ class _TrainingShell extends ConsumerWidget {
               : null,
           automaticallyImplyLeading: false,
           title: Text(l10n.trainingModule),
-          actions: [
-            if (_isWorkoutsTab(currentPath))
-              _ProgramSettingsButton(),
-            const AppBarMenu(),
-          ],
+          actions: const [AppBarMenu()],
         ),
         body: child,
         bottomNavigationBar: SafeArea(
@@ -192,8 +187,6 @@ class _TrainingShell extends ConsumerWidget {
 
   bool _isSubPage(String path) => !_primaryPaths.contains(path);
 
-  bool _isWorkoutsTab(String path) => path == RoutePaths.trainingWorkouts;
-
   String _subPageBackTarget(String path) {
     if (path.startsWith(RoutePaths.trainingPrograms)) {
       return RoutePaths.trainingWorkouts;
@@ -217,23 +210,6 @@ class _TrainingShell extends ConsumerWidget {
       case 2:
         context.go(RoutePaths.trainingHistory);
     }
-  }
-}
-
-class _ProgramSettingsButton extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
-    final programAsync = ref.watch(activeProgramProvider);
-    final program = programAsync.value;
-    if (program == null) return const SizedBox.shrink();
-
-    return IconButton(
-      icon: const Icon(Icons.settings_outlined),
-      tooltip: l10n.programAdvancedSettings,
-      onPressed: () =>
-          context.push(RoutePaths.trainingProgramDetail(program.id)),
-    );
   }
 }
 

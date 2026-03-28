@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -29,16 +30,22 @@ class ActiveExecution extends _$ActiveExecution {
 
   /// Start a new execution, creating the DB record and pre-populating sets
   /// from the workout template. Applies deload and progression adjustments.
+  /// Snapshots the exercise configuration as JSON for robust history.
   Future<void> startExecution(
     int workoutId,
     List<WorkoutExercise> exercises, {
-    int? programId,
+    required int programId,
     DeloadConfig? deloadConfig,
     List<ProgressionRule> progressionRules = const [],
     int defaultRestSeconds = 0,
   }) async {
     final repo = ref.read(workoutExecutionRepositoryProvider);
-    final result = await repo.start(workoutId, programId: programId);
+    final snapshot = _buildExerciseConfigSnapshot(exercises);
+    final result = await repo.start(
+      workoutId,
+      programId: programId,
+      exerciseConfigSnapshot: snapshot,
+    );
     final executionId = result.getOrThrow();
 
     final exerciseIds = exercises.map((e) => e.exerciseId).toList();
@@ -387,5 +394,22 @@ class ActiveExecution extends _$ActiveExecution {
     ref.invalidate(workoutExecutionListProvider);
 
     state = null;
+  }
+
+  String _buildExerciseConfigSnapshot(List<WorkoutExercise> exercises) {
+    final list = exercises.map((e) => {
+      'exerciseId': e.exerciseId,
+      'sets': e.sets,
+      'minReps': e.minReps,
+      'maxReps': e.maxReps,
+      'rest': e.rest,
+      'duration': e.duration,
+      'order': e.order,
+      'groupId': e.groupId,
+      'isAmrap': e.isAmrap,
+      'isUnilateral': e.isUnilateral,
+      if (e.notes != null) 'notes': e.notes,
+    }).toList();
+    return jsonEncode(list);
   }
 }

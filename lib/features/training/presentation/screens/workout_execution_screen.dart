@@ -9,7 +9,6 @@ import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/training_providers.dart';
-import '../../domain/entities/progression_rule.dart';
 import '../../domain/entities/training_program.dart';
 import '../../domain/entities/workout_exercise.dart';
 import '../helpers/exercise_l10n.dart';
@@ -124,27 +123,24 @@ class _WorkoutExecutionScreenState
         final router = GoRouter.of(context);
         try {
           final activeProgram = ref.read(activeProgramProvider).value;
-          final programId = activeProgram?.id;
-          final deloadConfig =
-              (activeProgram?.isInDeload ?? false)
-                  ? activeProgram?.deloadConfig
-                  : null;
-          final progressionRules = programId != null
-              ? await ref
-                  .read(progressionRuleRepositoryProvider)
-                  .getByProgram(programId)
-                  .then((r) => r.getOrThrow())
-              : <ProgressionRule>[];
+          if (activeProgram == null) throw Exception('No active program');
+          final deloadConfig = activeProgram.isInDeload
+              ? activeProgram.deloadConfig
+              : null;
+          final progressionRules = await ref
+              .read(progressionRuleRepositoryProvider)
+              .getByProgram(activeProgram.id)
+              .then((r) => r.getOrThrow());
           await ref
               .read(activeExecutionProvider.notifier)
               .startExecution(
                 widget.workoutId,
                 exercisesAsync.value,
-                programId: programId,
+                programId: activeProgram.id,
                 deloadConfig: deloadConfig,
                 progressionRules: progressionRules,
                 defaultRestSeconds:
-                    activeProgram?.defaultRestSeconds ?? 0,
+                    activeProgram.defaultRestSeconds ?? 0,
               );
         } on Exception catch (_) {
           messenger.showSnackBar(
@@ -1960,10 +1956,8 @@ class _WorkoutExecutionScreenState
         ref.invalidate(isDeloadDueProvider);
         final isDeloadDue =
             await ref.read(isDeloadDueProvider.future);
-        if (isDeloadDue && context.mounted) {
-          if (program != null) {
-            await _showDeloadPrompt(context, program);
-          }
+        if (isDeloadDue && context.mounted && program != null) {
+          await _showDeloadPrompt(context, program);
         }
 
         if (program != null && context.mounted) {

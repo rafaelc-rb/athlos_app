@@ -7,19 +7,21 @@ import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../core/widgets/app_bar_menu.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../providers/program_notifier.dart';
 import 'equipment_screen.dart';
-import 'cycle_edit_screen.dart';
+import 'program_detail_screen.dart';
 import 'program_form_screen.dart';
 import 'program_list_screen.dart';
 import 'training_exercises_screen.dart';
 import 'training_history_screen.dart';
 import 'training_home_screen.dart';
 import 'training_workouts_screen.dart';
+import 'workout_catalog_screen.dart';
 
 /// Training module shell with bottom navigation bar.
 ///
 /// 3 tabs: Home, Workouts, History.
-/// Catalogs (Exercises, Equipment) are accessible from the Home tab.
+/// Sub-pages: Exercises, Equipment, Programs, ProgramDetail, ProgramForm.
 ShellRoute trainingShellRoute() {
   return ShellRoute(
     builder: (context, state, child) {
@@ -54,6 +56,10 @@ ShellRoute trainingShellRoute() {
         ),
       ),
       GoRoute(
+        path: RoutePaths.trainingWorkoutCatalog,
+        builder: (context, state) => const WorkoutCatalogScreen(),
+      ),
+      GoRoute(
         path: RoutePaths.trainingExercises,
         builder: (context, state) => const TrainingExercisesScreen(),
       ),
@@ -62,16 +68,19 @@ ShellRoute trainingShellRoute() {
         builder: (context, state) => const EquipmentScreen(),
       ),
       GoRoute(
-        path: RoutePaths.trainingCycleEdit,
-        builder: (context, state) => const CycleEditScreen(),
-      ),
-      GoRoute(
         path: RoutePaths.trainingPrograms,
         builder: (context, state) => const ProgramListScreen(),
       ),
       GoRoute(
         path: RoutePaths.trainingProgramNew,
         builder: (context, state) => const ProgramFormScreen(),
+      ),
+      GoRoute(
+        path: '${RoutePaths.trainingPrograms}/:programId',
+        builder: (context, state) {
+          final programId = int.parse(state.pathParameters['programId']!);
+          return ProgramDetailScreen(programId: programId);
+        },
       ),
       GoRoute(
         path: '${RoutePaths.trainingPrograms}/:programId/edit',
@@ -119,7 +128,11 @@ class _TrainingShell extends ConsumerWidget {
               : null,
           automaticallyImplyLeading: false,
           title: Text(l10n.trainingModule),
-          actions: const [AppBarMenu()],
+          actions: [
+            if (_isWorkoutsTab(currentPath))
+              _ProgramSettingsButton(),
+            const AppBarMenu(),
+          ],
         ),
         body: child,
         bottomNavigationBar: SafeArea(
@@ -179,15 +192,10 @@ class _TrainingShell extends ConsumerWidget {
 
   bool _isSubPage(String path) => !_primaryPaths.contains(path);
 
-  static const _trainingTabSubPages = {
-    RoutePaths.trainingPrograms,
-    RoutePaths.trainingProgramNew,
-    RoutePaths.trainingCycleEdit,
-  };
+  bool _isWorkoutsTab(String path) => path == RoutePaths.trainingWorkouts;
 
   String _subPageBackTarget(String path) {
-    if (_trainingTabSubPages.contains(path) ||
-        path.startsWith(RoutePaths.trainingPrograms)) {
+    if (path.startsWith(RoutePaths.trainingPrograms)) {
       return RoutePaths.trainingWorkouts;
     }
     return RoutePaths.trainingHome;
@@ -195,6 +203,7 @@ class _TrainingShell extends ConsumerWidget {
 
   int _indexFromPath(String path) {
     if (path.startsWith(RoutePaths.trainingWorkouts)) return 1;
+    if (path.startsWith(RoutePaths.trainingPrograms)) return 1;
     if (path.startsWith(RoutePaths.trainingHistory)) return 2;
     return 0;
   }
@@ -208,6 +217,23 @@ class _TrainingShell extends ConsumerWidget {
       case 2:
         context.go(RoutePaths.trainingHistory);
     }
+  }
+}
+
+class _ProgramSettingsButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final programAsync = ref.watch(activeProgramProvider);
+    final program = programAsync.value;
+    if (program == null) return const SizedBox.shrink();
+
+    return IconButton(
+      icon: const Icon(Icons.settings_outlined),
+      tooltip: l10n.programAdvancedSettings,
+      onPressed: () =>
+          context.push(RoutePaths.trainingProgramDetail(program.id)),
+    );
   }
 }
 

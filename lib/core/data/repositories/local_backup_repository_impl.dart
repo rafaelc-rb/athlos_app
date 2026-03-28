@@ -62,7 +62,7 @@ final DomainLabelResolver _domainLabelResolver = DomainLabelResolver(_ptBrL10n);
 class LocalBackupRepositoryImpl implements LocalBackupRepository {
   final AppDatabase _db;
 
-  const LocalBackupRepositoryImpl(this._db);
+  LocalBackupRepositoryImpl(this._db);
 
   @override
   Future<Result<BackupExportData>> exportBackup() async {
@@ -229,6 +229,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     BackupImportRequest request,
   ) async {
     try {
+      _importDefaultProgramId = null;
       final payload = _parsePayload(request.jsonContent);
 
       var createdCount = 0;
@@ -617,9 +618,10 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
             continue;
           }
           final oldProgramId = _asInt(row['program_id']);
-          final newProgramId = oldProgramId != null
+          var newProgramId = oldProgramId != null
               ? programIdMap[oldProgramId]
               : null;
+          newProgramId ??= await _ensureDefaultProgramForImport(programIdMap);
           final newExecutionId = await _insertRow(
             _tableWorkoutExecutions,
             {
@@ -628,6 +630,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
               'started_at': row['started_at'],
               'finished_at': row['finished_at'],
               'notes': row['notes'],
+              'exercise_config_snapshot': row['exercise_config_snapshot'],
             },
             excludeKeys: const {'id'},
           );
@@ -723,9 +726,10 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
             continue;
           }
           final oldProgramId = _asInt(row['program_id']);
-          final newProgramId = oldProgramId != null
+          var newProgramId = oldProgramId != null
               ? programIdMap[oldProgramId]
               : null;
+          newProgramId ??= await _ensureDefaultProgramForImport(programIdMap);
           await _insertRow(
             _tableCycleSteps,
             {
@@ -2592,6 +2596,31 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     if (value is num) return value.toInt() == 1;
     if (value is String) return value == '1' || value.toLowerCase() == 'true';
     return false;
+  }
+
+  int? _importDefaultProgramId;
+
+  /// Returns (or creates) a default program to use when imported data
+  /// has no program_id. Caches the result for the duration of the import.
+  Future<int> _ensureDefaultProgramForImport(
+    Map<int, int> programIdMap,
+  ) async {
+    if (_importDefaultProgramId != null) return _importDefaultProgramId!;
+    final id = await _insertRow(
+      _tablePrograms,
+      {
+        'name': 'Programa Importado',
+        'focus': 'custom',
+        'duration_mode': 'sessions',
+        'duration_value': 24,
+        'is_active': 1,
+        'is_in_deload': 0,
+      },
+      excludeKeys: const {'id'},
+    );
+    _importDefaultProgramId = id;
+    programIdMap[-1] = id;
+    return id;
   }
 
   int? _asInt(dynamic value) {

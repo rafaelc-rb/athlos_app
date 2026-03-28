@@ -21,10 +21,12 @@ abstract final class RoutePaths {
   static const trainingExercises = '/training/exercises';
   static const trainingHistory = '/training/history';
   static const trainingEquipment = '/training/equipment';
+  static const trainingWorkoutCatalog = '/training/workout-catalog';
   static const trainingWorkoutNew = '/training/workouts/new';
-  static const trainingCycleEdit = '/training/cycle';
   static const trainingPrograms = '/training/programs';
   static const trainingProgramNew = '/training/programs/new';
+  static String trainingProgramDetail(int programId) =>
+      '$trainingPrograms/$programId';
   static String trainingProgramEdit(int programId) =>
       '$trainingPrograms/$programId/edit';
   static String trainingEquipmentDetail(int equipmentId) =>

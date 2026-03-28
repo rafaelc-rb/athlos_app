@@ -102,7 +102,7 @@ class AppDatabase extends _$AppDatabase {
   bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed && _enableDevSeed;
 
   @override
-  int get schemaVersion => 24;
+  int get schemaVersion => 25;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -113,7 +113,7 @@ class AppDatabase extends _$AppDatabase {
       if (_shouldSeedDevData) await seedDevData(this);
     },
     onUpgrade: (m, from, to) async {
-      if (_shouldSeedDevData && from >= 3 && from <= 23) {
+      if (_shouldSeedDevData && from >= 3 && from <= 24) {
         for (final table in allTables) {
           await m.deleteTable(table.actualTableName);
         }
@@ -469,6 +469,100 @@ class AppDatabase extends _$AppDatabase {
         await customStatement(
           'ALTER TABLE user_profiles DROP COLUMN weight',
         );
+      }
+
+      if (from < 25) {
+        // Mandatory program model: eliminate free cycle, make programId
+        // non-nullable on cycle_steps and workout_executions, add
+        // exercise_config_snapshot for robust history.
+
+        // 1. Ensure at least one program exists.
+        final anyProgram = await customSelect(
+          'SELECT id FROM programs LIMIT 1',
+        ).getSingleOrNull();
+        int defaultProgramId;
+        if (anyProgram != null) {
+          final activeProgram = await customSelect(
+            'SELECT id FROM programs WHERE is_active = 1 LIMIT 1',
+          ).getSingleOrNull();
+          defaultProgramId = activeProgram?.read<int>('id') ??
+              anyProgram.read<int>('id');
+        } else {
+          await customStatement('''
+            INSERT INTO programs (name, focus, duration_mode, duration_value, is_active, created_at)
+            VALUES ('Meu Programa', 'hypertrophy', 'sessions', 12, 1,
+                    CAST(strftime('%s','now') AS INTEGER))
+          ''');
+          final newRow = await customSelect(
+            'SELECT last_insert_rowid() AS id',
+          ).getSingle();
+          defaultProgramId = newRow.read<int>('id');
+        }
+
+        // 2. Migrate free cycle steps into the default program, then delete
+        //    remaining orphans.
+        await customStatement(
+          'UPDATE cycle_steps SET program_id = $defaultProgramId '
+          'WHERE program_id IS NULL',
+        );
+
+        // 3. Migrate orphaned workout executions.
+        await customStatement(
+          'UPDATE workout_executions SET program_id = $defaultProgramId '
+          'WHERE program_id IS NULL',
+        );
+
+        // 4. Recreate cycle_steps with program_id NOT NULL.
+        await customStatement('''
+          CREATE TABLE cycle_steps_tmp (
+            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            program_id INTEGER NOT NULL REFERENCES programs(id),
+            order_index INTEGER NOT NULL,
+            workout_id INTEGER NOT NULL REFERENCES workouts(id)
+          )
+        ''');
+        await customStatement('''
+          INSERT INTO cycle_steps_tmp (id, program_id, order_index, workout_id)
+          SELECT id, program_id, order_index, workout_id FROM cycle_steps
+        ''');
+        await customStatement('DROP TABLE cycle_steps');
+        await customStatement(
+          'ALTER TABLE cycle_steps_tmp RENAME TO cycle_steps',
+        );
+
+        // 5. Recreate workout_executions with program_id NOT NULL +
+        //    exercise_config_snapshot column.
+        await customStatement('''
+          CREATE TABLE workout_executions_tmp (
+            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            workout_id INTEGER NOT NULL REFERENCES workouts(id),
+            program_id INTEGER NOT NULL REFERENCES programs(id),
+            started_at INTEGER NOT NULL,
+            finished_at INTEGER,
+            notes TEXT,
+            exercise_config_snapshot TEXT
+          )
+        ''');
+        await customStatement('''
+          INSERT INTO workout_executions_tmp
+            (id, workout_id, program_id, started_at, finished_at, notes)
+          SELECT id, workout_id, program_id, started_at, finished_at, notes
+          FROM workout_executions
+        ''');
+        await customStatement('DROP TABLE workout_executions');
+        await customStatement(
+          'ALTER TABLE workout_executions_tmp RENAME TO workout_executions',
+        );
+
+        // 6. Ensure the default program is active.
+        final hasActive = await customSelect(
+          'SELECT id FROM programs WHERE is_active = 1 LIMIT 1',
+        ).getSingleOrNull();
+        if (hasActive == null) {
+          await customStatement(
+            'UPDATE programs SET is_active = 1 WHERE id = $defaultProgramId',
+          );
+        }
       }
     },
   );

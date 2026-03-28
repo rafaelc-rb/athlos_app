@@ -8,7 +8,9 @@ import 'training_analytics_provider.dart';
 
 part 'program_notifier.g.dart';
 
-/// The currently active program, or null if training in free-cycle mode.
+/// The currently active program. Should always exist after migration v25.
+/// Returns null only transiently during first startup before the default
+/// program is created.
 @riverpod
 Future<TrainingProgram?> activeProgram(Ref ref) async {
   final repo = ref.watch(programRepositoryProvider);

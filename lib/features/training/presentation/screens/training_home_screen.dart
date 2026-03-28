@@ -5,100 +5,250 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart' as intl;
 
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/execution_comparison.dart';
 import '../../domain/enums/muscle_group.dart';
+import '../../domain/enums/program_focus.dart';
 import '../helpers/duration_format.dart';
 import '../helpers/exercise_l10n.dart';
 import '../providers/equipment_notifier.dart';
 import '../providers/exercise_notifier.dart';
+import '../providers/program_notifier.dart';
 import '../providers/training_analytics_provider.dart';
 import '../providers/training_metrics_provider.dart';
+import '../providers/workout_notifier.dart';
 import '../../../profile/presentation/providers/body_metric_notifier.dart';
 import '../../../profile/presentation/providers/profile_notifier.dart'
     show profileProvider;
 
-/// Training module — Dashboard tab with two inner sub-tabs:
-/// "Visão Geral" (overview metrics) and "Catálogos" (exercises + equipment).
-class TrainingHomeScreen extends StatefulWidget {
+/// Training module — Dashboard tab.
+///
+/// Single scrollable view with: compact program banner, stat pills,
+/// weekly volume, recent PR, evolution, weight prompt, library section,
+/// and a FAB to start the next workout.
+class TrainingHomeScreen extends ConsumerWidget {
   const TrainingHomeScreen({super.key});
-
-  @override
-  State<TrainingHomeScreen> createState() => _TrainingHomeScreenState();
-}
-
-class _TrainingHomeScreenState extends State<TrainingHomeScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Column(
-      children: [
-        TabBar(
-          controller: _tabController,
-          labelColor: colorScheme.primary,
-          unselectedLabelColor: colorScheme.onSurfaceVariant,
-          indicatorColor: colorScheme.primary,
-          tabs: [
-            Tab(text: l10n.dashboardOverviewTab),
-            Tab(text: l10n.dashboardCatalogsTab),
-          ],
-        ),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: const [
-              _OverviewSubTab(),
-              _CatalogsSubTab(),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Sub-tab: Visão Geral ─────────────────────────────────────────────
-
-class _OverviewSubTab extends ConsumerWidget {
-  const _OverviewSubTab();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
+    final nextWorkoutAsync = ref.watch(nextWorkoutToStartProvider);
+    final nextWorkout = nextWorkoutAsync.value;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AthlosSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _WeightPromptBanner(),
-          _StatPillsRow(l10n: l10n),
-          const Gap(AthlosSpacing.md),
-          const _WeeklyVolumeCard(),
-          const Gap(AthlosSpacing.sm),
-          const _RecentPRCard(),
-          const Gap(AthlosSpacing.lg),
-          _EvolutionCard(l10n: l10n),
-        ],
+    return Scaffold(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(AthlosSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _CompactProgramBanner(),
+            const Gap(AthlosSpacing.sm),
+            const _WeightPromptBanner(),
+            _StatPillsRow(l10n: l10n),
+            const Gap(AthlosSpacing.md),
+            const _WeeklyVolumeCard(),
+            const Gap(AthlosSpacing.sm),
+            const _RecentPRCard(),
+            const Gap(AthlosSpacing.lg),
+            _EvolutionCard(l10n: l10n),
+            const Gap(AthlosSpacing.lg),
+            _LibrarySection(l10n: l10n),
+            const Gap(AthlosSpacing.fabClearance),
+          ],
+        ),
       ),
+      floatingActionButton: _StartNextWorkoutFab(nextWorkout: nextWorkout),
+    );
+  }
+}
+
+// ── Compact Program Banner ────────────────────────────────────────────
+
+class _CompactProgramBanner extends ConsumerWidget {
+  const _CompactProgramBanner();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final l10n = AppLocalizations.of(context)!;
+
+    final programAsync = ref.watch(activeProgramProvider);
+    final program = programAsync.value;
+    if (program == null) return const SizedBox.shrink();
+
+    final focusLabel = switch (program.focus) {
+      ProgramFocus.hypertrophy => l10n.programFocusHypertrophy,
+      ProgramFocus.strength => l10n.programFocusStrength,
+      ProgramFocus.endurance => l10n.programFocusEndurance,
+      ProgramFocus.custom => l10n.programFocusCustom,
+    };
+
+    final progressAsync = ref.watch(programProgressProvider(program.id));
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: AthlosRadius.mdAll,
+        side: BorderSide(color: colorScheme.primary.withValues(alpha: 0.4)),
+      ),
+      child: InkWell(
+        onTap: () => context.push(RoutePaths.trainingProgramDetail(program.id)),
+        borderRadius: AthlosRadius.mdAll,
+        child: Padding(
+          padding: const EdgeInsets.all(AthlosSpacing.md),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.auto_awesome,
+                      color: colorScheme.primary, size: 18),
+                  const Gap(AthlosSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      program.name,
+                      style: textTheme.titleSmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AthlosSpacing.sm,
+                      vertical: AthlosSpacing.xxs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      borderRadius: AthlosRadius.smAll,
+                    ),
+                    child: Text(
+                      focusLabel,
+                      style: textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+                  if (program.isInDeload) ...[
+                    const Gap(AthlosSpacing.xs),
+                    Icon(Icons.spa, size: 16, color: colorScheme.tertiary),
+                  ],
+                  const Gap(AthlosSpacing.xs),
+                  Icon(Icons.chevron_right,
+                      size: 18, color: colorScheme.onSurfaceVariant),
+                ],
+              ),
+              const Gap(AthlosSpacing.sm),
+              progressAsync.when(
+                data: (progress) => ClipRRect(
+                  borderRadius: AthlosRadius.smAll,
+                  child: LinearProgressIndicator(
+                    value: progress.fraction,
+                    minHeight: 4,
+                    backgroundColor: colorScheme.surfaceContainerHighest,
+                  ),
+                ),
+                loading: () => const LinearProgressIndicator(minHeight: 4),
+                error: (_, _) => const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Start Next Workout FAB ────────────────────────────────────────────
+
+class _StartNextWorkoutFab extends StatelessWidget {
+  final dynamic nextWorkout;
+
+  const _StartNextWorkoutFab({this.nextWorkout});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    if (nextWorkout == null) {
+      return FloatingActionButton(
+        heroTag: 'dashboard_fab',
+        onPressed: () => context.push(RoutePaths.trainingWorkoutNew),
+        tooltip: l10n.trainingWorkoutActionCreateManual,
+        child: const Icon(Icons.add),
+      );
+    }
+
+    return FloatingActionButton(
+      heroTag: 'dashboard_fab',
+      onPressed: () => context.push(
+        '${RoutePaths.trainingWorkouts}/${nextWorkout.id}/execute',
+      ),
+      tooltip: nextWorkout.name,
+      child: const Icon(Icons.play_arrow),
+    );
+  }
+}
+
+// ── Library Section ───────────────────────────────────────────────────
+
+class _LibrarySection extends ConsumerWidget {
+  final AppLocalizations l10n;
+
+  const _LibrarySection({required this.l10n});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final equipmentAsync = ref.watch(equipmentListProvider);
+    final equipmentCount = equipmentAsync.value?.length ?? 0;
+
+    final exercisesAsync = ref.watch(exerciseListProvider);
+    final exerciseCount = exercisesAsync.value?.length ?? 0;
+
+    final workoutsAsync = ref.watch(workoutListProvider);
+    final workoutCount = workoutsAsync.value?.length ?? 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.dashboardCatalogsTab,
+          style: textTheme.titleSmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const Gap(AthlosSpacing.sm),
+        _CatalogCard(
+          icon: Icons.fitness_center,
+          title: l10n.workoutsCatalog,
+          subtitle: workoutCount > 0
+              ? l10n.workoutsCount(workoutCount)
+              : l10n.workoutsCatalogDesc,
+          onTap: () => context.go(RoutePaths.trainingWorkoutCatalog),
+        ),
+        const Gap(AthlosSpacing.sm),
+        _CatalogCard(
+          icon: Icons.sports_gymnastics,
+          title: l10n.exercisesCatalog,
+          subtitle: exerciseCount > 0
+              ? l10n.exercisesCount(exerciseCount)
+              : l10n.exercisesCatalogDesc,
+          onTap: () => context.go(RoutePaths.trainingExercises),
+        ),
+        const Gap(AthlosSpacing.sm),
+        _CatalogCard(
+          icon: Icons.handyman,
+          title: l10n.equipmentCatalogTitle,
+          subtitle: equipmentCount > 0
+              ? l10n.equipmentCatalogCount(equipmentCount)
+              : l10n.equipmentCatalogDesc,
+          onTap: () => context.go(RoutePaths.trainingEquipment),
+        ),
+      ],
     );
   }
 }
@@ -280,48 +430,6 @@ class _CycleStreakPill extends ConsumerWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-// ── Sub-tab: Catálogos ───────────────────────────────────────────────
-
-class _CatalogsSubTab extends ConsumerWidget {
-  const _CatalogsSubTab();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
-
-    final equipmentAsync = ref.watch(equipmentListProvider);
-    final equipmentCount = equipmentAsync.value?.length ?? 0;
-
-    final exercisesAsync = ref.watch(exerciseListProvider);
-    final exerciseCount = exercisesAsync.value?.length ?? 0;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AthlosSpacing.md),
-      child: Column(
-        children: [
-          _CatalogCard(
-            icon: Icons.sports_gymnastics,
-            title: l10n.exercisesCatalog,
-            subtitle: exerciseCount > 0
-                ? l10n.exercisesCount(exerciseCount)
-                : l10n.exercisesCatalogDesc,
-            onTap: () => context.go(RoutePaths.trainingExercises),
-          ),
-          const Gap(AthlosSpacing.sm),
-          _CatalogCard(
-            icon: Icons.handyman,
-            title: l10n.equipmentCatalogTitle,
-            subtitle: equipmentCount > 0
-                ? l10n.equipmentCatalogCount(equipmentCount)
-                : l10n.equipmentCatalogDesc,
-            onTap: () => context.go(RoutePaths.trainingEquipment),
-          ),
-        ],
       ),
     );
   }

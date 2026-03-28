@@ -24,6 +24,7 @@ import '../providers/workout_notifier.dart';
 final _placeholderExecution = WorkoutExecution(
   id: 0,
   workoutId: 0,
+  programId: 0,
   startedAt: DateTime(0),
 );
 

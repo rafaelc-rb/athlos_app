@@ -675,6 +675,13 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
         'error': 'steps is required and cannot be empty',
       };
     }
+    final programResult = await _programRepo.getActive();
+    final activeProgram = programResult.isSuccess
+        ? programResult.getOrThrow()
+        : null;
+    if (activeProgram == null) {
+      return {'success': false, 'error': 'No active program'};
+    }
     final cycleSteps = <TrainingCycleStep>[];
     for (var i = 0; i < stepsList.length; i++) {
       final item = stepsList[i];
@@ -700,12 +707,8 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
         'error': 'No valid steps (each step needs a workoutId)',
       };
     }
-    final programResult = await _programRepo.getActive();
-    final programId = programResult.isSuccess
-        ? programResult.getOrThrow()?.id
-        : null;
     final result =
-        await _cycleRepo.setSteps(cycleSteps, programId: programId);
+        await _cycleRepo.setSteps(cycleSteps, activeProgram.id);
     if (!result.isSuccess) {
       return {'success': false, 'error': 'Failed to persist cycle'};
     }
@@ -723,9 +726,16 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
     final activeProgram = programResult.isSuccess
         ? programResult.getOrThrow()
         : null;
-    final programId = activeProgram?.id;
 
-    final stepsResult = await _cycleRepo.getSteps(programId: programId);
+    if (activeProgram == null) {
+      return {
+        'success': true,
+        'activeWorkouts': active.map((w) => {'id': w.id, 'name': w.name}).toList(),
+        'cycleSteps': <Map<String, Object?>>[],
+      };
+    }
+
+    final stepsResult = await _cycleRepo.getSteps(activeProgram.id);
     if (!stepsResult.isSuccess) {
       return {'success': false, 'error': 'Failed to load cycle'};
     }
@@ -747,49 +757,47 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
       'activeWorkouts': activeWorkouts,
       'cycleSteps': cycleSteps,
     };
-    if (activeProgram != null) {
-      final sessionResult = await _programRepo.getSessionCount(activeProgram.id);
-      final sessions = sessionResult.isSuccess ? sessionResult.getOrThrow() : 0;
-      final programMap = <String, Object?>{
-        'id': activeProgram.id,
-        'name': activeProgram.name,
-        'focus': activeProgram.focus.name,
-        'durationMode': activeProgram.durationMode.name,
-        'durationValue': activeProgram.durationValue,
-        'completedSessions': sessions,
-        'isInDeload': activeProgram.isInDeload,
-        if (activeProgram.defaultRestSeconds != null)
-          'defaultRestSeconds': activeProgram.defaultRestSeconds,
+    final sessionResult = await _programRepo.getSessionCount(activeProgram.id);
+    final sessions = sessionResult.isSuccess ? sessionResult.getOrThrow() : 0;
+    final programMap = <String, Object?>{
+      'id': activeProgram.id,
+      'name': activeProgram.name,
+      'focus': activeProgram.focus.name,
+      'durationMode': activeProgram.durationMode.name,
+      'durationValue': activeProgram.durationValue,
+      'completedSessions': sessions,
+      'isInDeload': activeProgram.isInDeload,
+      if (activeProgram.defaultRestSeconds != null)
+        'defaultRestSeconds': activeProgram.defaultRestSeconds,
+    };
+    if (activeProgram.deloadConfig != null) {
+      final dc = activeProgram.deloadConfig!;
+      programMap['deloadConfig'] = {
+        'strategy': dc.strategy.name,
+        'frequency': dc.frequency,
+        'volumeMultiplier': dc.volumeMultiplier,
+        'intensityMultiplier': dc.intensityMultiplier,
       };
-      if (activeProgram.deloadConfig != null) {
-        final dc = activeProgram.deloadConfig!;
-        programMap['deloadConfig'] = {
-          'strategy': dc.strategy.name,
-          'frequency': dc.frequency,
-          'volumeMultiplier': dc.volumeMultiplier,
-          'intensityMultiplier': dc.intensityMultiplier,
-        };
-      }
-      final rulesResult =
-          await _progressionRuleRepo.getByProgram(activeProgram.id);
-      if (rulesResult.isSuccess) {
-        final rules = rulesResult.getOrThrow();
-        if (rules.isNotEmpty) {
-          programMap['progressionRules'] = rules
-              .map((r) => {
-                    'exerciseId': r.exerciseId,
-                    'type': r.type.name,
-                    'value': r.value,
-                    'frequency': r.frequency.name,
-                    if (r.condition != null) 'condition': r.condition!.name,
-                    if (r.conditionValue != null)
-                      'conditionValue': r.conditionValue,
-                  })
-              .toList();
-        }
-      }
-      result['activeProgram'] = programMap;
     }
+    final rulesResult =
+        await _progressionRuleRepo.getByProgram(activeProgram.id);
+    if (rulesResult.isSuccess) {
+      final rules = rulesResult.getOrThrow();
+      if (rules.isNotEmpty) {
+        programMap['progressionRules'] = rules
+            .map((r) => {
+                  'exerciseId': r.exerciseId,
+                  'type': r.type.name,
+                  'value': r.value,
+                  'frequency': r.frequency.name,
+                  if (r.condition != null) 'condition': r.condition!.name,
+                  if (r.conditionValue != null)
+                    'conditionValue': r.conditionValue,
+                })
+            .toList();
+      }
+    }
+    result['activeProgram'] = programMap;
 
     final bodyMetricResult = await _bodyMetricRepo.getAll();
     if (bodyMetricResult.isSuccess) {
@@ -910,7 +918,7 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
                     workoutId: wId,
                   ))
               .toList(),
-          programId: id,
+          id,
         );
       }
 

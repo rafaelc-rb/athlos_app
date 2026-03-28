@@ -101,12 +101,13 @@ Future<({ExecutionComparison comparison, String workoutName})?>
   return (comparison: comparison, workoutName: name);
 }
 
-/// Ordered cycle steps for the effective context (active program or free cycle).
+/// Ordered cycle steps for the active program.
 @riverpod
 Future<List<TrainingCycleStep>> cycleSteps(Ref ref) async {
   final programId = await ref.watch(activeProgramIdProvider.future);
+  if (programId == null) return [];
   final repo = ref.watch(cycleRepositoryProvider);
-  final result = await repo.getSteps(programId: programId);
+  final result = await repo.getSteps(programId);
   return result.getOrThrow();
 }
 
@@ -115,27 +116,8 @@ Future<List<TrainingCycleStep>> cycleSteps(Ref ref) async {
 Future<List<TrainingCycleStep>> cycleStepsForProgram(
     Ref ref, int programId) async {
   final repo = ref.watch(cycleRepositoryProvider);
-  final result = await repo.getSteps(programId: programId);
+  final result = await repo.getSteps(programId);
   return result.getOrThrow();
-}
-
-/// Ensures every active workout is in the cycle (appends any missing).
-/// Only syncs the free cycle — programs manage their own cycle explicitly.
-@riverpod
-Future<void> ensureCycleSync(Ref ref) async {
-  final programId = await ref.watch(activeProgramIdProvider.future);
-  if (programId != null) return; // programs don't auto-sync
-  final workouts = await ref.watch(workoutListProvider.future);
-  if (workouts.isEmpty) return;
-  final activeIds = workouts.map((w) => w.id).toList();
-  final steps = await ref.watch(cycleStepsProvider.future);
-  final inCycle = {for (final s in steps) s.workoutId};
-  final missing = activeIds.where((id) => !inCycle.contains(id)).toList();
-  if (missing.isEmpty) return;
-  final cycleRepo = ref.read(cycleRepositoryProvider);
-  final result = await cycleRepo.syncWithActiveWorkoutIds(activeIds);
-  result.getOrThrow();
-  ref.invalidate(cycleStepsProvider);
 }
 
 /// Cycle steps with archived workouts removed (only active workout steps).
@@ -147,8 +129,7 @@ Future<List<TrainingCycleStep>> effectiveCycleSteps(Ref ref) async {
   return steps.where((s) => activeIds.contains(s.workoutId)).toList();
 }
 
-/// Result of the unified cycle list: items in cycle order and whether order
-/// comes from cycle (true) or fallback sortOrder (false).
+/// Result of the unified cycle list: items in cycle order.
 class CycleListData {
   final List<CycleListWorkoutItem> items;
   final bool isFromCycle;
@@ -160,7 +141,6 @@ class CycleListData {
 @riverpod
 Future<CycleListData> cycleListItems(Ref ref) async {
   final steps = await ref.watch(effectiveCycleStepsProvider.future);
-  final workouts = await ref.watch(workoutListProvider.future);
   final workoutRepo = ref.watch(workoutRepositoryProvider);
 
   if (steps.isNotEmpty) {
@@ -176,37 +156,10 @@ Future<CycleListData> cycleListItems(Ref ref) async {
     return CycleListData(items: items, isFromCycle: true);
   }
 
-  if (workouts.isEmpty) {
-    return const CycleListData(items: [], isFromCycle: false);
-  }
-
-  final ordered = workouts
-      .where((w) => w.sortOrder != null)
-      .toList()
-    ..sort((a, b) => a.sortOrder!.compareTo(b.sortOrder!));
-  if (ordered.isEmpty) {
-    return CycleListData(
-      items: workouts
-          .map((w) => CycleListWorkoutItem(stepIndex: 0, workout: w))
-          .toList(),
-      isFromCycle: false,
-    );
-  }
-  return CycleListData(
-    items: ordered
-        .asMap()
-        .entries
-        .map((e) => CycleListWorkoutItem(
-              stepIndex: e.key,
-              workout: e.value,
-            ))
-        .toList(),
-    isFromCycle: false,
-  );
+  return const CycleListData(items: [], isFromCycle: false);
 }
 
 /// Next workout in the cycle.
-/// When cycle steps are empty, returns null and UI should use [nextWorkoutProvider].
 @riverpod
 Future<Workout?> nextCycleWorkout(Ref ref) async {
   final stepsAsync = ref.watch(effectiveCycleStepsProvider);
@@ -272,41 +225,26 @@ Future<int?> nextCycleStepIndex(Ref ref) async {
 Future<int> executionStreak(Ref ref) async {
   final execRepo = ref.watch(workoutExecutionRepositoryProvider);
   final stepsAsync = ref.watch(effectiveCycleStepsProvider);
-  final workoutsAsync = ref.watch(workoutListProvider);
 
   final allResult = await execRepo.getAll();
   final executions = allResult.getOrThrow();
   if (executions.isEmpty) return 0;
 
   final steps = stepsAsync.value;
-  List<int> cycleWorkoutIds;
-  Map<int, int> cycleIndexById;
+  if (steps == null || steps.isEmpty) return 0;
 
-  if (steps != null && steps.isNotEmpty) {
-    cycleWorkoutIds = [for (final s in steps) s.workoutId];
-    cycleIndexById = {
-      for (var i = 0; i < cycleWorkoutIds.length; i++) cycleWorkoutIds[i]: i,
-    };
-  } else {
-    final workouts = workoutsAsync.value;
-    if (workouts == null || workouts.isEmpty) return 0;
-    final ordered = workouts
-        .where((w) => w.sortOrder != null)
-        .toList()
-      ..sort((a, b) => a.sortOrder!.compareTo(b.sortOrder!));
-    if (ordered.isEmpty) return 0;
-    cycleWorkoutIds = ordered.map((w) => w.id).toList();
-    cycleIndexById = {
-      for (var i = 0; i < cycleWorkoutIds.length; i++) cycleWorkoutIds[i]: i,
-    };
-  }
+  final cycleWorkoutIds = [for (final s in steps) s.workoutId];
+  final cycleIndexById = {
+    for (var i = 0; i < cycleWorkoutIds.length; i++) cycleWorkoutIds[i]: i,
+  };
 
   if (cycleWorkoutIds.isEmpty) return 0;
 
   int previousWorkoutInCycle(int workoutId) {
     final idx = cycleIndexById[workoutId];
     if (idx == null) return -1;
-    return cycleWorkoutIds[(idx - 1 + cycleWorkoutIds.length) % cycleWorkoutIds.length];
+    return cycleWorkoutIds[
+        (idx - 1 + cycleWorkoutIds.length) % cycleWorkoutIds.length];
   }
 
   var streak = 1;

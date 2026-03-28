@@ -32,11 +32,7 @@ class WorkoutList extends _$WorkoutList {
     );
     final result = await repo.create(workout, exercises);
     final id = result.getOrThrow();
-    final cycleRepo = ref.read(cycleRepositoryProvider);
-    final cycleResult = await cycleRepo.appendWorkoutToCycle(id);
-    cycleResult.getOrThrow();
     ref.invalidateSelf();
-    ref.invalidate(cycleStepsProvider);
     return id;
   }
 
@@ -66,7 +62,7 @@ class WorkoutList extends _$WorkoutList {
     final result = await repo.archive(id);
     result.getOrThrow();
     final cycleRepo = ref.read(cycleRepositoryProvider);
-    final cycleResult = await cycleRepo.removeWorkoutFromCycle(id);
+    final cycleResult = await cycleRepo.removeWorkoutFromAllCycles(id);
     cycleResult.getOrThrow();
     ref.invalidateSelf();
     ref.invalidate(archivedWorkoutListProvider);
@@ -77,23 +73,15 @@ class WorkoutList extends _$WorkoutList {
     final repo = ref.read(workoutRepositoryProvider);
     final result = await repo.unarchive(id);
     result.getOrThrow();
-    final cycleRepo = ref.read(cycleRepositoryProvider);
-    final cycleResult = await cycleRepo.appendWorkoutToCycle(id);
-    cycleResult.getOrThrow();
     ref.invalidateSelf();
     ref.invalidate(archivedWorkoutListProvider);
-    ref.invalidate(cycleStepsProvider);
   }
 
   Future<int> duplicateWorkout(int id, {required String nameSuffix}) async {
     final repo = ref.read(workoutRepositoryProvider);
     final result = await repo.duplicate(id, nameSuffix: nameSuffix);
     final newId = result.getOrThrow();
-    final cycleRepo = ref.read(cycleRepositoryProvider);
-    final cycleResult = await cycleRepo.appendWorkoutToCycle(newId);
-    cycleResult.getOrThrow();
     ref.invalidateSelf();
-    ref.invalidate(cycleStepsProvider);
     return newId;
   }
 

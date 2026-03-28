@@ -13,8 +13,8 @@ Future<void> seedDevData(AppDatabase db) async {
 
   await _seedUserEquipments(db, equipmentIds);
   await _seedWorkoutsWithExercises(db, exerciseIds);
-  await _seedExecutionHistory(db, exerciseIds);
-  await _seedProgram(db, exerciseIds);
+  final programId = await _seedProgram(db, exerciseIds);
+  await _seedExecutionHistory(db, exerciseIds, programId);
   await _seedBodyMetrics(db);
 }
 
@@ -186,13 +186,14 @@ Future<void> _insertWorkoutExercises(
 // ---------------------------------------------------------------------------
 
 Future<void> _seedExecutionHistory(
-    AppDatabase db, Map<String, int> exerciseIds) async {
+    AppDatabase db, Map<String, int> exerciseIds, int programId) async {
   final now = DateTime.now();
 
   // --- Execution 1: Push Day — 3 days ago (completed) ---
   final exec1 = await db.into(db.workoutExecutions).insert(
         WorkoutExecutionsCompanion.insert(
           workoutId: 1,
+          programId: programId,
           startedAt: Value(now.subtract(const Duration(days: 3, hours: 1))),
           finishedAt:
               Value(now.subtract(const Duration(days: 3, minutes: 10))),
@@ -236,6 +237,7 @@ Future<void> _seedExecutionHistory(
   final exec2 = await db.into(db.workoutExecutions).insert(
         WorkoutExecutionsCompanion.insert(
           workoutId: 2,
+          programId: programId,
           startedAt: Value(now.subtract(const Duration(days: 1, hours: 1))),
           finishedAt:
               Value(now.subtract(const Duration(days: 1, minutes: 5))),
@@ -258,6 +260,7 @@ Future<void> _seedExecutionHistory(
   final exec3 = await db.into(db.workoutExecutions).insert(
         WorkoutExecutionsCompanion.insert(
           workoutId: 3,
+          programId: programId,
           startedAt: Value(now.subtract(const Duration(hours: 2))),
           finishedAt: Value(now.subtract(const Duration(minutes: 30))),
           notes: const Value('Legs were shaky after squats'),
@@ -281,6 +284,7 @@ Future<void> _seedExecutionHistory(
   final exec4 = await db.into(db.workoutExecutions).insert(
         WorkoutExecutionsCompanion.insert(
           workoutId: 4,
+          programId: programId,
           startedAt: Value(now.subtract(const Duration(days: 2, hours: 1))),
           finishedAt:
               Value(now.subtract(const Duration(days: 2, minutes: 15))),
@@ -448,7 +452,7 @@ class _WE {
 // Training Program (mesocycle)
 // ---------------------------------------------------------------------------
 
-Future<void> _seedProgram(
+Future<int> _seedProgram(
     AppDatabase db, Map<String, int> exerciseIds) async {
   final activeWorkouts = await db.customSelect(
     'SELECT id FROM workouts WHERE is_archived = 0 ORDER BY sort_order ASC',
@@ -456,7 +460,6 @@ Future<void> _seedProgram(
 
   // PPL program with first 3 workouts
   final pplIds = activeWorkouts.take(3).map((r) => r.read<int>('id')).toList();
-  if (pplIds.length < 3) return;
 
   final programId = await db.into(db.programs).insert(
     ProgramsCompanion.insert(
@@ -476,7 +479,7 @@ Future<void> _seedProgram(
   for (var i = 0; i < pplIds.length; i++) {
     await db.into(db.cycleSteps).insert(
       CycleStepsCompanion.insert(
-        programId: Value(programId),
+        programId: programId,
         orderIndex: i,
         workoutId: pplIds[i],
       ),
@@ -505,6 +508,8 @@ Future<void> _seedProgram(
       ),
     );
   }
+
+  return programId;
 }
 
 // ---------------------------------------------------------------------------

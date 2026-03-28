@@ -2293,5 +2293,22 @@
       "min": { "type": "int" },
       "max": { "type": "int" }
     }
-  }
+  },
+  "remove": "Remover",
+  "@remove": { "description": "Generic remove action" },
+  "archiveProgramAction": "Arquivar programa",
+  "@archiveProgramAction": { "description": "Button label to archive the current program" },
+  "workoutsCatalog": "Catálogo de treinos",
+  "@workoutsCatalog": { "description": "Workout catalog title" },
+  "workoutsCount": "{count,plural, =0{Nenhum treino} =1{1 treino} other{{count} treinos}}",
+  "@workoutsCount": {
+    "description": "Workout count display",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "workoutsCatalogDesc": "Seus treinos salvos",
+  "@workoutsCatalogDesc": { "description": "Workout catalog description" },
+  "programAdvancedSettings": "Configurações do programa",
+  "@programAdvancedSettings": { "description": "Tooltip for advanced program settings gear icon" }
 }

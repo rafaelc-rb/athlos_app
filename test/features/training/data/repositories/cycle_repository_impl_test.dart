@@ -10,11 +10,23 @@ void main() {
   group('CycleRepositoryImpl', () {
     late AppDatabase db;
     late CycleRepositoryImpl repository;
+    const programId = 1;
 
     setUp(() async {
       db = AppDatabase.forTesting(NativeDatabase.memory());
       repository = CycleRepositoryImpl(CycleStepDao(db));
       await db.customSelect('SELECT 1').get();
+
+      await db.customInsert(
+        "INSERT INTO programs (name, focus, duration_mode, duration_value, is_active) "
+        "VALUES ('Test', 'custom', 'sessions', 12, 1)",
+      );
+      for (final wId in [1, 2, 3, 10, 20]) {
+        await db.customInsert(
+          "INSERT INTO workouts (id, name, sort_order, is_archived, created_at) "
+          "VALUES ($wId, 'W$wId', 0, 0, 1)",
+        );
+      }
     });
 
     tearDown(() async {
@@ -27,22 +39,29 @@ void main() {
           TrainingCycleStep(id: 0, orderIndex: 0, workoutId: 10),
           TrainingCycleStep(id: 0, orderIndex: 1, workoutId: 20),
         ],
+        programId,
       );
       expect(result.isSuccess, isTrue);
 
-      final loaded = (await repository.getSteps()).getOrThrow();
+      final loaded = (await repository.getSteps(programId)).getOrThrow();
       expect(loaded.length, 2);
       expect(loaded[0].workoutId, 10);
       expect(loaded[1].workoutId, 20);
     });
 
     test('appendWorkoutToCycle adiciona no final', () async {
-      await repository.setSteps(const []);
+      await repository.setSteps(const [], programId);
 
-      expect((await repository.appendWorkoutToCycle(1)).isSuccess, isTrue);
-      expect((await repository.appendWorkoutToCycle(2)).isSuccess, isTrue);
+      expect(
+        (await repository.appendWorkoutToCycle(1, programId)).isSuccess,
+        isTrue,
+      );
+      expect(
+        (await repository.appendWorkoutToCycle(2, programId)).isSuccess,
+        isTrue,
+      );
 
-      final loaded = (await repository.getSteps()).getOrThrow();
+      final loaded = (await repository.getSteps(programId)).getOrThrow();
       expect(loaded.length, 2);
       expect(loaded[0].workoutId, 1);
       expect(loaded[0].orderIndex, 0);
@@ -57,10 +76,14 @@ void main() {
           TrainingCycleStep(id: 0, orderIndex: 1, workoutId: 2),
           TrainingCycleStep(id: 0, orderIndex: 2, workoutId: 3),
         ],
+        programId,
       );
 
-      expect((await repository.removeWorkoutFromCycle(1)).isSuccess, isTrue);
-      final loaded = (await repository.getSteps()).getOrThrow();
+      expect(
+        (await repository.removeWorkoutFromCycle(1, programId)).isSuccess,
+        isTrue,
+      );
+      final loaded = (await repository.getSteps(programId)).getOrThrow();
 
       expect(loaded.length, 2);
       expect(loaded[0].orderIndex, 0);
@@ -69,22 +92,22 @@ void main() {
       expect(loaded[1].workoutId, 3);
     });
 
-    test('syncWithActiveWorkoutIds adiciona faltantes no final', () async {
+    test('removeWorkoutFromAllCycles remove de todos os programas', () async {
       await repository.setSteps(
         const [
           TrainingCycleStep(id: 0, orderIndex: 0, workoutId: 1),
+          TrainingCycleStep(id: 0, orderIndex: 1, workoutId: 2),
         ],
+        programId,
       );
 
       expect(
-        (await repository.syncWithActiveWorkoutIds(const [1, 2, 3])).isSuccess,
+        (await repository.removeWorkoutFromAllCycles(1)).isSuccess,
         isTrue,
       );
-      final loaded = (await repository.getSteps()).getOrThrow();
-
-      final workoutIds = loaded.map((s) => s.workoutId).toList();
-      expect(workoutIds, containsAll([1, 2, 3]));
-      expect(loaded.last.workoutId, 3);
+      final loaded = (await repository.getSteps(programId)).getOrThrow();
+      expect(loaded.length, 1);
+      expect(loaded[0].workoutId, 2);
     });
   });
 }

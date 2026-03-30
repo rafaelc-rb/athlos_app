@@ -149,7 +149,7 @@ Future<void> runBackupImportFlow({
     ref.invalidate(cycleStepsProvider);
     ref.invalidate(effectiveCycleStepsProvider);
     ref.invalidate(cycleListItemsProvider);
-    ref.invalidate(nextCycleStepProvider);
+    ref.invalidate(nextCycleWorkoutProvider);
     ref.invalidate(nextWorkoutToStartProvider);
     ref.invalidate(nextCycleStepIndexProvider);
     ref.invalidate(executionStreakProvider);
@@ -347,7 +347,7 @@ String _conflictTypeFromEnum(BackupConflictType type, AppLocalizations l10n) {
     BackupConflictType.profile => l10n.profile,
     BackupConflictType.equipment => l10n.profileEquipmentTab,
     BackupConflictType.exercise => l10n.tabExercises,
-    BackupConflictType.workout => l10n.tabWorkouts,
+    BackupConflictType.workout => l10n.tabTraining,
   };
 }
 

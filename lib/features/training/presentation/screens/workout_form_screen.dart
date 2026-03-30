@@ -58,7 +58,9 @@ class _WorkoutFormScreenState extends ConsumerState<WorkoutFormScreen> {
         _entries.add(WorkoutExerciseEntry(
           exercise: exercise,
           sets: we.sets,
-          reps: we.reps,
+          minReps: we.minReps,
+          maxReps: we.maxReps,
+          isAmrap: we.isAmrap,
           rest: we.rest,
           duration: we.duration,
           groupId: we.groupId,
@@ -134,7 +136,8 @@ class _WorkoutFormScreenState extends ConsumerState<WorkoutFormScreen> {
       setState(() {
         _entries.add(WorkoutExerciseEntry(
           exercise: exercise,
-          reps: exercise.isCardio ? null : 12,
+          minReps: exercise.isCardio ? null : 12,
+          maxReps: exercise.isCardio ? null : 12,
           duration: exercise.isCardio ? 300 : null,
         ));
       });
@@ -170,7 +173,9 @@ class _WorkoutFormScreenState extends ConsumerState<WorkoutFormScreen> {
                 exerciseId: e.value.exercise.id,
                 order: e.key,
                 sets: e.value.sets,
-                reps: e.value.reps,
+                minReps: e.value.minReps,
+                maxReps: e.value.maxReps,
+                isAmrap: e.value.isAmrap,
                 rest: e.value.rest,
                 duration: e.value.duration,
                 groupId: e.value.groupId,
@@ -381,6 +386,7 @@ class _WorkoutFormScreenState extends ConsumerState<WorkoutFormScreen> {
                           key: ValueKey(
                               '${entry.exercise.id}_$index'),
                           entry: entry,
+                          index: index,
                           isLinkedToNext: isLinkedToNext,
                           isLinkedToPrevious: isLinkedToPrevious,
                           groupColorIndex: groupColorIndex,

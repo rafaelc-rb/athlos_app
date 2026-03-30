@@ -42,6 +42,19 @@ class SetEntry {
   final double? distance;
 
   final bool isCompleted;
+  final bool isWarmup;
+
+  /// Rate of Perceived Exertion (1–10). Null when not recorded.
+  final int? rpe;
+
+  /// Per-set user notes (e.g. "shoulder pain", "try wider grip").
+  final String? notes;
+
+  final int? leftReps;
+  final double? leftWeight;
+  final int? rightReps;
+  final double? rightWeight;
+
   final List<SegmentEntry> segments;
 
   const SetEntry({
@@ -54,6 +67,13 @@ class SetEntry {
     this.duration,
     this.distance,
     this.isCompleted = false,
+    this.isWarmup = false,
+    this.rpe,
+    this.notes,
+    this.leftReps,
+    this.leftWeight,
+    this.rightReps,
+    this.rightWeight,
     this.segments = const [],
   });
 
@@ -69,6 +89,13 @@ class SetEntry {
     int? Function()? duration,
     double? Function()? distance,
     bool? isCompleted,
+    bool? isWarmup,
+    int? Function()? rpe,
+    String? Function()? notes,
+    int? Function()? leftReps,
+    double? Function()? leftWeight,
+    int? Function()? rightReps,
+    double? Function()? rightWeight,
     List<SegmentEntry>? segments,
   }) =>
       SetEntry(
@@ -83,6 +110,13 @@ class SetEntry {
         duration: duration != null ? duration() : this.duration,
         distance: distance != null ? distance() : this.distance,
         isCompleted: isCompleted ?? this.isCompleted,
+        isWarmup: isWarmup ?? this.isWarmup,
+        rpe: rpe != null ? rpe() : this.rpe,
+        notes: notes != null ? notes() : this.notes,
+        leftReps: leftReps != null ? leftReps() : this.leftReps,
+        leftWeight: leftWeight != null ? leftWeight() : this.leftWeight,
+        rightReps: rightReps != null ? rightReps() : this.rightReps,
+        rightWeight: rightWeight != null ? rightWeight() : this.rightWeight,
         segments: segments ?? this.segments,
       );
 
@@ -99,11 +133,18 @@ class SetEntry {
           weight == other.weight &&
           duration == other.duration &&
           distance == other.distance &&
-          isCompleted == other.isCompleted;
+          isCompleted == other.isCompleted &&
+          isWarmup == other.isWarmup &&
+          rpe == other.rpe &&
+          leftReps == other.leftReps &&
+          leftWeight == other.leftWeight &&
+          rightReps == other.rightReps &&
+          rightWeight == other.rightWeight;
 
   @override
   int get hashCode => Object.hash(id, setNumber, plannedReps, plannedWeight,
-      reps, weight, duration, distance, isCompleted);
+      reps, weight, duration, distance, isCompleted, isWarmup, rpe,
+      leftReps, leftWeight, rightReps, rightWeight);
 }
 
 /// Holds the full state of an active workout execution in progress.
@@ -118,12 +159,20 @@ class ActiveExecutionState {
   final List<WorkoutExercise> exercises;
   final bool isFinishing;
 
+  /// Whether this session is running under deload adjustments.
+  final bool isDeload;
+
+  /// Fallback rest seconds from the active program's defaultRestSeconds.
+  final int defaultRestSeconds;
+
   const ActiveExecutionState({
     required this.executionId,
     required this.workoutId,
     required this.exerciseSets,
     required this.exercises,
     this.isFinishing = false,
+    this.isDeload = false,
+    this.defaultRestSeconds = 0,
   });
 
   int get completedSetCount => exerciseSets.values
@@ -143,6 +192,8 @@ class ActiveExecutionState {
         exerciseSets: exerciseSets ?? this.exerciseSets,
         exercises: exercises,
         isFinishing: isFinishing ?? this.isFinishing,
+        defaultRestSeconds: defaultRestSeconds,
+        isDeload: isDeload,
       );
 
   @override

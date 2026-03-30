@@ -33,6 +33,7 @@ Future<void> seedExercises(AppDatabase db) async {
             type: Value(item.type),
             movementPattern: Value(item.movementPattern),
             isVerified: const Value(true),
+            isBodyweight: Value(item.isBodyweight),
             description: const Value.absent(),
           ),
         );
@@ -94,6 +95,7 @@ class _SeedExercise {
   final MovementPattern? movementPattern;
   final List<_MF> muscles;
   final List<String> equipmentKeys;
+  final bool isBodyweight;
 
   const _SeedExercise(
     this.name,
@@ -102,6 +104,7 @@ class _SeedExercise {
     this.movementPattern,
     this.muscles = const [],
     this.equipmentKeys = const [],
+    this.isBodyweight = false,
   });
 }
 
@@ -137,6 +140,7 @@ final _seedItems = [
       equipmentKeys: ['dumbbell', 'flatBench']),
   _SeedExercise('pushUp', MuscleGroup.chest,
       movementPattern: MovementPattern.push,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.pectoralisMajor, MuscleRegion.mid),
         _s(TargetMuscle.anteriorDeltoid),
@@ -165,6 +169,7 @@ final _seedItems = [
       equipmentKeys: ['dumbbell', 'adjustableBench']),
   _SeedExercise('declinePushUp', MuscleGroup.chest,
       movementPattern: MovementPattern.push,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.pectoralisMajor, MuscleRegion.upper),
         _s(TargetMuscle.anteriorDeltoid),
@@ -172,11 +177,13 @@ final _seedItems = [
       ]),
   _SeedExercise('inclinePushUp', MuscleGroup.chest,
       movementPattern: MovementPattern.push,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.pectoralisMajor, MuscleRegion.lower),
       ]),
   _SeedExercise('kneePushUp', MuscleGroup.chest,
       movementPattern: MovementPattern.push,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.pectoralisMajor, MuscleRegion.mid),
         _s(TargetMuscle.anteriorDeltoid),
@@ -186,6 +193,7 @@ final _seedItems = [
   // ── Back ──
   _SeedExercise('pullUp', MuscleGroup.back,
       movementPattern: MovementPattern.pull,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.latissimusDorsi),
         _s(TargetMuscle.bicepsBrachii),
@@ -227,6 +235,7 @@ final _seedItems = [
       equipmentKeys: ['dumbbell', 'flatBench']),
   _SeedExercise('chinUp', MuscleGroup.back,
       movementPattern: MovementPattern.pull,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.latissimusDorsi),
         _s(TargetMuscle.bicepsBrachii),
@@ -235,6 +244,7 @@ final _seedItems = [
       equipmentKeys: ['pullUpBar']),
   _SeedExercise('invertedRow', MuscleGroup.back,
       movementPattern: MovementPattern.pull,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.rhomboids),
         _p(TargetMuscle.latissimusDorsi),
@@ -286,6 +296,7 @@ final _seedItems = [
       equipmentKeys: ['dumbbell']),
   _SeedExercise('pikePushUp', MuscleGroup.shoulders,
       movementPattern: MovementPattern.push,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.anteriorDeltoid),
         _p(TargetMuscle.lateralDeltoid),
@@ -438,12 +449,14 @@ final _seedItems = [
       equipmentKeys: ['dumbbell']),
   _SeedExercise('diamondPushUp', MuscleGroup.triceps,
       movementPattern: MovementPattern.push,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.tricepsBrachii),
         _s(TargetMuscle.pectoralisMajor),
       ]),
   _SeedExercise('dip', MuscleGroup.triceps,
       movementPattern: MovementPattern.push,
+      isBodyweight: true,
       muscles: [
         _p(TargetMuscle.tricepsBrachii),
         _s(TargetMuscle.pectoralisMajor),
@@ -542,7 +555,7 @@ final _seedItems = [
         _s(TargetMuscle.bicepsFemoris),
       ],
       equipmentKeys: ['barbell', 'flatBench']),
-  _SeedExercise('gluteBridge', MuscleGroup.glutes,
+  _SeedExercise('gluteBridge', MuscleGroup.glutes, isBodyweight: true,
       movementPattern: MovementPattern.hinge,
       muscles: [
         _p(TargetMuscle.gluteusMaximus),
@@ -587,17 +600,17 @@ final _seedItems = [
       ]),
 
   // ── Abs ──
-  _SeedExercise('crunch', MuscleGroup.abs,
+  _SeedExercise('crunch', MuscleGroup.abs, isBodyweight: true,
       movementPattern: MovementPattern.isolation,
       muscles: [
         _p(TargetMuscle.rectusAbdominis, MuscleRegion.upper),
       ]),
-  _SeedExercise('plank', MuscleGroup.abs, muscles: [
+  _SeedExercise('plank', MuscleGroup.abs, isBodyweight: true, muscles: [
     _p(TargetMuscle.rectusAbdominis),
     _p(TargetMuscle.transverseAbdominis),
     _s(TargetMuscle.obliques),
   ]),
-  _SeedExercise('hangingLegRaise', MuscleGroup.abs,
+  _SeedExercise('hangingLegRaise', MuscleGroup.abs, isBodyweight: true,
       movementPattern: MovementPattern.isolation,
       muscles: [
         _p(TargetMuscle.rectusAbdominis, MuscleRegion.lower),
@@ -1155,6 +1168,179 @@ const _secondaryRoleBackfill = {
   'burpee': [TargetMuscle.pectoralisMajor, TargetMuscle.anteriorDeltoid],
   'plank': [TargetMuscle.obliques],
 };
+
+/// Seeds the exercises added in schema version 26.
+Future<void> seedExercisesV6(AppDatabase db) async {
+  final equipmentIds = await _resolveEquipmentIds(db);
+  final exerciseIds = <String, int>{};
+
+  final existingRows = await db.select(db.exercises).get();
+  for (final row in existingRows) {
+    exerciseIds[row.name] = row.id;
+  }
+
+  for (final item in _v6SeedItems) {
+    final id = await db.into(db.exercises).insert(
+          ExercisesCompanion.insert(
+            name: item.name,
+            muscleGroup: item.muscleGroup,
+            type: Value(item.type),
+            movementPattern: Value(item.movementPattern),
+            isVerified: const Value(true),
+            isBodyweight: Value(item.isBodyweight),
+            description: const Value.absent(),
+          ),
+        );
+    exerciseIds[item.name] = id;
+
+    for (final focus in item.muscles) {
+      await db.into(db.exerciseTargetMuscles).insert(
+            ExerciseTargetMusclesCompanion(
+              exerciseId: Value(id),
+              targetMuscle: Value(focus.muscle),
+              muscleRegion: Value(focus.region),
+              role: Value(focus.role),
+            ),
+          );
+    }
+
+    for (final eqName in item.equipmentKeys) {
+      final eqId = equipmentIds[eqName];
+      if (eqId != null) {
+        await db.into(db.exerciseEquipments).insert(
+              ExerciseEquipmentsCompanion(
+                exerciseId: Value(id),
+                equipmentId: Value(eqId),
+              ),
+            );
+      }
+    }
+  }
+
+  for (final link in _v6Variations) {
+    final fromId = exerciseIds[link.from];
+    final toId = exerciseIds[link.to];
+    if (fromId != null && toId != null) {
+      await db.into(db.exerciseVariations).insert(
+            ExerciseVariationsCompanion(
+              exerciseId: Value(fromId),
+              variationId: Value(toId),
+            ),
+            mode: InsertMode.insertOrIgnore,
+          );
+      await db.into(db.exerciseVariations).insert(
+            ExerciseVariationsCompanion(
+              exerciseId: Value(toId),
+              variationId: Value(fromId),
+            ),
+            mode: InsertMode.insertOrIgnore,
+          );
+    }
+  }
+}
+
+final _v6SeedItems = [
+  // ── Back — vertical pull (neutral grip) ──
+  _SeedExercise('neutralGripPullUp', MuscleGroup.back,
+      movementPattern: MovementPattern.pull,
+      isBodyweight: true,
+      muscles: [
+        _p(TargetMuscle.latissimusDorsi),
+        _s(TargetMuscle.brachialis),
+        _s(TargetMuscle.brachioradialis),
+        _s(TargetMuscle.rhomboids),
+      ],
+      equipmentKeys: ['pullUpBar']),
+  _SeedExercise('closeGripPulldown', MuscleGroup.back,
+      movementPattern: MovementPattern.pull,
+      muscles: [
+        _p(TargetMuscle.latissimusDorsi),
+        _p(TargetMuscle.bicepsBrachii),
+        _s(TargetMuscle.rhomboids),
+      ],
+      equipmentKeys: ['latPulldownMachine']),
+  _SeedExercise('neutralGripPulldown', MuscleGroup.back,
+      movementPattern: MovementPattern.pull,
+      muscles: [
+        _p(TargetMuscle.latissimusDorsi),
+        _s(TargetMuscle.brachialis),
+        _s(TargetMuscle.brachioradialis),
+      ],
+      equipmentKeys: ['latPulldownMachine']),
+  // ── Back — horizontal pull (underhand row) ──
+  _SeedExercise('underhandBarbellRow', MuscleGroup.back,
+      movementPattern: MovementPattern.pull,
+      muscles: [
+        _p(TargetMuscle.latissimusDorsi),
+        _p(TargetMuscle.bicepsBrachii),
+        _s(TargetMuscle.rhomboids),
+        _s(TargetMuscle.rearDeltoid),
+      ],
+      equipmentKeys: ['barbell']),
+  _SeedExercise('wideGripSeatedRow', MuscleGroup.back,
+      movementPattern: MovementPattern.pull,
+      muscles: [
+        _p(TargetMuscle.rhomboids),
+        _p(TargetMuscle.rearDeltoid),
+        _s(TargetMuscle.latissimusDorsi),
+        _s(TargetMuscle.bicepsBrachii),
+      ],
+      equipmentKeys: ['cableMachine']),
+  // ── Triceps — rope pushdown ──
+  _SeedExercise('ropeTricepsPushdown', MuscleGroup.triceps,
+      movementPattern: MovementPattern.isolation,
+      muscles: [
+        _p(TargetMuscle.tricepsBrachii, MuscleRegion.lateralHead),
+      ],
+      equipmentKeys: ['cableMachine']),
+  // ── Chest — decline barbell bench press ──
+  _SeedExercise('declineBarbellBenchPress', MuscleGroup.chest,
+      movementPattern: MovementPattern.push,
+      muscles: [
+        _p(TargetMuscle.pectoralisMajor, MuscleRegion.lower),
+        _s(TargetMuscle.anteriorDeltoid),
+        _s(TargetMuscle.tricepsBrachii),
+      ],
+      equipmentKeys: ['barbell', 'adjustableBench']),
+];
+
+const _v6Variations = [
+  // ── Vertical pulls — barra fixa (all 3 grips) ──
+  _Variation('pullUp', 'neutralGripPullUp'),
+  _Variation('chinUp', 'neutralGripPullUp'),
+  // ── Vertical pulls — pulldown (all 3 grips) ──
+  _Variation('latPulldown', 'closeGripPulldown'),
+  _Variation('latPulldown', 'neutralGripPulldown'),
+  _Variation('closeGripPulldown', 'neutralGripPulldown'),
+  // ── Vertical pulls — cross equipment (same grip) ──
+  _Variation('pullUp', 'latPulldown'),
+  _Variation('chinUp', 'closeGripPulldown'),
+  _Variation('neutralGripPullUp', 'neutralGripPulldown'),
+  // ── Vertical pulls — cross equipment (different grip) ──
+  _Variation('pullUp', 'closeGripPulldown'),
+  _Variation('pullUp', 'neutralGripPulldown'),
+  _Variation('chinUp', 'latPulldown'),
+  _Variation('chinUp', 'neutralGripPulldown'),
+  _Variation('neutralGripPullUp', 'latPulldown'),
+  _Variation('neutralGripPullUp', 'closeGripPulldown'),
+  // ── Horizontal pulls — rows ──
+  _Variation('barbellRow', 'underhandBarbellRow'),
+  _Variation('underhandBarbellRow', 'dumbbellRow'),
+  _Variation('underhandBarbellRow', 'seatedCableRow'),
+  _Variation('underhandBarbellRow', 'invertedRow'),
+  _Variation('seatedCableRow', 'wideGripSeatedRow'),
+  _Variation('barbellRow', 'wideGripSeatedRow'),
+  _Variation('wideGripSeatedRow', 'invertedRow'),
+  _Variation('wideGripSeatedRow', 'dumbbellRow'),
+  // ── Triceps — rope pushdown ──
+  _Variation('tricepsPushdown', 'ropeTricepsPushdown'),
+  _Variation('ropeTricepsPushdown', 'diamondPushUp'),
+  _Variation('ropeTricepsPushdown', 'dip'),
+  // ── Chest — decline bench press ──
+  _Variation('declineBarbellBenchPress', 'flatBarbellBenchPress'),
+  _Variation('declineBarbellBenchPress', 'inclineBarbellBenchPress'),
+  _Variation('declineBarbellBenchPress', 'machineChestPress'),
+];
 
 const _variations = [
   // ── Chest — mid pressing (pec major mid) ──

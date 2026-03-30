@@ -393,10 +393,19 @@ List<Map<String, dynamic>> getChironToolDeclarations() {
                   'Exercise name from the Catalog section in context',
                 ),
                 'sets': _propInteger('Number of sets'),
-                'reps': _propInteger(
-                  'Reps per set (for cardio use 0 and fill durationSeconds)',
+                'minReps': _propInteger(
+                  'Minimum reps per set (lower bound of rep range). Null for cardio.',
                   nullable: true,
                 ),
+                'maxReps': _propInteger(
+                  'Maximum reps per set (upper bound of rep range, same as minReps for fixed target). Null for cardio.',
+                  nullable: true,
+                ),
+                'isAmrap': {
+                  'type': 'boolean',
+                  'description':
+                      'True for AMRAP (As Many Reps As Possible) — user goes to near-failure. Default false.',
+                },
                 'restSeconds': _propInteger(
                   'Rest between sets in seconds',
                   nullable: true,
@@ -442,7 +451,18 @@ List<Map<String, dynamic>> getChironToolDeclarations() {
                   'Exercise name from the Catalog section in context',
                 ),
                 'sets': _propInteger('Number of sets'),
-                'reps': _propInteger('Reps per set', nullable: true),
+                'minReps': _propInteger(
+                  'Minimum reps per set (rep range lower bound)',
+                  nullable: true,
+                ),
+                'maxReps': _propInteger(
+                  'Maximum reps per set (rep range upper bound)',
+                  nullable: true,
+                ),
+                'isAmrap': {
+                  'type': 'boolean',
+                  'description': 'AMRAP set (go to near-failure)',
+                },
                 'restSeconds': _propInteger(
                   'Rest between sets in seconds',
                   nullable: true,
@@ -479,26 +499,18 @@ List<Map<String, dynamic>> getChironToolDeclarations() {
       'description':
           'Define the workout cycle (routine order). '
               'Call after creating/archiving workouts. '
-              'Each step is { type: "workout", workoutId: N } or '
-              '{ type: "rest" }. Include only active workout IDs. '
+              'Each step is { workoutId: N }. Include only active workout IDs. '
               'Replaces the full cycle. Always call getTrainingState after.',
       'parameters': _schema(
         properties: {
           'steps': {
             'type': 'array',
-            'description': 'Ordered cycle steps',
+            'description': 'Ordered workout IDs in cycle order',
             'items': _schema(
               properties: {
-                'type': _propEnum(
-                  ['workout', 'rest'],
-                  'Step type: workout or rest',
-                ),
-                'workoutId': _propInteger(
-                  'Workout ID (required when type=workout)',
-                  nullable: true,
-                ),
+                'workoutId': _propInteger('Workout ID (from context)'),
               },
-              required: ['type'],
+              required: ['workoutId'],
             ),
           },
         },
@@ -515,6 +527,156 @@ List<Map<String, dynamic>> getChironToolDeclarations() {
       'parameters': _schema(
         properties: {},
         required: [],
+      ),
+    },
+    {
+      'name': 'setProgressionRules',
+      'description':
+          'Replace all progression rules for a program. Each rule defines '
+              'auto-progression for one exercise (e.g. add weight or reps). '
+              'Call getTrainingState first to get the programId.',
+      'parameters': _schema(
+        properties: {
+          'programId': {'type': 'integer', 'description': 'ID of the program'},
+          'rules': {
+            'type': 'array',
+            'description': 'List of progression rule objects',
+            'items': {
+              'type': 'object',
+              'properties': {
+                'exerciseId': {'type': 'integer'},
+                'type': {
+                  'type': 'string',
+                  'enum': ['incrementWeight', 'incrementReps', 'incrementSets'],
+                },
+                'value': {
+                  'type': 'number',
+                  'description': 'Increment value (kg, reps, or sets)',
+                },
+                'frequency': {
+                  'type': 'string',
+                  'enum': ['everySession', 'everyRotation'],
+                },
+                'condition': {
+                  'type': 'string',
+                  'enum': ['hitsMaxReps', 'completesAllSets', 'rpeBelow'],
+                  'description': 'Optional condition to trigger progression',
+                },
+                'conditionValue': {
+                  'type': 'number',
+                  'description': 'Threshold for condition (e.g. RPE threshold)',
+                },
+              },
+              'required': ['exerciseId', 'type', 'value', 'frequency'],
+            },
+          },
+        },
+        required: ['programId', 'rules'],
+      ),
+    },
+    {
+      'name': 'createProgram',
+      'description':
+          'Create a training program (mesocycle) and activate it. '
+              'Archives any currently active program. '
+              'Optionally sets the workout cycle for the new program.',
+      'parameters': _schema(
+        properties: {
+          'name': _propString('Program name (e.g. "PPL Hipertrofia")'),
+          'focus': _propEnum(
+            ['hypertrophy', 'strength', 'endurance', 'custom'],
+            'Training focus',
+          ),
+          'durationMode': _propEnum(
+            ['sessions', 'rotations'],
+            'How duration is measured',
+          ),
+          'durationValue': _propInteger('Number of sessions or rotations'),
+          'defaultRestSeconds': _propInteger(
+            'Default rest between sets in seconds (auto-set from focus if omitted)',
+            nullable: true,
+          ),
+          'workoutIds': {
+            'type': 'array',
+            'description': 'Workout IDs for the cycle (from getTrainingState)',
+            'items': {'type': 'integer'},
+          },
+        },
+        required: ['name', 'focus', 'durationMode', 'durationValue'],
+      ),
+    },
+    {
+      'name': 'archiveProgram',
+      'description':
+          'Archive a program. Preserves execution history. '
+              'Call getTrainingState first to get the programId.',
+      'parameters': _schema(
+        properties: {
+          'programId': _propInteger('ID of the program to archive'),
+        },
+        required: ['programId'],
+      ),
+    },
+    {
+      'name': 'setDeloadActive',
+      'description':
+          'Activate or deactivate deload for a program. '
+              'When active, execution targets are reduced per the deload config. '
+              'Call getTrainingState first to check current deload status.',
+      'parameters': _schema(
+        properties: {
+          'programId': _propInteger('Program ID'),
+          'active': {
+            'type': 'boolean',
+            'description': 'true to enter deload, false to exit',
+          },
+        },
+        required: ['programId', 'active'],
+      ),
+    },
+    {
+      'name': 'getWeeklyVolume',
+      'description':
+          'Get total working sets per muscle group for the last 7 days. '
+              'Excludes warmup sets. Use to check if user is under/over volume.',
+      'parameters': _schema(
+        properties: {},
+        required: [],
+      ),
+    },
+    {
+      'name': 'getEstimated1RM',
+      'description':
+          'Get the estimated 1RM for a specific exercise. '
+              'Calculated from execution history using the Epley formula. '
+              'For bodyweight exercises, includes body weight in the calculation. '
+              'Use for percentage-based programming (e.g. "use 75% of 1RM").',
+      'parameters': _schema(
+        properties: {
+          'exerciseId': _propInteger(
+            'Exercise ID (from getTrainingState or context)',
+          ),
+        },
+        required: ['exerciseId'],
+      ),
+    },
+    {
+      'name': 'suggestWarmup',
+      'description':
+          'Calculate warmup sets for an exercise based on the working weight. '
+              'Returns a pyramid ramp-up. '
+              'Consider the user\'s available training time before suggesting — '
+              'if time is tight, skip or reduce warmup.',
+      'parameters': _schema(
+        properties: {
+          'workingWeight': {
+            'type': 'number',
+            'description': 'Target working weight in kg',
+          },
+          'workingSets': _propInteger('Number of working sets planned'),
+          'workingReps': _propInteger('Reps per working set'),
+        },
+        required: ['workingWeight', 'workingSets', 'workingReps'],
       ),
     },
     {

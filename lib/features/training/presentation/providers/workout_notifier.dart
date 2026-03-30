@@ -3,8 +3,9 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/errors/result.dart';
 import '../../data/repositories/training_providers.dart';
 import '../../domain/entities/workout.dart';
-import 'training_analytics_provider.dart';
 import '../../domain/entities/workout_exercise.dart';
+import 'training_analytics_provider.dart';
+import 'workout_execution_notifier.dart';
 
 part 'workout_notifier.g.dart';
 
@@ -32,11 +33,7 @@ class WorkoutList extends _$WorkoutList {
     );
     final result = await repo.create(workout, exercises);
     final id = result.getOrThrow();
-    final cycleRepo = ref.read(cycleRepositoryProvider);
-    final cycleResult = await cycleRepo.appendWorkoutToCycle(id);
-    cycleResult.getOrThrow();
     ref.invalidateSelf();
-    ref.invalidate(cycleStepsProvider);
     return id;
   }
 
@@ -53,12 +50,17 @@ class WorkoutList extends _$WorkoutList {
   }
 
   Future<void> deleteWorkout(int id) async {
+    final execRepo = ref.read(workoutExecutionRepositoryProvider);
+    final cascadeResult = await execRepo.deleteUnfinishedByWorkout(id);
+    cascadeResult.getOrThrow();
+
     final repo = ref.read(workoutRepositoryProvider);
     final result = await repo.delete(id);
     result.getOrThrow();
     ref.invalidateSelf();
     ref.invalidate(workoutByIdProvider(id));
     ref.invalidate(workoutExercisesProvider(id));
+    ref.invalidate(workoutExecutionListProvider);
   }
 
   Future<void> archiveWorkout(int id) async {
@@ -66,7 +68,7 @@ class WorkoutList extends _$WorkoutList {
     final result = await repo.archive(id);
     result.getOrThrow();
     final cycleRepo = ref.read(cycleRepositoryProvider);
-    final cycleResult = await cycleRepo.removeWorkoutFromCycle(id);
+    final cycleResult = await cycleRepo.removeWorkoutFromAllCycles(id);
     cycleResult.getOrThrow();
     ref.invalidateSelf();
     ref.invalidate(archivedWorkoutListProvider);
@@ -77,23 +79,15 @@ class WorkoutList extends _$WorkoutList {
     final repo = ref.read(workoutRepositoryProvider);
     final result = await repo.unarchive(id);
     result.getOrThrow();
-    final cycleRepo = ref.read(cycleRepositoryProvider);
-    final cycleResult = await cycleRepo.appendWorkoutToCycle(id);
-    cycleResult.getOrThrow();
     ref.invalidateSelf();
     ref.invalidate(archivedWorkoutListProvider);
-    ref.invalidate(cycleStepsProvider);
   }
 
   Future<int> duplicateWorkout(int id, {required String nameSuffix}) async {
     final repo = ref.read(workoutRepositoryProvider);
     final result = await repo.duplicate(id, nameSuffix: nameSuffix);
     final newId = result.getOrThrow();
-    final cycleRepo = ref.read(cycleRepositoryProvider);
-    final cycleResult = await cycleRepo.appendWorkoutToCycle(newId);
-    cycleResult.getOrThrow();
     ref.invalidateSelf();
-    ref.invalidate(cycleStepsProvider);
     return newId;
   }
 

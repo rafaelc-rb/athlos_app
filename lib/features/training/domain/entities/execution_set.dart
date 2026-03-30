@@ -27,8 +27,26 @@ class ExecutionSet {
 
   final bool isCompleted;
 
+  /// Whether this is a warmup set (excluded from volume, load feedback, PRs).
+  final bool isWarmup;
+
+  /// Rate of Perceived Exertion (1–10). Null when not recorded.
+  final int? rpe;
+
   /// Per-set user notes.
   final String? notes;
+
+  /// Reps performed with the left side (unilateral exercises).
+  final int? leftReps;
+
+  /// Weight used for the left side (unilateral exercises).
+  final double? leftWeight;
+
+  /// Reps performed with the right side (unilateral exercises).
+  final int? rightReps;
+
+  /// Weight used for the right side (unilateral exercises).
+  final double? rightWeight;
 
   /// Drop set segments. Empty for normal sets.
   final List<ExecutionSetSegment> segments;
@@ -45,7 +63,13 @@ class ExecutionSet {
     this.duration,
     this.distance,
     this.isCompleted = false,
+    this.isWarmup = false,
+    this.rpe,
     this.notes,
+    this.leftReps,
+    this.leftWeight,
+    this.rightReps,
+    this.rightWeight,
     this.segments = const [],
   });
 

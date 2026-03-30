@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
-import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../../chiron/presentation/widgets/chiron_bottom_sheet.dart';
 import '../../../../core/errors/result.dart';
@@ -12,620 +12,357 @@ import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/training_providers.dart';
 import '../../domain/entities/cycle_step.dart';
 import '../../domain/entities/workout.dart';
+import '../../domain/enums/program_focus.dart';
+import '../providers/program_notifier.dart';
 import '../providers/training_analytics_provider.dart';
 import '../providers/workout_notifier.dart';
 
-final _placeholderWorkouts = List.generate(
-  6,
-  (i) => Workout(
-    id: -(i + 1),
-    name: BoneMock.name,
-    createdAt: DateTime(2024),
-  ),
-);
-
-/// Training module — Workouts tab.
+/// Training module — Treinos tab.
 ///
-/// Shows active workouts in a reorderable list with a FAB to start the next
-/// workout in the cycle and a collapsible archived section.
+/// Shows the active program's cycle as a clean ordered list of workouts.
+/// Gear icon opens ProgramDetailScreen for advanced settings (progression,
+/// deload, etc.). The "add workout" picker shows the personal catalog.
 class TrainingWorkoutsScreen extends ConsumerWidget {
   const TrainingWorkoutsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    ref.watch(ensureCycleSyncProvider);
-    final workoutsAsync = ref.watch(workoutListProvider);
-    final cycleListAsync = ref.watch(cycleListItemsProvider);
-    final nextWorkoutToStartAsync = ref.watch(nextWorkoutToStartProvider);
-    final nextStepIndexAsync = ref.watch(nextCycleStepIndexProvider);
-    final archivedAsync = ref.watch(archivedWorkoutListProvider);
+    final programAsync = ref.watch(activeProgramProvider);
+    final program = programAsync.value;
 
-    final nextWorkout = nextWorkoutToStartAsync.value;
-    final nextStepIndex = nextStepIndexAsync.value;
-    final workoutCount = workoutsAsync.value?.length ?? 0;
+    final nextWorkoutAsync = ref.watch(nextWorkoutToStartProvider);
+    final nextWorkout = nextWorkoutAsync.value;
 
     return Scaffold(
-      body: () {
-        if (workoutsAsync.hasError) {
-          return Center(child: Text(l10n.genericError));
-        }
-        final isLoading = workoutsAsync.isLoading;
-        final workouts = workoutsAsync.value ?? [];
-        if (!isLoading &&
-            workouts.isEmpty &&
-            (archivedAsync.value == null || archivedAsync.value!.isEmpty)) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.fitness_center_outlined,
-                  size: 64,
-                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                ),
-                const SizedBox(height: AthlosSpacing.md),
-                Text(
-                  l10n.emptyWorkouts,
-                  style: textTheme.titleMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: AthlosSpacing.sm),
-                Text(
-                  l10n.emptyWorkoutsHint,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-        return Skeletonizer(
-          enabled: isLoading || cycleListAsync.isLoading,
-          child: cycleListAsync.when(
-            data: (data) => _CycleListBody(
-              items: data.items,
-              isFromCycle: data.isFromCycle,
-              nextStepIndex: nextStepIndex,
-              nextWorkoutId: nextWorkout?.id,
-              archivedAsync: archivedAsync,
-            ),
-            loading: () => _CycleListBody(
-              items: (workouts.isEmpty ? _placeholderWorkouts : workouts)
-                  .map((w) => CycleListWorkoutItem(stepIndex: 0, workout: w))
-                  .toList(),
-              isFromCycle: false,
-              nextStepIndex: null,
-              nextWorkoutId: null,
-              archivedAsync: archivedAsync,
-            ),
-            error: (_, stackTrace) => Center(child: Text(l10n.genericError)),
-          ),
-        );
-      }(),
-      floatingActionButton: _ExpandableWorkoutFab(
-        chironLabel: workoutCount == 0
-            ? l10n.chironCreateWorkoutShortcut
-            : l10n.chironAnalyzeWorkoutsShortcut,
-        createManualLabel: l10n.trainingWorkoutActionCreateManual,
-        addRestLabel: l10n.trainingAddRestToCycleAction,
-        onChiron: () => showChironSheet(
-          context,
-          initialMessage: workoutCount == 0
-              ? l10n.chironAskToCreateWorkout
-              : l10n.chironAnalyzeWorkoutsMessage,
-        ),
-        onCreateManual: () => context.push(RoutePaths.trainingWorkoutNew),
-        onAddRest: () => _addRestToCycle(context, ref),
+      body: program == null
+          ? Center(
+              child: programAsync.isLoading
+                  ? const CircularProgressIndicator()
+                  : Text(l10n.genericError),
+            )
+          : _ActiveProgramCycleView(programId: program.id),
+      floatingActionButton: _StartNextWorkoutFab(nextWorkout: nextWorkout),
+    );
+  }
+}
+
+// ── Start Next Workout FAB ────────────────────────────────────────────
+
+class _StartNextWorkoutFab extends StatelessWidget {
+  final dynamic nextWorkout;
+
+  const _StartNextWorkoutFab({this.nextWorkout});
+
+  @override
+  Widget build(BuildContext context) {
+    if (nextWorkout == null) return const SizedBox.shrink();
+
+    return FloatingActionButton(
+      heroTag: 'workouts_fab',
+      onPressed: () => context.push(
+        '${RoutePaths.trainingWorkouts}/${nextWorkout.id}/execute',
       ),
-    );
-  }
-
-  Future<void> _addRestToCycle(BuildContext context, WidgetRef ref) async {
-    try {
-      final cycleRepo = ref.read(cycleRepositoryProvider);
-      final result = await cycleRepo.appendRestToCycle();
-      result.getOrThrow();
-      ref.invalidate(cycleStepsProvider);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.trainingCycleAddRest),
-          ),
-        );
-      }
-    } on Exception catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.genericError),
-          ),
-        );
-      }
-    }
-  }
-
-}
-
-/// Expandable FAB (speed dial): Quíron, Criar treino manual, Adicionar descanso.
-class _ExpandableWorkoutFab extends StatefulWidget {
-  final String chironLabel;
-  final String createManualLabel;
-  final String addRestLabel;
-  final VoidCallback onChiron;
-  final VoidCallback onCreateManual;
-  final VoidCallback onAddRest;
-
-  const _ExpandableWorkoutFab({
-    required this.chironLabel,
-    required this.createManualLabel,
-    required this.addRestLabel,
-    required this.onChiron,
-    required this.onCreateManual,
-    required this.onAddRest,
-  });
-
-  @override
-  State<_ExpandableWorkoutFab> createState() => _ExpandableWorkoutFabState();
-}
-
-class _ExpandableWorkoutFabState extends State<_ExpandableWorkoutFab> {
-  bool _expanded = false;
-
-  void _toggle() {
-    setState(() => _expanded = !_expanded);
-  }
-
-  void _onAction(VoidCallback action) {
-    action();
-    _toggle();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        // Expanded actions (top to bottom: Criar, Configurar ciclo, Iniciar próximo)
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          alignment: Alignment.bottomCenter,
-          child: _expanded
-              ? Padding(
-                  padding: const EdgeInsets.only(bottom: AthlosSpacing.sm),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      _ActionChip(
-                        icon: Icons.auto_awesome,
-                        label: widget.chironLabel,
-                        onPressed: () => _onAction(widget.onChiron),
-                      ),
-                      const SizedBox(height: AthlosSpacing.sm),
-                      _ActionChip(
-                        icon: Icons.edit_note,
-                        label: widget.createManualLabel,
-                        onPressed: () => _onAction(widget.onCreateManual),
-                      ),
-                      const SizedBox(height: AthlosSpacing.sm),
-                      _ActionChip(
-                        icon: Icons.hotel,
-                        label: widget.addRestLabel,
-                        onPressed: () => _onAction(widget.onAddRest),
-                      ),
-                    ],
-                  ),
-                )
-              : const SizedBox.shrink(),
-        ),
-        FloatingActionButton(
-          heroTag: 'workouts_fab',
-          onPressed: _toggle,
-          tooltip: _expanded ? '' : widget.createManualLabel,
-          child: AnimatedRotation(
-            turns: _expanded ? 0.125 : 0,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            child: const Icon(Icons.add),
-          ),
-        ),
-      ],
+      tooltip: nextWorkout.name,
+      child: const Icon(Icons.play_arrow),
     );
   }
 }
 
-class _ActionChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onPressed;
+// ── Active program cycle view ─────────────────────────────────────────
 
-  const _ActionChip({
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-  });
+class _ActiveProgramCycleView extends ConsumerStatefulWidget {
+  final int programId;
+
+  const _ActiveProgramCycleView({required this.programId});
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AthlosSpacing.xs),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Material(
-            color: colorScheme.surfaceContainerHigh,
-            borderRadius: AthlosRadius.mdAll,
-            elevation: 2,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AthlosSpacing.sm,
-                vertical: AthlosSpacing.xs,
-              ),
-              child: Text(
-                label,
-                style: textTheme.labelLarge,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-          const SizedBox(width: AthlosSpacing.sm),
-          FloatingActionButton.small(
-            heroTag: null,
-            onPressed: onPressed,
-            tooltip: label,
-            child: Icon(icon),
-          ),
-        ],
-      ),
-    );
-  }
+  ConsumerState<_ActiveProgramCycleView> createState() =>
+      _ActiveProgramCycleViewState();
 }
 
-class _CycleListBody extends ConsumerStatefulWidget {
-  final List<CycleListItem> items;
-  final bool isFromCycle;
-  final int? nextStepIndex;
-  final int? nextWorkoutId;
-  final AsyncValue<List<Workout>> archivedAsync;
+class _ActiveProgramCycleViewState
+    extends ConsumerState<_ActiveProgramCycleView> {
+  List<int>? _workoutIds;
 
-  const _CycleListBody({
-    required this.items,
-    required this.isFromCycle,
-    required this.nextStepIndex,
-    required this.nextWorkoutId,
-    required this.archivedAsync,
-  });
-
-  @override
-  ConsumerState<_CycleListBody> createState() => _CycleListBodyState();
-}
-
-class _CycleListBodyState extends ConsumerState<_CycleListBody> {
-  late List<CycleListItem> _items;
-  bool _isArchivedExpanded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _items = List.of(widget.items);
+  void _syncFromSteps(List<TrainingCycleStep> steps) {
+    _workoutIds ??= steps.map((s) => s.workoutId).toList();
   }
 
-  @override
-  void didUpdateWidget(covariant _CycleListBody oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.items != oldWidget.items) {
-      _items = List.of(widget.items);
-    }
+  Future<void> _saveOrder() async {
+    if (_workoutIds == null) return;
+    final repo = ref.read(cycleRepositoryProvider);
+    final steps = [
+      for (var i = 0; i < _workoutIds!.length; i++)
+        TrainingCycleStep(id: 0, orderIndex: i, workoutId: _workoutIds![i]),
+    ];
+    final result = await repo.setSteps(steps, widget.programId);
+    result.getOrThrow();
+    ref.invalidate(cycleStepsProvider);
+    ref.invalidate(cycleStepsForProgramProvider(widget.programId));
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final textTheme = Theme.of(context).textTheme;
-
-    return CustomScrollView(
-      slivers: [
-        SliverReorderableList(
-          itemCount: _items.length,
-          onReorder: _onReorder,
-          itemBuilder: (context, index) {
-            final item = _items[index];
-            return switch (item) {
-              CycleListRestItem() => _RestTile(
-                  key: ValueKey('rest_$index'),
-                  index: index,
-                  isNext: index == widget.nextStepIndex,
-                  canReorder: widget.isFromCycle,
-                  label: l10n.trainingCycleRestLabel,
-                ),
-              CycleListWorkoutItem(:final workout) => _WorkoutCard(
-                  key: ValueKey(workout.id),
-                  index: index,
-                  workout: workout,
-                  isNext: workout.id == widget.nextWorkoutId,
-                  onTap: () => context.push(
-                    '${RoutePaths.trainingWorkouts}/${workout.id}',
-                  ),
-                  onStart: () => _startWorkout(context, workout.id),
-                  onArchive: () => _archiveWorkout(context, workout.id),
-                  onDuplicate: () => _duplicateWorkout(context, workout.id),
-                  onDelete: () => _confirmDelete(context, workout),
-                ),
-            };
-          },
-        ),
-
-        if (widget.archivedAsync.value != null &&
-            widget.archivedAsync.value!.isNotEmpty)
-          SliverToBoxAdapter(
-            child: ExpansionTile(
-              title: Text(
-                l10n.archivedSection,
-                style: textTheme.titleSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              initiallyExpanded: _isArchivedExpanded,
-              onExpansionChanged: (v) => setState(() => _isArchivedExpanded = v),
-              children: widget.archivedAsync.value!
-                  .map((w) => _ArchivedWorkoutTile(
-                        workout: w,
-                        onUnarchive: () => _unarchiveWorkout(context, w.id),
-                        onDuplicate: () => _duplicateWorkout(context, w.id),
-                        onTap: () => context.push(
-                          '${RoutePaths.trainingWorkouts}/${w.id}',
-                        ),
-                      ))
-                  .toList(),
-            ),
-          ),
-
-        const SliverPadding(
-            padding: EdgeInsets.only(bottom: AthlosSpacing.fabClearance)),
-      ],
-    );
+  void _addWorkout(int workoutId) {
+    setState(() {
+      _workoutIds = [...?_workoutIds, workoutId];
+    });
+    _saveOrder();
   }
 
-  Future<void> _onReorder(int oldIndex, int newIndex) async {
+  void _removeAt(int index) {
+    setState(() {
+      _workoutIds = [...?_workoutIds]..removeAt(index);
+    });
+    _saveOrder();
+  }
+
+  void _reorder(int oldIndex, int newIndex) {
     setState(() {
       if (oldIndex < newIndex) newIndex -= 1;
-      final item = _items.removeAt(oldIndex);
-      _items.insert(newIndex, item);
+      final ids = [...?_workoutIds];
+      final item = ids.removeAt(oldIndex);
+      ids.insert(newIndex, item);
+      _workoutIds = ids;
     });
-
-    if (widget.isFromCycle) {
-      final steps = <TrainingCycleStep>[];
-      for (var i = 0; i < _items.length; i++) {
-        final it = _items[i];
-        switch (it) {
-          case CycleListRestItem():
-            steps.add(TrainingCycleStep(
-              id: 0,
-              orderIndex: i,
-              type: CycleStepType.rest,
-              workoutId: null,
-            ));
-          case CycleListWorkoutItem(:final workout):
-            steps.add(TrainingCycleStep(
-              id: 0,
-              orderIndex: i,
-              type: CycleStepType.workout,
-              workoutId: workout.id,
-            ));
-        }
-      }
-      try {
-        final result = await ref
-            .read(cycleRepositoryProvider)
-            .setSteps(steps);
-        result.getOrThrow();
-        ref.invalidate(cycleStepsProvider);
-      } on Exception catch (_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context)!.genericError)),
-          );
-        }
-      }
-    } else {
-      final orderedIds = <int>[
-        for (final it in _items)
-          if (it is CycleListWorkoutItem) it.workout.id,
-      ];
-      try {
-        await ref.read(workoutListProvider.notifier).reorderWorkouts(orderedIds);
-      } on Exception catch (_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context)!.genericError)),
-          );
-        }
-      }
-    }
+    _saveOrder();
   }
 
-  void _startWorkout(BuildContext context, int workoutId) {
-    context.push('${RoutePaths.trainingWorkouts}/$workoutId/execute');
-  }
-
-  void _archiveWorkout(BuildContext context, int id) async {
-    try {
-      await ref.read(workoutListProvider.notifier).archiveWorkout(id);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.workoutArchived),
-          ),
-        );
-      }
-    } on Exception catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.genericError),
-          ),
-        );
-      }
-    }
-  }
-
-  void _unarchiveWorkout(BuildContext context, int id) async {
-    try {
-      await ref.read(workoutListProvider.notifier).unarchiveWorkout(id);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.workoutUnarchived),
-          ),
-        );
-      }
-    } on Exception catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.genericError),
-          ),
-        );
-      }
-    }
-  }
-
-  void _duplicateWorkout(BuildContext context, int id) async {
+  void _showAddWorkoutPicker(
+    BuildContext context,
+    List<Workout> workouts,
+    List<int> cycleWorkoutIds,
+  ) {
     final l10n = AppLocalizations.of(context)!;
-    try {
-      await ref
-          .read(workoutListProvider.notifier)
-          .duplicateWorkout(id, nameSuffix: l10n.workoutCopySuffix);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.duplicatedWorkout),
-          ),
-        );
-      }
-    } on Exception catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.genericError),
-          ),
-        );
-      }
-    }
-  }
+    final colorScheme = Theme.of(context).colorScheme;
 
-  void _confirmDelete(BuildContext context, Workout workout) {
-    final l10n = AppLocalizations.of(context)!;
-
-    showDialog(
+    showModalBottomSheet<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.deleteWorkoutTitle),
-        content: Text(l10n.deleteWorkoutMessage),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                await ref
-                    .read(workoutListProvider.notifier)
-                    .deleteWorkout(workout.id);
-              } on Exception catch (_) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(AppLocalizations.of(context)!.genericError),
+      isScrollControlled: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        minChildSize: 0.3,
+        maxChildSize: 0.85,
+        expand: false,
+        builder: (ctx, scrollController) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(AthlosSpacing.md),
+                child: Text(
+                  l10n.trainingCycleAddWorkout,
+                  style: Theme.of(ctx).textTheme.titleMedium,
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  children: [
+                    ...workouts.map((w) {
+                      final isInCycle = cycleWorkoutIds.contains(w.id);
+                      return ListTile(
+                        leading: Icon(
+                          isInCycle
+                              ? Icons.check_circle
+                              : Icons.fitness_center,
+                          color: isInCycle
+                              ? colorScheme.primary
+                              : colorScheme.onSurfaceVariant,
+                        ),
+                        title: Text(w.name),
+                        subtitle:
+                            w.description != null && w.description!.isNotEmpty
+                                ? Text(
+                                    w.description!,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  )
+                                : null,
+                        onTap: () {
+                          _addWorkout(w.id);
+                          Navigator.of(ctx).pop();
+                        },
+                      );
+                    }),
+                    const Divider(),
+                    ListTile(
+                      leading: Icon(Icons.edit_note,
+                          color: colorScheme.primary),
+                      title: Text(
+                        l10n.trainingWorkoutActionCreateManual,
+                        style: TextStyle(color: colorScheme.primary),
+                      ),
+                      onTap: () {
+                        Navigator.of(ctx).pop();
+                        context.push(RoutePaths.trainingWorkoutNew);
+                      },
                     ),
-                  );
-                }
-              }
-            },
-            child: Text(l10n.delete),
+                    ListTile(
+                      leading: Icon(Icons.auto_awesome,
+                          color: colorScheme.primary),
+                      title: Text(
+                        l10n.chironCreateWorkoutShortcut,
+                        style: TextStyle(color: colorScheme.primary),
+                      ),
+                      onTap: () {
+                        Navigator.of(ctx).pop();
+                        showChironSheet(
+                          context,
+                          initialMessage: l10n.chironAskToCreateWorkout,
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final programAsync = ref.watch(activeProgramProvider);
+    final program = programAsync.value;
+
+    final stepsAsync =
+        ref.watch(cycleStepsForProgramProvider(widget.programId));
+    final workoutsAsync = ref.watch(workoutListProvider);
+    final workouts = workoutsAsync.value ?? [];
+
+    final nextWorkoutAsync = ref.watch(nextWorkoutToStartProvider);
+    final nextWorkoutId = nextWorkoutAsync.value?.id;
+
+    stepsAsync.whenData(_syncFromSteps);
+
+    final ids = _workoutIds ?? [];
+    final workoutMap = {for (final w in workouts) w.id: w};
+
+    final l10n = AppLocalizations.of(context)!;
+
+    if (ids.isEmpty && !stepsAsync.isLoading) {
+      return Column(
+        children: [
+          if (program != null) _ProgramHeader(program: program),
+          Expanded(
+            child: _EmptyCycleMessage(
+              workouts: workouts,
+              onAddWorkout: _addWorkout,
+            ),
           ),
         ],
-      ),
+      );
+    }
+
+    return Column(
+      children: [
+        if (program != null) _ProgramHeader(program: program),
+        Expanded(
+          child: ReorderableListView.builder(
+            padding: const EdgeInsets.fromLTRB(
+              AthlosSpacing.sm,
+              AthlosSpacing.xs,
+              AthlosSpacing.sm,
+              AthlosSpacing.fabClearance,
+            ),
+            itemCount: ids.length + 1,
+            onReorder: (oldIndex, newIndex) {
+              if (oldIndex >= ids.length || newIndex > ids.length) return;
+              _reorder(oldIndex, newIndex);
+            },
+            itemBuilder: (context, index) {
+              if (index == ids.length) {
+                return Padding(
+                  key: const ValueKey('add-workout-btn'),
+                  padding: const EdgeInsets.only(
+                    top: AthlosSpacing.xs,
+                    right: AthlosSpacing.xs,
+                  ),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          _showAddWorkoutPicker(context, workouts, ids),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: Text(l10n.trainingCycleAddWorkout),
+                    ),
+                  ),
+                );
+              }
+
+              final workoutId = ids[index];
+              final workout = workoutMap[workoutId];
+              final isNext = workoutId == nextWorkoutId;
+              return _CycleWorkoutCard(
+                key: ValueKey('cycle-$index-$workoutId'),
+                index: index,
+                workoutName: workout?.name ?? 'Treino #$workoutId',
+                workoutDescription: workout?.description,
+                isNext: isNext,
+                onTap: workout != null
+                    ? () => context.push(
+                          '${RoutePaths.trainingWorkouts}/${workout.id}',
+                        )
+                    : null,
+                onStart: () => context.push(
+                  '${RoutePaths.trainingWorkouts}/$workoutId/execute',
+                ),
+                onRemove: () => _removeAt(index),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _RestTile extends StatelessWidget {
-  final int index;
-  final bool isNext;
-  final bool canReorder;
-  final String label;
+// ── Program header (name + focus, inline) ─────────────────────────────
 
-  const _RestTile({
-    super.key,
-    required this.index,
-    required this.isNext,
-    required this.canReorder,
-    required this.label,
-  });
+class _ProgramHeader extends ConsumerWidget {
+  final dynamic program;
+
+  const _ProgramHeader({required this.program});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final l10n = AppLocalizations.of(context)!;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AthlosSpacing.sm,
-        vertical: AthlosSpacing.xs,
+    final focusLabel = switch (program.focus as ProgramFocus) {
+      ProgramFocus.hypertrophy => l10n.programFocusHypertrophy,
+      ProgramFocus.strength => l10n.programFocusStrength,
+      ProgramFocus.endurance => l10n.programFocusEndurance,
+      ProgramFocus.custom => l10n.programFocusCustom,
+    };
+
+    final programId = program.id as int;
+    final progressAsync = ref.watch(programProgressProvider(programId));
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AthlosSpacing.md,
+        AthlosSpacing.sm,
+        AthlosSpacing.xs,
+        AthlosSpacing.xs,
       ),
-      shape: isNext
-          ? RoundedRectangleBorder(
-              borderRadius: AthlosRadius.mdAll,
-              side: BorderSide(color: colorScheme.primary, width: 2),
-            )
-          : null,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AthlosSpacing.md,
-          vertical: AthlosSpacing.sm,
-        ),
-        child: Row(
-          children: [
-            if (canReorder)
-              ReorderableDragStartListener(
-                index: index,
-                child: Icon(
-                  Icons.drag_handle,
-                  color: colorScheme.onSurfaceVariant,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_awesome, color: colorScheme.primary, size: 18),
+              const Gap(AthlosSpacing.sm),
+              Expanded(
+                child: Text(
+                  program.name as String,
+                  style: textTheme.titleMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-            if (canReorder) const SizedBox(width: AthlosSpacing.sm),
-            Icon(
-              Icons.hotel,
-              size: 24,
-              color: colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: AthlosSpacing.sm),
-            Expanded(
-              child: Text(
-                label,
-                style: textTheme.titleMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-            if (isNext)
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AthlosSpacing.sm,
@@ -633,42 +370,90 @@ class _RestTile extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: colorScheme.primaryContainer,
-                  borderRadius: AthlosRadius.mdAll,
+                  borderRadius: AthlosRadius.smAll,
                 ),
                 child: Text(
-                  l10n.nextWorkoutBadge,
+                  focusLabel,
                   style: textTheme.labelSmall?.copyWith(
                     color: colorScheme.onPrimaryContainer,
                   ),
                 ),
               ),
-          ],
-        ),
+              if (program.isInDeload as bool) ...[
+                const Gap(AthlosSpacing.xxs),
+                Icon(Icons.spa, size: 16, color: colorScheme.tertiary),
+              ],
+              IconButton(
+                icon: Icon(
+                  Icons.settings_outlined,
+                  size: 20,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                tooltip: l10n.programAdvancedSettings,
+                visualDensity: VisualDensity.compact,
+                onPressed: () =>
+                    context.push(RoutePaths.trainingProgramDetail(programId)),
+              ),
+            ],
+          ),
+          const Gap(AthlosSpacing.xs),
+          progressAsync.when(
+            data: (progress) => Padding(
+              padding: const EdgeInsets.only(right: AthlosSpacing.sm),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: AthlosRadius.smAll,
+                      child: LinearProgressIndicator(
+                        value: progress.fraction,
+                        minHeight: 4,
+                        backgroundColor: colorScheme.surfaceContainerHighest,
+                      ),
+                    ),
+                  ),
+                  const Gap(AthlosSpacing.sm),
+                  Text(
+                    '${progress.completedSessions}/${progress.totalSessions}',
+                    style: textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            loading: () => const Padding(
+              padding: EdgeInsets.only(right: AthlosSpacing.sm),
+              child: LinearProgressIndicator(minHeight: 4),
+            ),
+            error: (_, _) => const SizedBox.shrink(),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _WorkoutCard extends StatelessWidget {
-  final int index;
-  final Workout workout;
-  final bool isNext;
-  final VoidCallback onTap;
-  final VoidCallback onStart;
-  final VoidCallback onArchive;
-  final VoidCallback onDuplicate;
-  final VoidCallback onDelete;
+// ── Cycle workout card ────────────────────────────────────────────────
 
-  const _WorkoutCard({
+class _CycleWorkoutCard extends StatelessWidget {
+  final int index;
+  final String workoutName;
+  final String? workoutDescription;
+  final bool isNext;
+  final VoidCallback? onTap;
+  final VoidCallback onStart;
+  final VoidCallback onRemove;
+
+  const _CycleWorkoutCard({
     super.key,
     required this.index,
-    required this.workout,
+    required this.workoutName,
+    this.workoutDescription,
     required this.isNext,
-    required this.onTap,
+    this.onTap,
     required this.onStart,
-    required this.onArchive,
-    required this.onDuplicate,
-    required this.onDelete,
+    required this.onRemove,
   });
 
   @override
@@ -678,71 +463,55 @@ class _WorkoutCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
 
     return Card(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AthlosSpacing.sm,
-        vertical: AthlosSpacing.xs,
-      ),
+      margin: const EdgeInsets.only(bottom: AthlosSpacing.xs),
       shape: isNext
           ? RoundedRectangleBorder(
               borderRadius: AthlosRadius.mdAll,
-              side: BorderSide(color: colorScheme.primary, width: 2),
+              side: BorderSide(
+                  color: colorScheme.primary.withValues(alpha: 0.6),
+                  width: 1.5),
             )
           : null,
       child: InkWell(
         onTap: onTap,
         borderRadius: AthlosRadius.mdAll,
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AthlosSpacing.md,
-            vertical: AthlosSpacing.sm,
+          padding: const EdgeInsets.only(
+            left: AthlosSpacing.xs,
+            right: AthlosSpacing.xs,
           ),
           child: Row(
             children: [
               ReorderableDragStartListener(
                 index: index,
-                child: Icon(
-                  Icons.drag_handle,
-                  color: colorScheme.onSurfaceVariant,
+                child: Padding(
+                  padding: const EdgeInsets.all(AthlosSpacing.sm),
+                  child: Icon(
+                    Icons.drag_handle,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
-              const SizedBox(width: AthlosSpacing.sm),
+              if (isNext) ...[
+                Icon(Icons.arrow_right, size: 20, color: colorScheme.primary),
+                const Gap(AthlosSpacing.xxs),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            workout.name,
-                            style: textTheme.titleMedium,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (isNext)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AthlosSpacing.sm,
-                              vertical: AthlosSpacing.xxs,
-                            ),
-                            decoration: BoxDecoration(
-                              color: colorScheme.primaryContainer,
-                              borderRadius: AthlosRadius.mdAll,
-                            ),
-                            child: Text(
-                              l10n.nextWorkoutBadge,
-                              style: textTheme.labelSmall?.copyWith(
-                                color: colorScheme.onPrimaryContainer,
-                              ),
-                            ),
-                          ),
-                      ],
+                    Text(
+                      workoutName,
+                      style: textTheme.titleSmall?.copyWith(
+                        fontWeight: isNext ? FontWeight.w600 : null,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    if (workout.description != null &&
-                        workout.description!.isNotEmpty)
+                    if (workoutDescription != null &&
+                        workoutDescription!.isNotEmpty)
                       Text(
-                        workout.description!,
+                        workoutDescription!,
                         style: textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -753,53 +522,18 @@ class _WorkoutCard extends StatelessWidget {
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.play_circle_outline,
-                    color: colorScheme.primary),
+                icon: Icon(
+                  Icons.play_circle_outline,
+                  color: isNext ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                ),
                 tooltip: l10n.startWorkout,
                 onPressed: onStart,
               ),
-              PopupMenuButton<String>(
-                onSelected: (value) {
-                  switch (value) {
-                    case 'archive':
-                      onArchive();
-                    case 'duplicate':
-                      onDuplicate();
-                    case 'delete':
-                      onDelete();
-                  }
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'archive',
-                    child: ListTile(
-                      leading: const Icon(Icons.archive_outlined),
-                      title: Text(l10n.archiveWorkout),
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'duplicate',
-                    child: ListTile(
-                      leading: const Icon(Icons.copy_outlined),
-                      title: Text(l10n.duplicateWorkout),
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: ListTile(
-                      leading: Icon(Icons.delete_outline,
-                          color: colorScheme.error),
-                      title: Text(l10n.delete,
-                          style: TextStyle(color: colorScheme.error)),
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                ],
+              IconButton(
+                icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
+                tooltip: l10n.remove,
+                onPressed: onRemove,
+                visualDensity: VisualDensity.compact,
               ),
             ],
           ),
@@ -809,49 +543,51 @@ class _WorkoutCard extends StatelessWidget {
   }
 }
 
-class _ArchivedWorkoutTile extends StatelessWidget {
-  final Workout workout;
-  final VoidCallback onUnarchive;
-  final VoidCallback onDuplicate;
-  final VoidCallback onTap;
+// ── Empty cycle message ───────────────────────────────────────────────
 
-  const _ArchivedWorkoutTile({
-    required this.workout,
-    required this.onUnarchive,
-    required this.onDuplicate,
-    required this.onTap,
+class _EmptyCycleMessage extends StatelessWidget {
+  final List<Workout> workouts;
+  final void Function(int workoutId) onAddWorkout;
+
+  const _EmptyCycleMessage({
+    required this.workouts,
+    required this.onAddWorkout,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
-    return ListTile(
-      leading: Icon(Icons.archive_outlined, color: colorScheme.onSurfaceVariant),
-      title: Text(workout.name),
-      subtitle: workout.description != null && workout.description!.isNotEmpty
-          ? Text(
-              workout.description!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            )
-          : null,
-      onTap: onTap,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.unarchive_outlined),
-            tooltip: l10n.unarchiveWorkout,
-            onPressed: onUnarchive,
-          ),
-          IconButton(
-            icon: const Icon(Icons.copy_outlined),
-            tooltip: l10n.duplicateWorkout,
-            onPressed: onDuplicate,
-          ),
-        ],
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AthlosSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.repeat,
+              size: 64,
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+            ),
+            const Gap(AthlosSpacing.md),
+            Text(
+              l10n.programCycleSection,
+              style: textTheme.titleMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const Gap(AthlosSpacing.sm),
+            Text(
+              l10n.programCycleHint,
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

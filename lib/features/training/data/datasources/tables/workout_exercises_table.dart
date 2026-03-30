@@ -10,8 +10,15 @@ class WorkoutExercises extends Table {
   IntColumn get order => integer()();
   IntColumn get sets => integer()();
 
-  /// Target reps per set. Null for cardio exercises.
-  IntColumn get reps => integer().nullable()();
+  /// Minimum target reps per set. Null for cardio exercises.
+  IntColumn get minReps => integer().nullable()();
+
+  /// Maximum target reps per set. Null for cardio exercises.
+  /// Equal to minReps for fixed targets.
+  IntColumn get maxReps => integer().nullable()();
+
+  /// Whether this exercise uses AMRAP (As Many Reps As Possible).
+  BoolColumn get isAmrap => boolean().withDefault(const Constant(false))();
 
   /// Rest time between sets in seconds.
   IntColumn get rest => integer().withDefault(const Constant(60))();
@@ -27,9 +34,6 @@ class WorkoutExercises extends Table {
   BoolColumn get isUnilateral => boolean().withDefault(const Constant(false))();
 
   /// Free-text execution notes for this exercise within the workout.
-  /// Used for postural cues, technique reminders, or variation hints
-  /// (e.g. "deitado no banco", "costas na parede").
-  /// Can be set manually or by Chiron when building workouts.
   TextColumn get notes => text().nullable()();
 
   @override

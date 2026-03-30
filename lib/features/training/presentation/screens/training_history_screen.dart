@@ -18,6 +18,7 @@ final _placeholderExecutions = List.generate(
   (i) => WorkoutExecution(
     id: i,
     workoutId: 0,
+    programId: 0,
     startedAt: DateTime(2024),
     finishedAt: DateTime(2024).add(const Duration(minutes: 45)),
   ),

@@ -14,7 +14,12 @@ import '../../domain/enums/experience_level.dart';
 import '../../domain/enums/gender.dart';
 import '../../domain/enums/training_goal.dart';
 import '../../domain/enums/training_style.dart';
+import '../../../training/domain/entities/training_program.dart';
+import '../../../training/domain/enums/duration_mode.dart';
+import '../../../training/domain/enums/program_focus.dart';
+import '../../../training/presentation/providers/program_notifier.dart';
 import '../helpers/profile_l10n.dart';
+import '../providers/body_metric_notifier.dart';
 import '../providers/profile_notifier.dart';
 
 /// Chat-style profile setup screen shown on first launch.
@@ -439,7 +444,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           .read(profileProvider.notifier)
           .create(
             name: _name,
-            weight: _weight,
             height: _height,
             age: _age,
             gender: _gender,
@@ -452,6 +456,14 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             injuries: _injuries,
             bio: _bio,
           );
+
+      if (_weight != null) {
+        await ref
+            .read(bodyMetricListProvider.notifier)
+            .add(weight: _weight!);
+      }
+
+      await _ensureDefaultProgram();
 
       ref.read(hasProfileProvider.notifier).markAsCreated();
 
@@ -474,7 +486,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           .read(profileProvider.notifier)
           .create(
             name: _name,
-            weight: _weight,
             height: _height,
             age: _age,
             gender: _gender,
@@ -487,6 +498,15 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             injuries: _injuries,
             bio: _bio,
           );
+
+      if (_weight != null) {
+        await ref
+            .read(bodyMetricListProvider.notifier)
+            .add(weight: _weight!);
+      }
+
+      await _ensureDefaultProgram();
+
       ref.read(hasProfileProvider.notifier).markAsCreated();
       if (mounted) context.go(RoutePaths.hub);
     } on Exception catch (_) {
@@ -498,6 +518,34 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  Future<void> _ensureDefaultProgram() async {
+    final existing = await ref.read(activeProgramProvider.future);
+    if (existing != null) return;
+
+    final focus = switch (_selectedGoal) {
+      TrainingGoal.hypertrophy => ProgramFocus.hypertrophy,
+      TrainingGoal.strength => ProgramFocus.strength,
+      TrainingGoal.endurance => ProgramFocus.endurance,
+      TrainingGoal.weightLoss || TrainingGoal.generalFitness || null =>
+        ProgramFocus.hypertrophy,
+    };
+
+    final program = TrainingProgram(
+      id: 0,
+      name: 'Meu Programa',
+      focus: focus,
+      durationMode: DurationMode.sessions,
+      durationValue: 12,
+      defaultRestSeconds: focus.suggestedRestSeconds,
+      isActive: true,
+      createdAt: DateTime.now(),
+    );
+
+    final actions = ref.read(programActionsProvider.notifier);
+    final id = await actions.createProgram(program);
+    await actions.activateProgram(id);
   }
 
   @override

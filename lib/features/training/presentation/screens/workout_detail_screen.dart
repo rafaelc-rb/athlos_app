@@ -25,7 +25,8 @@ final _placeholderExercises = List.generate(
     exerciseId: 0,
     order: i,
     sets: 3,
-    reps: 10,
+    minReps: 10,
+    maxReps: 10,
     rest: 60,
   ),
 );
@@ -502,8 +503,36 @@ class _ExerciseDetailTile extends ConsumerWidget {
                 ),
             ],
           ),
-          subtitle: Text(
-            _exerciseSubtitle(exercise, groupName),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_exerciseSubtitle(exercise, groupName)),
+              if (exercise.notes != null && exercise.notes!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: AthlosSpacing.xxs),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.note_alt_outlined,
+                        size: 12,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: AthlosSpacing.xs),
+                      Flexible(
+                        child: Text(
+                          exercise.notes!,
+                          style: textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -515,7 +544,7 @@ class _ExerciseDetailTile extends ConsumerWidget {
   String _exerciseSubtitle(WorkoutExercise ex, String groupName) {
     final config = ex.duration != null
         ? '${ex.sets}×${formatDuration(ex.duration!)}  •  ${ex.rest}s'
-        : '${ex.sets}×${ex.reps}  •  ${ex.rest}s';
+        : '${ex.sets}×${ex.repsDisplay}  •  ${ex.rest}s';
     return groupName.isNotEmpty ? '$groupName  •  $config' : config;
   }
 }

@@ -8,16 +8,19 @@ import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../core/widgets/app_bar_menu.dart';
 import '../../../../l10n/app_localizations.dart';
 import 'equipment_screen.dart';
-import 'cycle_edit_screen.dart';
+import 'program_detail_screen.dart';
+import 'program_form_screen.dart';
+import 'program_list_screen.dart';
 import 'training_exercises_screen.dart';
 import 'training_history_screen.dart';
 import 'training_home_screen.dart';
 import 'training_workouts_screen.dart';
+import 'workout_catalog_screen.dart';
 
 /// Training module shell with bottom navigation bar.
 ///
 /// 3 tabs: Home, Workouts, History.
-/// Catalogs (Exercises, Equipment) are accessible from the Home tab.
+/// Sub-pages: Exercises, Equipment, Programs, ProgramDetail, ProgramForm.
 ShellRoute trainingShellRoute() {
   return ShellRoute(
     builder: (context, state, child) {
@@ -52,6 +55,10 @@ ShellRoute trainingShellRoute() {
         ),
       ),
       GoRoute(
+        path: RoutePaths.trainingWorkoutCatalog,
+        builder: (context, state) => const WorkoutCatalogScreen(),
+      ),
+      GoRoute(
         path: RoutePaths.trainingExercises,
         builder: (context, state) => const TrainingExercisesScreen(),
       ),
@@ -60,8 +67,26 @@ ShellRoute trainingShellRoute() {
         builder: (context, state) => const EquipmentScreen(),
       ),
       GoRoute(
-        path: RoutePaths.trainingCycleEdit,
-        builder: (context, state) => const CycleEditScreen(),
+        path: RoutePaths.trainingPrograms,
+        builder: (context, state) => const ProgramListScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.trainingProgramNew,
+        builder: (context, state) => const ProgramFormScreen(),
+      ),
+      GoRoute(
+        path: '${RoutePaths.trainingPrograms}/:programId',
+        builder: (context, state) {
+          final programId = int.parse(state.pathParameters['programId']!);
+          return ProgramDetailScreen(programId: programId);
+        },
+      ),
+      GoRoute(
+        path: '${RoutePaths.trainingPrograms}/:programId/edit',
+        builder: (context, state) {
+          final programId = int.parse(state.pathParameters['programId']!);
+          return ProgramFormScreen(programId: programId);
+        },
       ),
     ],
   );
@@ -80,12 +105,14 @@ class _TrainingShell extends ConsumerWidget {
 
     final isSubPage = _isSubPage(currentPath);
 
+    final subPageBackTarget = _subPageBackTarget(currentPath);
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         if (isSubPage) {
-          context.go(RoutePaths.trainingHome);
+          context.go(subPageBackTarget);
           return;
         }
         context.go(RoutePaths.hub);
@@ -95,7 +122,7 @@ class _TrainingShell extends ConsumerWidget {
           leading: isSubPage
               ? IconButton(
                   icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.go(RoutePaths.trainingHome),
+                  onPressed: () => context.go(subPageBackTarget),
                 )
               : null,
           automaticallyImplyLeading: false,
@@ -131,12 +158,12 @@ class _TrainingShell extends ConsumerWidget {
                   NavigationDestination(
                     icon: const Icon(Icons.dashboard_outlined),
                     selectedIcon: const Icon(Icons.dashboard),
-                    label: l10n.tabHome,
+                    label: l10n.tabDashboard,
                   ),
                   NavigationDestination(
                     icon: const Icon(Icons.fitness_center_outlined),
                     selectedIcon: const Icon(Icons.fitness_center),
-                    label: l10n.tabWorkouts,
+                    label: l10n.tabTraining,
                   ),
                   NavigationDestination(
                     icon: const Icon(Icons.timeline_outlined),
@@ -160,8 +187,16 @@ class _TrainingShell extends ConsumerWidget {
 
   bool _isSubPage(String path) => !_primaryPaths.contains(path);
 
+  String _subPageBackTarget(String path) {
+    if (path.startsWith(RoutePaths.trainingPrograms)) {
+      return RoutePaths.trainingWorkouts;
+    }
+    return RoutePaths.trainingHome;
+  }
+
   int _indexFromPath(String path) {
     if (path.startsWith(RoutePaths.trainingWorkouts)) return 1;
+    if (path.startsWith(RoutePaths.trainingPrograms)) return 1;
     if (path.startsWith(RoutePaths.trainingHistory)) return 2;
     return 0;
   }

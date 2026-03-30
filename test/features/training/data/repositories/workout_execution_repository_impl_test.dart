@@ -13,11 +13,16 @@ void main() {
   group('WorkoutExecutionRepositoryImpl', () {
     late AppDatabase db;
     late WorkoutExecutionRepositoryImpl repository;
+    const programId = 1;
 
     setUp(() async {
       db = AppDatabase.forTesting(NativeDatabase.memory());
       repository = WorkoutExecutionRepositoryImpl(WorkoutExecutionDao(db));
       await db.customSelect('SELECT 1').get();
+      await db.customInsert(
+        "INSERT INTO programs (name, focus, duration_mode, duration_value, is_active) "
+        "VALUES ('Test', 'custom', 'sessions', 12, 1)",
+      );
       await db.customInsert(
         'INSERT INTO "workouts" ("name", "description", "sort_order", "is_archived", "created_at") VALUES (\'W\', NULL, 0, 0, 1)',
       );
@@ -27,8 +32,10 @@ void main() {
       await db.close();
     });
 
-    test('start/logSet/getSets/saveSegments/getSegments/finish/delete', () async {
-      final executionId = (await repository.start(1)).getOrThrow();
+    test('start/logSet/getSets/saveSegments/getSegments/finish/delete',
+        () async {
+      final executionId =
+          (await repository.start(1, programId: programId)).getOrThrow();
       expect(executionId, greaterThan(0));
 
       final setId = (await repository.logSet(
@@ -76,17 +83,20 @@ void main() {
       expect(segments.length, 2);
       expect(segments.first.segmentOrder, 1);
 
-      expect((await repository.finish(executionId, notes: 'ok')).isSuccess, isTrue);
+      expect(
+          (await repository.finish(executionId, notes: 'ok')).isSuccess, isTrue);
       final lastFinished = (await repository.getLastFinished()).getOrThrow();
       expect(lastFinished, isNotNull);
       expect(lastFinished!.notes, 'ok');
+      expect(lastFinished.programId, programId);
 
       expect((await repository.delete(executionId)).isSuccess, isTrue);
       expect((await repository.getById(executionId)).getOrThrow(), isNull);
     });
 
     test('getLastTwoFinishedWithVolume calcula volume corretamente', () async {
-      final e1 = (await repository.start(1)).getOrThrow();
+      final e1 =
+          (await repository.start(1, programId: programId)).getOrThrow();
       await repository.logSet(
         domain.ExecutionSet(
           id: 0,
@@ -100,7 +110,8 @@ void main() {
       );
       await repository.finish(e1);
 
-      final e2 = (await repository.start(1)).getOrThrow();
+      final e2 =
+          (await repository.start(1, programId: programId)).getOrThrow();
       await repository.logSet(
         domain.ExecutionSet(
           id: 0,
@@ -122,7 +133,8 @@ void main() {
     });
 
     test('getLastWeightsForExercises retorna ultimo peso concluido', () async {
-      final executionId = (await repository.start(1)).getOrThrow();
+      final executionId =
+          (await repository.start(1, programId: programId)).getOrThrow();
       await repository.logSet(
         domain.ExecutionSet(
           id: 0,
@@ -141,6 +153,21 @@ void main() {
               .getOrThrow();
       expect(weights[1], 55.5);
       expect(weights.containsKey(2), isFalse);
+    });
+
+    test('start with exerciseConfigSnapshot stores snapshot', () async {
+      const snapshot = '{"exercises":[]}';
+      final executionId = (await repository.start(
+        1,
+        programId: programId,
+        exerciseConfigSnapshot: snapshot,
+      ))
+          .getOrThrow();
+
+      final execution =
+          (await repository.getById(executionId)).getOrThrow();
+      expect(execution, isNotNull);
+      expect(execution!.exerciseConfigSnapshot, snapshot);
     });
   });
 }

@@ -6,6 +6,7 @@ import '../../../../core/errors/result.dart';
 import '../../../profile/domain/entities/user_profile.dart';
 import '../../../profile/domain/enums/experience_level.dart';
 import '../../../profile/domain/enums/gender.dart';
+import '../../../profile/domain/repositories/body_metric_repository.dart';
 import '../../../profile/domain/repositories/user_profile_repository.dart';
 import '../../../training/domain/entities/cycle_step.dart';
 import '../../../training/domain/entities/workout.dart' as domain_workout;
@@ -13,6 +14,17 @@ import '../../../training/domain/entities/workout_exercise.dart' as domain_we;
 import '../../../training/domain/repositories/cycle_repository.dart';
 import '../../../training/domain/repositories/equipment_repository.dart';
 import '../../../training/domain/repositories/exercise_repository.dart';
+import '../../../training/domain/entities/progression_rule.dart';
+import '../../../training/domain/enums/progression_condition.dart';
+import '../../../training/domain/enums/progression_frequency.dart';
+import '../../../training/domain/enums/progression_type.dart';
+import '../../../training/domain/entities/training_program.dart';
+import '../../../training/domain/enums/duration_mode.dart';
+import '../../../training/domain/enums/program_focus.dart';
+import '../../../training/domain/helpers/training_metrics.dart';
+import '../../../training/domain/repositories/program_repository.dart';
+import '../../../training/domain/repositories/progression_rule_repository.dart';
+import '../../../training/domain/repositories/workout_execution_repository.dart';
 import '../../../training/domain/repositories/workout_repository.dart';
 import '../../domain/entities/chiron_message.dart';
 import '../../domain/repositories/chiron_repository.dart';
@@ -58,12 +70,20 @@ class ChironRepositoryImpl implements ChironRepository {
     required WorkoutRepository workoutRepo,
     required ExerciseRepository exerciseRepo,
     required CycleRepository cycleRepo,
+    required ProgramRepository programRepo,
+    required ProgressionRuleRepository progressionRuleRepo,
+    required BodyMetricRepository bodyMetricRepo,
+    required WorkoutExecutionRepository executionRepo,
     required PromptBuilder promptBuilder,
   }) : _profileRepo = profileRepo,
        _equipmentRepo = equipmentRepo,
        _workoutRepo = workoutRepo,
        _exerciseRepo = exerciseRepo,
        _cycleRepo = cycleRepo,
+       _programRepo = programRepo,
+       _progressionRuleRepo = progressionRuleRepo,
+       _bodyMetricRepo = bodyMetricRepo,
+       _executionRepo = executionRepo,
        _promptBuilder = promptBuilder,
        _restClient = GeminiRestClient(apiKey: apiKey);
 
@@ -73,6 +93,10 @@ class ChironRepositoryImpl implements ChironRepository {
   final WorkoutRepository _workoutRepo;
   final ExerciseRepository _exerciseRepo;
   final CycleRepository _cycleRepo;
+  final ProgramRepository _programRepo;
+  final ProgressionRuleRepository _progressionRuleRepo;
+  final BodyMetricRepository _bodyMetricRepo;
+  final WorkoutExecutionRepository _executionRepo;
   final PromptBuilder _promptBuilder;
 
   /// Client-side RPM guard aligned with the free tier (10 RPM for
@@ -480,6 +504,43 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
         );
       case 'getTrainingState':
         return _handleGetTrainingState();
+      case 'setProgressionRules':
+        return _handleSetProgressionRules(
+          args['programId'] is int
+              ? args['programId'] as int
+              : int.tryParse(args['programId']?.toString() ?? ''),
+          args['rules'] is List ? args['rules'] as List : null,
+        );
+      case 'createProgram':
+        return _handleCreateProgram(args);
+      case 'archiveProgram':
+        return _handleArchiveProgram(
+          args['programId'] is int
+              ? args['programId'] as int
+              : int.tryParse(args['programId']?.toString() ?? ''),
+        );
+      case 'setDeloadActive':
+        final programId = args['programId'] is int
+            ? args['programId'] as int
+            : int.tryParse(args['programId']?.toString() ?? '');
+        final active = args['active'] is bool
+            ? args['active'] as bool
+            : args['active']?.toString().toLowerCase() == 'true';
+        return _handleSetDeloadActive(programId, active);
+      case 'getWeeklyVolume':
+        return _handleGetWeeklyVolume();
+      case 'getEstimated1RM':
+        final exerciseId = args['exerciseId'] is int
+            ? args['exerciseId'] as int
+            : int.tryParse(args['exerciseId']?.toString() ?? '');
+        return _handleGetEstimated1RM(exerciseId);
+      case 'suggestWarmup':
+        final workingWeight = args['workingWeight'] is num
+            ? (args['workingWeight'] as num).toDouble()
+            : double.tryParse(args['workingWeight']?.toString() ?? '') ?? 0;
+        final workingSets = _parseInt(args['workingSets'], 3);
+        final workingReps = _parseInt(args['workingReps'], 8);
+        return _handleSuggestWarmup(workingWeight, workingSets, workingReps);
       default:
         return {'success': false, 'error': 'Unknown function: $name'};
     }
@@ -509,7 +570,14 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
       if (exerciseName == null || exerciseName.isEmpty) continue;
 
       final sets = _parseInt(map['sets'], 3);
-      final reps = map['reps'] != null ? _parseInt(map['reps'], 10) : null;
+      final minReps = map['minReps'] != null
+          ? _parseInt(map['minReps'], 10)
+          : (map['reps'] != null ? _parseInt(map['reps'], 10) : null);
+      final maxReps = map['maxReps'] != null
+          ? _parseInt(map['maxReps'], minReps ?? 10)
+          : minReps;
+      final isAmrap = map['isAmrap'] == true ||
+          map['isAmrap']?.toString().toLowerCase() == 'true';
       final restSeconds = map['restSeconds'] != null
           ? _parseInt(map['restSeconds'], 90)
           : 90;
@@ -541,7 +609,9 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
           exerciseId: exercise.id,
           order: i,
           sets: sets,
-          reps: reps,
+          minReps: minReps,
+          maxReps: maxReps,
+          isAmrap: isAmrap,
           rest: restSeconds,
           duration: durationSeconds,
           groupId: null,
@@ -605,46 +675,40 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
         'error': 'steps is required and cannot be empty',
       };
     }
+    final programResult = await _programRepo.getActive();
+    final activeProgram = programResult.isSuccess
+        ? programResult.getOrThrow()
+        : null;
+    if (activeProgram == null) {
+      return {'success': false, 'error': 'No active program'};
+    }
     final cycleSteps = <TrainingCycleStep>[];
     for (var i = 0; i < stepsList.length; i++) {
       final item = stepsList[i];
       if (item is! Map) continue;
       final map = item;
-      final typeStr = map['type']?.toString().toLowerCase();
-      if (typeStr == 'rest') {
-        cycleSteps.add(
-          TrainingCycleStep(
-            id: 0,
-            orderIndex: i,
-            type: CycleStepType.rest,
-            workoutId: null,
-          ),
-        );
-      } else if (typeStr == 'workout') {
-        final workoutId = map['workoutId'] != null
-            ? (map['workoutId'] is int
-                  ? map['workoutId'] as int
-                  : int.tryParse(map['workoutId'].toString()))
-            : null;
-        if (workoutId == null || workoutId <= 0) continue;
-        cycleSteps.add(
-          TrainingCycleStep(
-            id: 0,
-            orderIndex: i,
-            type: CycleStepType.workout,
-            workoutId: workoutId,
-          ),
-        );
-      }
+      final workoutId = map['workoutId'] != null
+          ? (map['workoutId'] is int
+                ? map['workoutId'] as int
+                : int.tryParse(map['workoutId'].toString()))
+          : null;
+      if (workoutId == null || workoutId <= 0) continue;
+      cycleSteps.add(
+        TrainingCycleStep(
+          id: 0,
+          orderIndex: i,
+          workoutId: workoutId,
+        ),
+      );
     }
     if (cycleSteps.isEmpty) {
       return {
         'success': false,
-        'error':
-            'No valid steps (use type: workout with workoutId or type: rest)',
+        'error': 'No valid steps (each step needs a workoutId)',
       };
     }
-    final result = await _cycleRepo.setSteps(cycleSteps);
+    final result =
+        await _cycleRepo.setSteps(cycleSteps, activeProgram.id);
     if (!result.isSuccess) {
       return {'success': false, 'error': 'Failed to persist cycle'};
     }
@@ -657,7 +721,21 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
       return {'success': false, 'error': 'Failed to load active workouts'};
     }
     final active = activeResult.getOrThrow();
-    final stepsResult = await _cycleRepo.getSteps();
+
+    final programResult = await _programRepo.getActive();
+    final activeProgram = programResult.isSuccess
+        ? programResult.getOrThrow()
+        : null;
+
+    if (activeProgram == null) {
+      return {
+        'success': true,
+        'activeWorkouts': active.map((w) => {'id': w.id, 'name': w.name}).toList(),
+        'cycleSteps': <Map<String, Object?>>[],
+      };
+    }
+
+    final stepsResult = await _cycleRepo.getSteps(activeProgram.id);
     if (!stepsResult.isSuccess) {
       return {'success': false, 'error': 'Failed to load cycle'};
     }
@@ -668,22 +746,76 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
         .toList();
     final cycleSteps = <Map<String, Object?>>[];
     for (final s in steps) {
-      if (s.type == CycleStepType.rest) {
-        cycleSteps.add({'type': 'rest'});
-      } else if (s.workoutId != null) {
-        final w = activeById[s.workoutId];
-        cycleSteps.add({
-          'type': 'workout',
-          'workoutId': s.workoutId,
-          'workoutName': w?.name ?? 'Workout #${s.workoutId}',
-        });
-      }
+      final w = activeById[s.workoutId];
+      cycleSteps.add({
+        'workoutId': s.workoutId,
+        'workoutName': w?.name ?? 'Workout #${s.workoutId}',
+      });
     }
-    return {
+    final result = <String, Object?>{
       'success': true,
       'activeWorkouts': activeWorkouts,
       'cycleSteps': cycleSteps,
     };
+    final sessionResult = await _programRepo.getSessionCount(activeProgram.id);
+    final sessions = sessionResult.isSuccess ? sessionResult.getOrThrow() : 0;
+    final programMap = <String, Object?>{
+      'id': activeProgram.id,
+      'name': activeProgram.name,
+      'focus': activeProgram.focus.name,
+      'durationMode': activeProgram.durationMode.name,
+      'durationValue': activeProgram.durationValue,
+      'completedSessions': sessions,
+      'isInDeload': activeProgram.isInDeload,
+      if (activeProgram.defaultRestSeconds != null)
+        'defaultRestSeconds': activeProgram.defaultRestSeconds,
+    };
+    if (activeProgram.deloadConfig != null) {
+      final dc = activeProgram.deloadConfig!;
+      programMap['deloadConfig'] = {
+        'strategy': dc.strategy.name,
+        'frequency': dc.frequency,
+        'volumeMultiplier': dc.volumeMultiplier,
+        'intensityMultiplier': dc.intensityMultiplier,
+      };
+    }
+    final rulesResult =
+        await _progressionRuleRepo.getByProgram(activeProgram.id);
+    if (rulesResult.isSuccess) {
+      final rules = rulesResult.getOrThrow();
+      if (rules.isNotEmpty) {
+        programMap['progressionRules'] = rules
+            .map((r) => {
+                  'exerciseId': r.exerciseId,
+                  'type': r.type.name,
+                  'value': r.value,
+                  'frequency': r.frequency.name,
+                  if (r.condition != null) 'condition': r.condition!.name,
+                  if (r.conditionValue != null)
+                    'conditionValue': r.conditionValue,
+                })
+            .toList();
+      }
+    }
+    result['activeProgram'] = programMap;
+
+    final bodyMetricResult = await _bodyMetricRepo.getAll();
+    if (bodyMetricResult.isSuccess) {
+      final metrics = bodyMetricResult.getOrThrow();
+      if (metrics.isNotEmpty) {
+        result['bodyWeightTimeline'] = metrics
+            .take(30)
+            .map((m) => {
+                  'weight': m.weight,
+                  if (m.bodyFatPercent != null)
+                    'bodyFatPercent': m.bodyFatPercent,
+                  'recordedAt': m.recordedAt.toIso8601String(),
+                })
+            .toList();
+      }
+    }
+
+    return result;
   }
 
   int _parseInt(dynamic value, int fallback) {
@@ -692,6 +824,267 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
     if (value is double) return value.round();
     final parsed = int.tryParse(value.toString());
     return parsed ?? fallback;
+  }
+
+  Future<Map<String, Object?>> _handleSetProgressionRules(
+    int? programId,
+    List? rulesList,
+  ) async {
+    if (programId == null || programId <= 0) {
+      return {'success': false, 'error': 'Invalid programId'};
+    }
+    if (rulesList == null) {
+      return {'success': false, 'error': 'Missing rules list'};
+    }
+    try {
+      final rules = rulesList.map((item) {
+        final m = item as Map<String, dynamic>;
+        final exerciseId = m['exerciseId'] is int
+            ? m['exerciseId'] as int
+            : int.parse(m['exerciseId'].toString());
+        final type = ProgressionType.values.byName(
+            m['type']?.toString() ?? 'incrementWeight');
+        final value = (m['value'] is num)
+            ? (m['value'] as num).toDouble()
+            : double.parse(m['value'].toString());
+        final frequency = ProgressionFrequency.values.byName(
+            m['frequency']?.toString() ?? 'everySession');
+        final condStr = m['condition']?.toString();
+        final condition = condStr != null && condStr.isNotEmpty
+            ? ProgressionCondition.values.byName(condStr)
+            : null;
+        final condVal = m['conditionValue'] is num
+            ? (m['conditionValue'] as num).toDouble()
+            : null;
+        return ProgressionRule(
+          id: 0,
+          programId: programId,
+          exerciseId: exerciseId,
+          type: type,
+          value: value,
+          frequency: frequency,
+          condition: condition,
+          conditionValue: condVal,
+        );
+      }).toList();
+
+      final result =
+          await _progressionRuleRepo.replaceAllForProgram(programId, rules);
+      result.getOrThrow();
+      return {'success': true, 'rulesCount': rules.length};
+    } on Exception catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  Future<Map<String, Object?>> _handleCreateProgram(
+    Map<String, dynamic> args,
+  ) async {
+    final name = args['name']?.toString();
+    if (name == null || name.isEmpty) {
+      return {'success': false, 'error': 'name is required'};
+    }
+    try {
+      final focus = ProgramFocus.values.byName(
+          args['focus']?.toString() ?? 'custom');
+      final durationMode = DurationMode.values.byName(
+          args['durationMode']?.toString() ?? 'sessions');
+      final durationValue = _parseInt(args['durationValue'], 12);
+      final defaultRest = args['defaultRestSeconds'] != null
+          ? _parseInt(args['defaultRestSeconds'], 0)
+          : focus.suggestedRestSeconds;
+
+      final program = TrainingProgram(
+        id: 0,
+        name: name,
+        focus: focus,
+        durationMode: durationMode,
+        durationValue: durationValue,
+        defaultRestSeconds: defaultRest,
+        createdAt: DateTime.now(),
+      );
+      final result = await _programRepo.create(program);
+      final id = result.getOrThrow();
+
+      final workoutIds = args['workoutIds'];
+      if (workoutIds is List && workoutIds.isNotEmpty) {
+        final ids = workoutIds.map((e) => _parseInt(e, 0)).toList();
+        var order = 0;
+        await _cycleRepo.setSteps(
+          ids
+              .map((wId) => TrainingCycleStep(
+                    id: 0,
+                    orderIndex: order++,
+                    workoutId: wId,
+                  ))
+              .toList(),
+          id,
+        );
+      }
+
+      await _programRepo.activate(id);
+      return {'success': true, 'programId': id};
+    } on Exception catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  Future<Map<String, Object?>> _handleArchiveProgram(int? programId) async {
+    if (programId == null || programId <= 0) {
+      return {'success': false, 'error': 'Invalid programId'};
+    }
+    try {
+      final result = await _programRepo.archive(programId);
+      result.getOrThrow();
+      return {'success': true};
+    } on Exception catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  Future<Map<String, Object?>> _handleSetDeloadActive(
+    int? programId,
+    bool active,
+  ) async {
+    if (programId == null || programId <= 0) {
+      return {'success': false, 'error': 'Invalid programId'};
+    }
+    try {
+      final result =
+          await _programRepo.setDeloadActive(programId, active: active);
+      result.getOrThrow();
+      return {'success': true, 'isInDeload': active};
+    } on Exception catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  Future<Map<String, Object?>> _handleGetWeeklyVolume() async {
+    try {
+      final exercisesResult = await _exerciseRepo.getAll();
+      if (!exercisesResult.isSuccess) {
+        return {'success': false, 'error': 'Failed to load exercises'};
+      }
+      final exercises = exercisesResult.getOrThrow();
+      final exerciseMap = {for (final e in exercises) e.id: e};
+
+      final execsResult = await _executionRepo.getAll();
+      if (!execsResult.isSuccess) {
+        return {'success': false, 'error': 'Failed to load executions'};
+      }
+      final cutoff = DateTime.now().subtract(const Duration(days: 7));
+      final recentExecs = execsResult.getOrThrow()
+          .where((e) => e.finishedAt != null && e.startedAt.isAfter(cutoff));
+
+      final volume = <String, int>{};
+      for (final exec in recentExecs) {
+        final setsResult = await _executionRepo.getSets(exec.id);
+        if (!setsResult.isSuccess) continue;
+        for (final s in setsResult.getOrThrow()) {
+          if (!s.isCompleted || s.isWarmup) continue;
+          final ex = exerciseMap[s.exerciseId];
+          if (ex == null) continue;
+          final key = ex.muscleGroup.name;
+          volume[key] = (volume[key] ?? 0) + 1;
+        }
+      }
+      return {'success': true, 'weeklyVolume': volume};
+    } on Exception catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  Future<Map<String, Object?>> _handleGetEstimated1RM(
+    int? exerciseId,
+  ) async {
+    if (exerciseId == null || exerciseId <= 0) {
+      return {'success': false, 'error': 'Invalid exerciseId'};
+    }
+    try {
+      final exercisesResult = await _exerciseRepo.getAll();
+      if (!exercisesResult.isSuccess) {
+        return {'success': false, 'error': 'Failed to load exercises'};
+      }
+      final exercise = exercisesResult.getOrThrow()
+          .where((e) => e.id == exerciseId)
+          .firstOrNull;
+      if (exercise == null) {
+        return {'success': false, 'error': 'Exercise not found'};
+      }
+
+      double? profileWeight;
+      final bmResult = await _bodyMetricRepo.getLatest();
+      if (bmResult.isSuccess) {
+        profileWeight = bmResult.getOrThrow()?.weight;
+      }
+
+      final setsResult =
+          await _executionRepo.getAllCompletedSetsForExercise(exerciseId);
+      if (!setsResult.isSuccess) {
+        return {'success': false, 'error': 'Failed to load sets'};
+      }
+      final sets = setsResult.getOrThrow();
+      if (sets.isEmpty) {
+        return {'success': true, 'estimated1RM': null, 'message': 'No data'};
+      }
+
+      double? best1RM;
+      double? bestWeight;
+      int? bestReps;
+      for (final s in sets) {
+        final load = effectiveLoad(
+          isBodyweight: exercise.isBodyweight,
+          setWeight: s.weight,
+          profileWeight: profileWeight,
+        );
+        final e1rm = estimated1RM(weight: load, reps: s.reps);
+        if (e1rm != null && (best1RM == null || e1rm > best1RM)) {
+          best1RM = e1rm;
+          bestWeight = load;
+          bestReps = s.reps;
+        }
+      }
+      return {
+        'success': true,
+        'exerciseId': exerciseId,
+        'exerciseName': exercise.name,
+        'estimated1RM': best1RM?.toStringAsFixed(1),
+        'bestWeight': bestWeight?.toStringAsFixed(1),
+        'bestReps': bestReps,
+      };
+    } on Exception catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  Map<String, Object?> _handleSuggestWarmup(
+    double workingWeight,
+    int workingSets,
+    int workingReps,
+  ) {
+    if (workingWeight <= 20) {
+      return {
+        'success': true,
+        'warmupSets': [
+          {'weight': 0, 'reps': 15, 'label': 'Barra vazia / peso corporal'},
+        ],
+      };
+    }
+
+    final sets = <Map<String, Object?>>[];
+    final percentages = [0.4, 0.6, 0.8];
+    final repsPerStep = [12, 8, 5];
+
+    for (var i = 0; i < percentages.length; i++) {
+      final w = (workingWeight * percentages[i] / 2.5).round() * 2.5;
+      if (w < 5) continue;
+      sets.add({
+        'weight': w,
+        'reps': repsPerStep[i],
+      });
+    }
+
+    return {'success': true, 'warmupSets': sets};
   }
 
   static const int _maxBioLength = 500;
@@ -867,7 +1260,14 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
         if (exerciseName == null || exerciseName.isEmpty) continue;
 
         final sets = _parseInt(map['sets'], 3);
-        final reps = map['reps'] != null ? _parseInt(map['reps'], 10) : null;
+        final minReps = map['minReps'] != null
+            ? _parseInt(map['minReps'], 10)
+            : (map['reps'] != null ? _parseInt(map['reps'], 10) : null);
+        final maxReps = map['maxReps'] != null
+            ? _parseInt(map['maxReps'], minReps ?? 10)
+            : minReps;
+        final isAmrap = map['isAmrap'] == true ||
+            map['isAmrap']?.toString().toLowerCase() == 'true';
         final restSeconds = map['restSeconds'] != null
             ? _parseInt(map['restSeconds'], 90)
             : 90;
@@ -899,7 +1299,9 @@ Assistant: "Recomendo consultar um profissional de saúde pra avaliar esse ombro
             exerciseId: exercise.id,
             order: i,
             sets: sets,
-            reps: reps,
+            minReps: minReps,
+            maxReps: maxReps,
+            isAmrap: isAmrap,
             rest: restSeconds,
             duration: durationSeconds,
             groupId: null,

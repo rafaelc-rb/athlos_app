@@ -9,15 +9,41 @@ part 'cycle_step_dao.g.dart';
 class CycleStepDao extends DatabaseAccessor<AppDatabase> with _$CycleStepDaoMixin {
   CycleStepDao(super.db);
 
-  Future<List<CycleStep>> getAllOrdered() =>
-      (select(cycleSteps)..orderBy([(s) => OrderingTerm.asc(s.orderIndex)]))
-          .get();
+  /// Returns steps for the given [programId], ordered by orderIndex.
+  Future<List<CycleStep>> getAllOrdered(int programId) {
+    final query = select(cycleSteps)
+      ..where((s) => s.programId.equals(programId))
+      ..orderBy([(s) => OrderingTerm.asc(s.orderIndex)]);
+    return query.get();
+  }
 
-  Future<void> replaceAll(List<CycleStepsCompanion> entries) async {
-    await delete(cycleSteps).go();
+  /// Replaces all steps for the given [programId].
+  Future<void> replaceAll(
+    List<CycleStepsCompanion> entries,
+    int programId,
+  ) async {
+    final deleteQuery = delete(cycleSteps)
+      ..where((s) => s.programId.equals(programId));
+    await deleteQuery.go();
     if (entries.isNotEmpty) {
       await batch((batch) => batch.insertAll(cycleSteps, entries));
     }
+  }
+
+  /// Removes all cycle steps that reference [workoutId] in the given program.
+  Future<void> removeWorkout(int workoutId, int programId) async {
+    await (delete(cycleSteps)
+          ..where((s) =>
+              s.workoutId.equals(workoutId) &
+              s.programId.equals(programId)))
+        .go();
+  }
+
+  /// Removes all cycle steps that reference [workoutId] across ALL programs.
+  Future<void> removeWorkoutFromAll(int workoutId) async {
+    await (delete(cycleSteps)
+          ..where((s) => s.workoutId.equals(workoutId)))
+        .go();
   }
 
   Future<int> insertStep(CycleStepsCompanion entry) =>

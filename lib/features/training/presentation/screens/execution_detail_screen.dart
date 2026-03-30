@@ -11,16 +11,20 @@ import '../../domain/entities/exercise.dart';
 import '../../domain/entities/execution_set.dart';
 import '../../domain/entities/workout_exercise.dart';
 import '../../domain/entities/workout_execution.dart';
+import '../../domain/helpers/training_metrics.dart';
+import '../../../profile/presentation/providers/body_metric_notifier.dart';
 import '../helpers/duration_format.dart';
 import '../helpers/exercise_l10n.dart';
 import '../helpers/rep_performance.dart';
 import '../providers/exercise_notifier.dart';
+import '../providers/training_metrics_provider.dart';
 import '../providers/workout_execution_notifier.dart';
 import '../providers/workout_notifier.dart';
 
 final _placeholderExecution = WorkoutExecution(
   id: 0,
   workoutId: 0,
+  programId: 0,
   startedAt: DateTime(0),
 );
 
@@ -77,11 +81,11 @@ class ExecutionDetailScreen extends ConsumerWidget {
     final workoutName =
         workoutAsync?.value?.name ?? l10n.unknownWorkout;
 
-    final workoutExercisesAsync = execution != null
-        ? ref.watch(workoutExercisesProvider(execution.workoutId))
+    final exerciseConfigAsync = execution != null
+        ? ref.watch(executionExerciseConfigProvider(execution))
         : null;
     final unilateralMap = <int, bool>{};
-    if (workoutExercisesAsync?.value case final List<WorkoutExercise> wes) {
+    if (exerciseConfigAsync?.value case final List<WorkoutExercise> wes) {
       for (final we in wes) {
         unilateralMap[we.exerciseId] = we.isUnilateral;
       }
@@ -96,6 +100,31 @@ class ExecutionDetailScreen extends ConsumerWidget {
 
     final sets = setsAsync.value ?? _placeholderSets;
 
+    final prSetIdsPerExercise = <int, Set<int>>{};
+    final allExercises = exercisesAsync.value ?? <Exercise>[];
+    final exerciseMapLocal = {for (final e in allExercises) e.id: e};
+    final profileWeight =
+        ref.watch(latestBodyWeightProvider).value;
+    for (final exId in sets.map((s) => s.exerciseId).toSet()) {
+      final pr = ref.watch(exercisePRProvider(exId)).value;
+      if (pr == null) continue;
+      final ex = exerciseMapLocal[exId];
+      final isBw = ex?.isBodyweight ?? false;
+      for (final s in sets.where((s) => s.exerciseId == exId)) {
+        if (!s.isCompleted || s.isWarmup) continue;
+        final load = effectiveLoad(
+            isBodyweight: isBw,
+            setWeight: s.weight,
+            profileWeight: profileWeight);
+        final e1rm = estimated1RM(weight: load, reps: s.reps);
+        if (e1rm != null && e1rm >= pr.best1RM) {
+          prSetIdsPerExercise
+              .putIfAbsent(exId, () => {})
+              .add(s.id);
+        }
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(workoutName),
@@ -107,6 +136,7 @@ class ExecutionDetailScreen extends ConsumerWidget {
           sets: sets,
           exercisesAsync: exercisesAsync,
           unilateralMap: unilateralMap,
+          prSetIdsPerExercise: prSetIdsPerExercise,
           colorScheme: colorScheme,
           textTheme: textTheme,
           l10n: l10n,
@@ -121,6 +151,7 @@ class _ExecutionDetailBody extends StatelessWidget {
   final List<ExecutionSet> sets;
   final AsyncValue<List<Exercise>> exercisesAsync;
   final Map<int, bool> unilateralMap;
+  final Map<int, Set<int>> prSetIdsPerExercise;
   final ColorScheme colorScheme;
   final TextTheme textTheme;
   final AppLocalizations l10n;
@@ -130,6 +161,7 @@ class _ExecutionDetailBody extends StatelessWidget {
     required this.sets,
     required this.exercisesAsync,
     required this.unilateralMap,
+    this.prSetIdsPerExercise = const {},
     required this.colorScheme,
     required this.textTheme,
     required this.l10n,
@@ -148,12 +180,14 @@ class _ExecutionDetailBody extends StatelessWidget {
     for (final s in sets) {
       if (s.isCompleted) {
         totalCompletedSets++;
-        if (s.segments.isNotEmpty) {
-          for (final seg in s.segments) {
-            totalVolume += seg.reps * (seg.weight ?? 0);
+        if (!s.isWarmup) {
+          if (s.segments.isNotEmpty) {
+            for (final seg in s.segments) {
+              totalVolume += seg.reps * (seg.weight ?? 0);
+            }
+          } else {
+            totalVolume += (s.reps ?? 0) * (s.weight ?? 0);
           }
-        } else {
-          totalVolume += (s.reps ?? 0) * (s.weight ?? 0);
         }
       }
     }
@@ -246,6 +280,8 @@ class _ExecutionDetailBody extends StatelessWidget {
               ? localizedMuscleGroupName(ex.muscleGroup, l10n)
               : '';
 
+          final prSetIds = prSetIdsPerExercise[exId] ?? {};
+
           return SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(
@@ -255,6 +291,7 @@ class _ExecutionDetailBody extends StatelessWidget {
                 muscleGroup: group,
                 isUnilateral: unilateralMap[exId] ?? false,
                 sets: exerciseSets,
+                prSetIds: prSetIds,
                 colorScheme: colorScheme,
                 textTheme: textTheme,
                 l10n: l10n,
@@ -316,6 +353,7 @@ class _ExerciseBreakdown extends StatelessWidget {
   final String muscleGroup;
   final bool isUnilateral;
   final List<ExecutionSet> sets;
+  final Set<int> prSetIds;
   final ColorScheme colorScheme;
   final TextTheme textTheme;
   final AppLocalizations l10n;
@@ -325,6 +363,7 @@ class _ExerciseBreakdown extends StatelessWidget {
     required this.muscleGroup,
     this.isUnilateral = false,
     required this.sets,
+    this.prSetIds = const {},
     required this.colorScheme,
     required this.textTheme,
     required this.l10n,
@@ -424,6 +463,7 @@ class _ExerciseBreakdown extends StatelessWidget {
             ...sets.map((s) => _SetRow(
                   setEntry: s,
                   isCardio: _isCardio,
+                  isPR: prSetIds.contains(s.id),
                   colorScheme: colorScheme,
                   textTheme: textTheme,
                   l10n: l10n,
@@ -441,16 +481,19 @@ class _ExerciseBreakdown extends StatelessWidget {
   Widget? _feedbackChip(BuildContext context) {
     if (_isCardio) return null;
 
-    final completed = sets.where((s) => s.isCompleted).toList();
-    if (completed.isEmpty) return null;
+    final workingSets =
+        sets.where((s) => s.isCompleted && !s.isWarmup).toList();
+    if (workingSets.isEmpty) return null;
 
-    final plannedReps = completed.first.plannedReps ?? 0;
+    final plannedReps = workingSets.first.plannedReps ?? 0;
     final feedback = loadFeedback(
       cs: colorScheme,
       custom: Theme.of(context).extension<AthlosCustomColors>()!,
       l10n: l10n,
-      completedReps: completed.map((s) => s.reps!).toList(),
-      plannedReps: plannedReps,
+      completedReps: workingSets.map((s) => s.reps!).toList(),
+      minReps: plannedReps,
+      maxReps: plannedReps,
+      isAmrap: false,
     );
     if (feedback == null) return null;
 
@@ -475,6 +518,7 @@ class _ExerciseBreakdown extends StatelessWidget {
 class _SetRow extends StatelessWidget {
   final ExecutionSet setEntry;
   final bool isCardio;
+  final bool isPR;
   final ColorScheme colorScheme;
   final TextTheme textTheme;
   final AppLocalizations l10n;
@@ -482,6 +526,7 @@ class _SetRow extends StatelessWidget {
   const _SetRow({
     required this.setEntry,
     this.isCardio = false,
+    this.isPR = false,
     required this.colorScheme,
     required this.textTheme,
     required this.l10n,
@@ -491,6 +536,13 @@ class _SetRow extends StatelessWidget {
   Widget build(BuildContext context) {
     if (isCardio) return _buildCardioRow(context);
     return _buildStrengthRow(context);
+  }
+
+  String _fmtWeight(double? w) {
+    if (w == null) return '-';
+    return w % 1 == 0
+        ? '${w.toInt()}${l10n.weightUnit}'
+        : '${w.toStringAsFixed(1)}${l10n.weightUnit}';
   }
 
   Widget _buildCardioRow(BuildContext context) {
@@ -539,9 +591,10 @@ class _SetRow extends StatelessWidget {
 
   Widget _buildStrengthRow(BuildContext context) {
     final customColors = Theme.of(context).extension<AthlosCustomColors>()!;
+    final planned = setEntry.plannedReps ?? 0;
     final statusColor = setEntry.isCompleted
         ? (repsDeviationColor(colorScheme, customColors, setEntry.reps ?? 0,
-                setEntry.plannedReps ?? 0) ??
+                planned, planned, false) ??
             colorScheme.primary)
         : colorScheme.onSurfaceVariant;
     final diff = (setEntry.reps ?? 0) - (setEntry.plannedReps ?? 0);
@@ -550,19 +603,39 @@ class _SetRow extends StatelessWidget {
         ? '${setEntry.weight!.toStringAsFixed(setEntry.weight! % 1 == 0 ? 0 : 1)}${l10n.weightUnit}'
         : '-';
 
+    final opacity = setEntry.isWarmup ? 0.5 : 1.0;
+
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: AthlosSpacing.xs),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 40,
-                child: Text(
-                  '${setEntry.setNumber}',
-                  style: textTheme.bodyMedium,
+        Opacity(
+          opacity: opacity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AthlosSpacing.xs),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 40,
+                  child: Row(
+                    children: [
+                      Text(
+                        '${setEntry.setNumber}',
+                        style: textTheme.bodyMedium,
+                      ),
+                      if (setEntry.isWarmup)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                              left: AthlosSpacing.xxs),
+                          child: Text(
+                            'W',
+                            style: textTheme.labelSmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
               Expanded(
                 child: RichText(
                   text: TextSpan(
@@ -588,20 +661,34 @@ class _SetRow extends StatelessWidget {
                 width: 60,
                 child: Text(weightStr, style: textTheme.bodyMedium),
               ),
+              if (setEntry.rpe != null)
+                Padding(
+                  padding: const EdgeInsets.only(right: AthlosSpacing.xs),
+                  child: Text(
+                    'RPE ${setEntry.rpe}',
+                    style: textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
               SizedBox(
                 width: 24,
-                child: Icon(
-                  setEntry.isCompleted
-                      ? (diff.abs() <= 1
-                          ? Icons.check_circle
-                          : Icons.warning)
-                      : Icons.radio_button_unchecked,
-                  size: 18,
-                  color: statusColor,
-                ),
+                child: isPR
+                    ? Icon(Icons.emoji_events,
+                        size: 18, color: colorScheme.tertiary)
+                    : Icon(
+                        setEntry.isCompleted
+                            ? (diff.abs() <= 1
+                                ? Icons.check_circle
+                                : Icons.warning)
+                            : Icons.radio_button_unchecked,
+                        size: 18,
+                        color: statusColor,
+                      ),
               ),
             ],
           ),
+        ),
         ),
 
         // Drop set segments
@@ -644,6 +731,51 @@ class _SetRow extends StatelessWidget {
               ),
             );
           }),
+
+        if (setEntry.leftReps != null || setEntry.rightReps != null)
+          Padding(
+            padding: const EdgeInsets.only(
+              left: AthlosSpacing.lg + AthlosSpacing.sm,
+              bottom: AthlosSpacing.xs,
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.swap_horiz,
+                    size: 12, color: colorScheme.secondary),
+                const SizedBox(width: AthlosSpacing.xs),
+                Text(
+                  '${l10n.leftAbbr}: ${setEntry.leftReps ?? "-"}×${_fmtWeight(setEntry.leftWeight)}  '
+                  '${l10n.rightAbbr}: ${setEntry.rightReps ?? "-"}×${_fmtWeight(setEntry.rightWeight)}',
+                  style: textTheme.bodySmall
+                      ?.copyWith(color: colorScheme.secondary),
+                ),
+              ],
+            ),
+          ),
+
+        if (setEntry.notes != null && setEntry.notes!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(
+              left: AthlosSpacing.lg + AthlosSpacing.sm,
+              bottom: AthlosSpacing.xs,
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.note_alt_outlined,
+                    size: 12, color: colorScheme.onSurfaceVariant),
+                const SizedBox(width: AthlosSpacing.xs),
+                Flexible(
+                  child: Text(
+                    setEntry.notes!,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }

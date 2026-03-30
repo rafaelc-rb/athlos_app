@@ -19,7 +19,6 @@ const _fuzzyThreshold = 0.84;
 const _strongMatchThreshold = 0.96;
 const _profileComparableKeys = <String>{
   'name',
-  'weight',
   'height',
   'age',
   'goal',
@@ -46,6 +45,9 @@ const _tableWorkoutExecutions = 'workout_executions';
 const _tableExecutionSets = 'execution_sets';
 const _tableExecutionSetSegments = 'execution_set_segments';
 const _tableCycleSteps = 'cycle_steps';
+const _tablePrograms = 'programs';
+const _tableProgressionRules = 'progression_rules';
+const _tableBodyMetrics = 'body_metrics';
 const _tableUserEquipments = 'user_equipments';
 const _tableCatalogGovernanceEvents = 'catalog_governance_events';
 const _tableLocalDuplicateFeedback = 'local_duplicate_feedback';
@@ -60,7 +62,7 @@ final DomainLabelResolver _domainLabelResolver = DomainLabelResolver(_ptBrL10n);
 class LocalBackupRepositoryImpl implements LocalBackupRepository {
   final AppDatabase _db;
 
-  const LocalBackupRepositoryImpl(this._db);
+  LocalBackupRepositoryImpl(this._db);
 
   @override
   Future<Result<BackupExportData>> exportBackup() async {
@@ -74,6 +76,10 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         _tableExecutionSetSegments,
       );
       final cycleSteps = await _fetchTableRows(_tableCycleSteps);
+      final programs = await _fetchTableRows(_tablePrograms);
+      final progressionRules =
+          await _fetchTableRows(_tableProgressionRules);
+      final bodyMetrics = await _fetchTableRows(_tableBodyMetrics);
       final userEquipments = await _fetchTableRows(_tableUserEquipments);
 
       final allEquipments = await _fetchTableRows(_tableEquipments);
@@ -168,6 +174,10 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
               .map(_toJsonMap)
               .toList(),
           _tableCycleSteps: cycleSteps.map(_toJsonMap).toList(),
+          _tablePrograms: programs.map(_toJsonMap).toList(),
+          _tableProgressionRules:
+              progressionRules.map(_toJsonMap).toList(),
+          _tableBodyMetrics: bodyMetrics.map(_toJsonMap).toList(),
           _tableUserEquipments: userEquipments.map(_toJsonMap).toList(),
         },
         _tableCatalogReferences: <String, dynamic>{
@@ -219,6 +229,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     BackupImportRequest request,
   ) async {
     try {
+      _importDefaultProgramId = null;
       final payload = _parsePayload(request.jsonContent);
 
       var createdCount = 0;
@@ -244,7 +255,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
             await _insertRow(
               _tableUserProfiles,
               importedProfile,
-              excludeKeys: const {'id'},
+              excludeKeys: const {'id', 'weight'},
             );
             createdCount++;
           } else {
@@ -279,7 +290,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
                   _tableUserProfiles,
                   existingProfileId,
                   mergedProfile,
-                  excludeKeys: const {'id', 'created_at', 'updated_at'},
+                  excludeKeys: const {'id', 'created_at', 'updated_at', 'weight'},
                 );
                 updatedCount++;
               } else if (hasFieldSkip) {
@@ -492,18 +503,97 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
             bumpReason(failedReasons, 'workout_exercise_missing_mapping');
             continue;
           }
+          final legacyReps = row['reps'];
           await _insertRow(_tableWorkoutExercises, {
             'workout_id': newWorkoutId,
             'exercise_id': newExerciseId,
             'order': row['order'],
             'sets': row['sets'],
-            'reps': row['reps'],
+            'min_reps': row['min_reps'] ?? legacyReps,
+            'max_reps': row['max_reps'] ?? legacyReps,
+            'is_amrap': row['is_amrap'] ?? 0,
             'rest': row['rest'],
             'duration': row['duration'],
             'group_id': row['group_id'],
             'is_unilateral': row['is_unilateral'],
             'notes': row['notes'],
           }, orReplace: true);
+        }
+
+        // Programs
+        final programRows = payload.tables[_tablePrograms] ?? const [];
+        final programIdMap = <int, int>{};
+        for (final row in programRows) {
+          final oldId = _asInt(row['id']);
+          if (oldId == null) continue;
+          final newId = await _insertRow(
+            _tablePrograms,
+            {
+              'name': row['name'],
+              'focus': row['focus'] ?? 'custom',
+              'duration_mode': row['duration_mode'] ?? 'sessions',
+              'duration_value': row['duration_value'] ?? 12,
+              'default_rest_seconds': row['default_rest_seconds'],
+              'is_active': row['is_active'] ?? 0,
+              'is_in_deload': row['is_in_deload'] ?? 0,
+              'deload_frequency': row['deload_frequency'],
+              'deload_strategy': row['deload_strategy'],
+              'deload_volume_multiplier': row['deload_volume_multiplier'],
+              'deload_intensity_multiplier':
+                  row['deload_intensity_multiplier'],
+              'created_at': row['created_at'],
+              'archived_at': row['archived_at'],
+            },
+            excludeKeys: const {'id'},
+          );
+          programIdMap[oldId] = newId;
+        }
+
+        // Progression Rules
+        final progressionRuleRows =
+            payload.tables[_tableProgressionRules] ?? const [];
+        for (final row in progressionRuleRows) {
+          final oldProgramId = _asInt(row['program_id']);
+          final oldExerciseId = _asInt(row['exercise_id']);
+          if (oldProgramId == null || oldExerciseId == null) continue;
+          final newProgramId = programIdMap[oldProgramId];
+          final newExerciseId = exerciseIdMap[oldExerciseId];
+          if (newProgramId == null || newExerciseId == null) {
+            failedCount++;
+            bumpReason(
+              failedReasons,
+              'progression_rule_missing_mapping',
+            );
+            continue;
+          }
+          await _insertRow(
+            _tableProgressionRules,
+            {
+              'program_id': newProgramId,
+              'exercise_id': newExerciseId,
+              'type': row['type'],
+              'value': row['value'],
+              'frequency': row['frequency'],
+              'condition': row['condition'],
+              'condition_value': row['condition_value'],
+            },
+            excludeKeys: const {'id'},
+          );
+        }
+
+        // Body Metrics
+        final bodyMetricRows =
+            payload.tables[_tableBodyMetrics] ?? const [];
+        for (final row in bodyMetricRows) {
+          await _insertRow(
+            _tableBodyMetrics,
+            {
+              'weight': row['weight'],
+              'body_fat_percent': row['body_fat_percent'],
+              'recorded_at': row['recorded_at'],
+            },
+            excludeKeys: const {'id'},
+          );
         }
 
         final executionRows =
@@ -527,13 +617,20 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
             );
             continue;
           }
+          final oldProgramId = _asInt(row['program_id']);
+          var newProgramId = oldProgramId != null
+              ? programIdMap[oldProgramId]
+              : null;
+          newProgramId ??= await _ensureDefaultProgramForImport(programIdMap);
           final newExecutionId = await _insertRow(
             _tableWorkoutExecutions,
             {
               'workout_id': newWorkoutId,
+              'program_id': newProgramId,
               'started_at': row['started_at'],
               'finished_at': row['finished_at'],
               'notes': row['notes'],
+              'exercise_config_snapshot': row['exercise_config_snapshot'],
             },
             excludeKeys: const {'id'},
           );
@@ -580,6 +677,8 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
               'duration': row['duration'],
               'distance': row['distance'],
               'is_completed': row['is_completed'],
+              'is_warmup': row['is_warmup'] ?? 0,
+              'rpe': row['rpe'],
               'notes': row['notes'],
             },
             excludeKeys: const {'id'},
@@ -615,22 +714,28 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         }
 
         final cycleStepRows = payload.tables[_tableCycleSteps] ?? const [];
+        var cycleOrderIndex = 0;
         for (final row in cycleStepRows) {
+          if (row['step_type'] == 'rest') continue;
           final oldWorkoutId = _asInt(row['workout_id']);
           final newWorkoutId = oldWorkoutId != null
               ? workoutIdMap[oldWorkoutId]
               : null;
-          if (oldWorkoutId != null &&
-              (newWorkoutId == null ||
-                  importWorkoutDetails[oldWorkoutId] == false)) {
+          if (newWorkoutId == null ||
+              importWorkoutDetails[oldWorkoutId] == false) {
             continue;
           }
+          final oldProgramId = _asInt(row['program_id']);
+          var newProgramId = oldProgramId != null
+              ? programIdMap[oldProgramId]
+              : null;
+          newProgramId ??= await _ensureDefaultProgramForImport(programIdMap);
           await _insertRow(
             _tableCycleSteps,
             {
-              'order_index': row['order_index'],
-              'step_type': row['step_type'],
+              'order_index': cycleOrderIndex++,
               'workout_id': newWorkoutId,
+              'program_id': newProgramId,
             },
             excludeKeys: const {'id'},
           );
@@ -1978,6 +2083,9 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       _tableExecutionSets,
       _tableExecutionSetSegments,
       _tableCycleSteps,
+      _tablePrograms,
+      _tableProgressionRules,
+      _tableBodyMetrics,
       _tableUserEquipments,
     ];
 
@@ -2160,6 +2268,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         'movement_pattern': row['movement_pattern'],
         'description': row['description'],
         'is_verified': 0,
+        'is_bodyweight': row['is_bodyweight'] ?? 0,
       },
     };
   }
@@ -2487,6 +2596,31 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     if (value is num) return value.toInt() == 1;
     if (value is String) return value == '1' || value.toLowerCase() == 'true';
     return false;
+  }
+
+  int? _importDefaultProgramId;
+
+  /// Returns (or creates) a default program to use when imported data
+  /// has no program_id. Caches the result for the duration of the import.
+  Future<int> _ensureDefaultProgramForImport(
+    Map<int, int> programIdMap,
+  ) async {
+    if (_importDefaultProgramId != null) return _importDefaultProgramId!;
+    final id = await _insertRow(
+      _tablePrograms,
+      {
+        'name': 'Programa Importado',
+        'focus': 'custom',
+        'duration_mode': 'sessions',
+        'duration_value': 24,
+        'is_active': 1,
+        'is_in_deload': 0,
+      },
+      excludeKeys: const {'id'},
+    );
+    _importDefaultProgramId = id;
+    programIdMap[-1] = id;
+    return id;
   }
 
   int? _asInt(dynamic value) {

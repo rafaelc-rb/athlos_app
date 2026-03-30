@@ -13,7 +13,9 @@ Future<void> seedDevData(AppDatabase db) async {
 
   await _seedUserEquipments(db, equipmentIds);
   await _seedWorkoutsWithExercises(db, exerciseIds);
-  await _seedExecutionHistory(db, exerciseIds);
+  final programId = await _seedProgram(db, exerciseIds);
+  await _seedExecutionHistory(db, exerciseIds, programId);
+  await _seedBodyMetrics(db);
 }
 
 Future<Map<String, int>> _resolveExerciseIds(AppDatabase db) async {
@@ -81,14 +83,13 @@ Future<void> _seedWorkoutsWithExercises(
         ),
       );
   await _insertWorkoutExercises(db, pushId, exerciseIds, [
-    _WE('flatBarbellBenchPress', order: 0, sets: 4, reps: 8, rest: 90),
-    _WE('inclineBarbellBenchPress', order: 1, sets: 3, reps: 10, rest: 75),
-    _WE('dumbbellFly', order: 2, sets: 3, reps: 12, rest: 60),
-    _WE('overheadPress', order: 3, sets: 4, reps: 8, rest: 90),
-    // Superset: lateral raise + face pull
-    _WE('lateralRaise', order: 4, sets: 3, reps: 15, rest: 45, groupId: 1),
-    _WE('facePull', order: 5, sets: 3, reps: 15, rest: 60, groupId: 1),
-    _WE('tricepsPushdown', order: 6, sets: 3, reps: 12, rest: 60),
+    _WE('flatBarbellBenchPress', order: 0, sets: 4, minReps: 6, maxReps: 8, rest: 90),
+    _WE('inclineBarbellBenchPress', order: 1, sets: 3, minReps: 8, maxReps: 12, rest: 75),
+    _WE('dumbbellFly', order: 2, sets: 3, minReps: 10, maxReps: 15, rest: 60),
+    _WE('overheadPress', order: 3, sets: 4, minReps: 6, maxReps: 8, rest: 90),
+    _WE('lateralRaise', order: 4, sets: 3, minReps: 12, maxReps: 15, rest: 45, groupId: 1),
+    _WE('facePull', order: 5, sets: 3, minReps: 12, maxReps: 15, rest: 60, groupId: 1),
+    _WE('tricepsPushdown', order: 6, sets: 3, minReps: 10, maxReps: 12, rest: 60),
   ]);
 
   // --- Pull Day ---
@@ -100,13 +101,12 @@ Future<void> _seedWorkoutsWithExercises(
         ),
       );
   await _insertWorkoutExercises(db, pullId, exerciseIds, [
-    _WE('pullUp', order: 0, sets: 4, reps: 8, rest: 90),
-    _WE('barbellRow', order: 1, sets: 4, reps: 8, rest: 90),
-    _WE('latPulldown', order: 2, sets: 3, reps: 10, rest: 75),
-    _WE('seatedCableRow', order: 3, sets: 3, reps: 12, rest: 60),
-    // Superset: barbell curl + hammer curl
-    _WE('barbellCurl', order: 4, sets: 3, reps: 10, rest: 45, groupId: 1),
-    _WE('hammerCurl', order: 5, sets: 3, reps: 12, rest: 60, groupId: 1),
+    _WE('pullUp', order: 0, sets: 4, minReps: 6, maxReps: 10, rest: 90),
+    _WE('barbellRow', order: 1, sets: 4, minReps: 6, maxReps: 8, rest: 90),
+    _WE('latPulldown', order: 2, sets: 3, minReps: 8, maxReps: 12, rest: 75),
+    _WE('seatedCableRow', order: 3, sets: 3, minReps: 10, maxReps: 12, rest: 60),
+    _WE('barbellCurl', order: 4, sets: 3, minReps: 8, maxReps: 12, rest: 45, groupId: 1),
+    _WE('hammerCurl', order: 5, sets: 3, minReps: 10, maxReps: 12, rest: 60, groupId: 1),
   ]);
 
   // --- Leg Day ---
@@ -118,12 +118,12 @@ Future<void> _seedWorkoutsWithExercises(
         ),
       );
   await _insertWorkoutExercises(db, legId, exerciseIds, [
-    _WE('barbellSquat', order: 0, sets: 4, reps: 8, rest: 120),
-    _WE('legPress', order: 1, sets: 3, reps: 12, rest: 90),
-    _WE('romanianDeadlift', order: 2, sets: 3, reps: 10, rest: 90),
-    _WE('bulgarianSplitSquat', order: 3, sets: 3, reps: 10, rest: 75),
-    _WE('hipThrust', order: 4, sets: 3, reps: 12, rest: 75),
-    _WE('standingCalfRaise', order: 5, sets: 4, reps: 15, rest: 45),
+    _WE('barbellSquat', order: 0, sets: 4, minReps: 5, maxReps: 5, rest: 120, isAmrap: true),
+    _WE('legPress', order: 1, sets: 3, minReps: 8, maxReps: 12, rest: 90),
+    _WE('romanianDeadlift', order: 2, sets: 3, minReps: 8, maxReps: 10, rest: 90),
+    _WE('bulgarianSplitSquat', order: 3, sets: 3, minReps: 8, maxReps: 12, rest: 75),
+    _WE('hipThrust', order: 4, sets: 3, minReps: 10, maxReps: 12, rest: 75),
+    _WE('standingCalfRaise', order: 5, sets: 4, minReps: 12, maxReps: 20, rest: 45),
   ]);
 
   // --- Cardio Day ---
@@ -169,7 +169,9 @@ Future<void> _insertWorkoutExercises(
           exerciseId: Value(exId),
           order: Value(e.order),
           sets: Value(e.sets),
-          reps: Value(e.reps),
+          minReps: Value(e.minReps),
+          maxReps: Value(e.maxReps),
+          isAmrap: Value(e.isAmrap),
           rest: Value(e.rest),
           duration: Value(e.duration),
           groupId: Value(e.groupId),
@@ -184,13 +186,14 @@ Future<void> _insertWorkoutExercises(
 // ---------------------------------------------------------------------------
 
 Future<void> _seedExecutionHistory(
-    AppDatabase db, Map<String, int> exerciseIds) async {
+    AppDatabase db, Map<String, int> exerciseIds, int programId) async {
   final now = DateTime.now();
 
   // --- Execution 1: Push Day — 3 days ago (completed) ---
   final exec1 = await db.into(db.workoutExecutions).insert(
         WorkoutExecutionsCompanion.insert(
           workoutId: 1,
+          programId: programId,
           startedAt: Value(now.subtract(const Duration(days: 3, hours: 1))),
           finishedAt:
               Value(now.subtract(const Duration(days: 3, minutes: 10))),
@@ -198,10 +201,13 @@ Future<void> _seedExecutionHistory(
         ),
       );
   await _insertCompletedSets(db, exec1, exerciseIds['flatBarbellBenchPress']!,
-      planned: 8, weights: [80, 80, 82.5, 82.5], reps: [8, 8, 7, 6]);
+      planned: 8,
+      weights: [80, 80, 82.5, 82.5],
+      reps: [8, 8, 7, 6],
+      rpes: [7, 8, 9, 10]);
   await _insertCompletedSets(
       db, exec1, exerciseIds['inclineBarbellBenchPress']!,
-      planned: 10, weights: [50, 50, 50], reps: [10, 10, 9]);
+      planned: 10, weights: [50, 50, 50], reps: [10, 10, 9], rpes: [7, 8, 9]);
   await _insertCompletedSets(db, exec1, exerciseIds['dumbbellFly']!,
       planned: 12, weights: [14, 14, 14], reps: [12, 12, 11]);
   await _insertCompletedSets(db, exec1, exerciseIds['overheadPress']!,
@@ -231,6 +237,7 @@ Future<void> _seedExecutionHistory(
   final exec2 = await db.into(db.workoutExecutions).insert(
         WorkoutExecutionsCompanion.insert(
           workoutId: 2,
+          programId: programId,
           startedAt: Value(now.subtract(const Duration(days: 1, hours: 1))),
           finishedAt:
               Value(now.subtract(const Duration(days: 1, minutes: 5))),
@@ -253,6 +260,7 @@ Future<void> _seedExecutionHistory(
   final exec3 = await db.into(db.workoutExecutions).insert(
         WorkoutExecutionsCompanion.insert(
           workoutId: 3,
+          programId: programId,
           startedAt: Value(now.subtract(const Duration(hours: 2))),
           finishedAt: Value(now.subtract(const Duration(minutes: 30))),
           notes: const Value('Legs were shaky after squats'),
@@ -276,6 +284,7 @@ Future<void> _seedExecutionHistory(
   final exec4 = await db.into(db.workoutExecutions).insert(
         WorkoutExecutionsCompanion.insert(
           workoutId: 4,
+          programId: programId,
           startedAt: Value(now.subtract(const Duration(days: 2, hours: 1))),
           finishedAt:
               Value(now.subtract(const Duration(days: 2, minutes: 15))),
@@ -304,6 +313,7 @@ Future<void> _insertCompletedSets(
   required int planned,
   required List<double?> weights,
   required List<int> reps,
+  List<int?>? rpes,
 }) async {
   assert(weights.length == reps.length);
   for (var i = 0; i < weights.length; i++) {
@@ -317,6 +327,7 @@ Future<void> _insertCompletedSets(
             plannedWeight: Value(weights[i]),
             weight: Value(weights[i]),
             isCompleted: const Value(true),
+            rpe: Value(rpes != null && i < rpes.length ? rpes[i] : null),
           ),
         );
   }
@@ -417,7 +428,9 @@ class _WE {
   final String exerciseName;
   final int order;
   final int sets;
-  final int? reps;
+  final int? minReps;
+  final int? maxReps;
+  final bool isAmrap;
   final int rest;
   final int? duration;
   final int? groupId;
@@ -426,9 +439,103 @@ class _WE {
     this.exerciseName, {
     required this.order,
     required this.sets,
-    this.reps,
+    this.minReps,
+    this.maxReps,
+    this.isAmrap = false,
     required this.rest,
     this.duration,
     this.groupId,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Training Program (mesocycle)
+// ---------------------------------------------------------------------------
+
+Future<int> _seedProgram(
+    AppDatabase db, Map<String, int> exerciseIds) async {
+  final activeWorkouts = await db.customSelect(
+    'SELECT id FROM workouts WHERE is_archived = 0 ORDER BY sort_order ASC',
+  ).get();
+
+  // PPL program with first 3 workouts
+  final pplIds = activeWorkouts.take(3).map((r) => r.read<int>('id')).toList();
+
+  final programId = await db.into(db.programs).insert(
+    ProgramsCompanion.insert(
+      name: 'PPL Hipertrofia',
+      focus: 'hypertrophy',
+      durationMode: 'sessions',
+      durationValue: 24,
+      defaultRestSeconds: const Value(90),
+      isActive: const Value(true),
+      deloadFrequency: const Value(4),
+      deloadStrategy: const Value('reduceVolume'),
+      deloadVolumeMultiplier: const Value(0.6),
+      deloadIntensityMultiplier: const Value(0.5),
+    ),
+  );
+
+  for (var i = 0; i < pplIds.length; i++) {
+    await db.into(db.cycleSteps).insert(
+      CycleStepsCompanion.insert(
+        programId: programId,
+        orderIndex: i,
+        workoutId: pplIds[i],
+      ),
+    );
+  }
+
+  // Progression rules for key compound lifts.
+  final progressionExercises = {
+    'flatBarbellBenchPress': 2.5,
+    'barbellRow': 2.5,
+    'conventionalDeadlift': 5.0,
+    'barbellBackSquat': 5.0,
+    'overheadPress': 1.25,
+  };
+  for (final entry in progressionExercises.entries) {
+    final exId = exerciseIds[entry.key];
+    if (exId == null) continue;
+    await db.into(db.progressionRules).insert(
+      ProgressionRulesCompanion.insert(
+        programId: programId,
+        exerciseId: exId,
+        type: 'incrementWeight',
+        value: entry.value,
+        frequency: 'everySession',
+        condition: const Value('completesAllSets'),
+      ),
+    );
+  }
+
+  return programId;
+}
+
+// ---------------------------------------------------------------------------
+// Body Metrics (weight timeline)
+// ---------------------------------------------------------------------------
+
+Future<void> _seedBodyMetrics(AppDatabase db) async {
+  final now = DateTime.now();
+  final entries = <(double weight, double? bf, int daysAgo)>[
+    (80.0, 18.0, 56),
+    (79.5, null, 49),
+    (79.2, 17.5, 42),
+    (78.8, null, 35),
+    (78.5, 17.0, 28),
+    (78.2, null, 21),
+    (77.8, 16.5, 14),
+    (77.5, null, 7),
+    (77.2, 16.0, 0),
+  ];
+  for (final (weight, bf, daysAgo) in entries) {
+    await db.into(db.bodyMetrics).insert(
+          BodyMetricsCompanion.insert(
+            weight: weight,
+            bodyFatPercent: Value(bf),
+            recordedAt: Value(now.subtract(Duration(days: daysAgo))),
+          ),
+        );
+  }
 }

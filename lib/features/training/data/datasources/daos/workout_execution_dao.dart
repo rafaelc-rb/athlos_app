@@ -48,6 +48,70 @@ class WorkoutExecutionDao extends DatabaseAccessor<AppDatabase>
         ),
       );
 
+  /// Returns unfinished executions whose workout still exists.
+  /// Used to offer resume/discard on app launch.
+  Future<List<WorkoutExecution>> getDangling() => (select(workoutExecutions)
+        ..where((e) => e.finishedAt.isNull())
+        ..orderBy([(e) => OrderingTerm.desc(e.startedAt)]))
+      .get();
+
+  /// Deletes only **unfinished** executions (and their sets/segments) for a
+  /// given workout. Finished executions are preserved as training history.
+  Future<void> deleteUnfinishedByWorkout(int workoutId) async {
+    final execIds = await (select(workoutExecutions)
+          ..where((e) =>
+              e.workoutId.equals(workoutId) & e.finishedAt.isNull()))
+        .map((e) => e.id)
+        .get();
+    if (execIds.isEmpty) return;
+
+    final setIds = await (select(executionSets)
+          ..where((s) => s.executionId.isIn(execIds)))
+        .map((s) => s.id)
+        .get();
+
+    if (setIds.isNotEmpty) {
+      await (delete(executionSetSegments)
+            ..where((seg) => seg.executionSetId.isIn(setIds)))
+          .go();
+    }
+    await (delete(executionSets)
+          ..where((s) => s.executionId.isIn(execIds)))
+        .go();
+    await (delete(workoutExecutions)
+          ..where((e) => e.id.isIn(execIds)))
+        .go();
+  }
+
+  /// Deletes **unfinished** executions referencing workouts that no longer
+  /// exist. Finished executions are kept as training history (they carry
+  /// their own exercise config snapshot).
+  Future<void> deleteOrphaned() async {
+    final orphanedIds = await customSelect(
+      'SELECT we.id FROM workout_executions we '
+      'WHERE we.finished_at IS NULL '
+      'AND we.workout_id NOT IN (SELECT id FROM workouts)',
+    ).map((row) => row.read<int>('id')).get();
+    if (orphanedIds.isEmpty) return;
+
+    final setIds = await (select(executionSets)
+          ..where((s) => s.executionId.isIn(orphanedIds)))
+        .map((s) => s.id)
+        .get();
+
+    if (setIds.isNotEmpty) {
+      await (delete(executionSetSegments)
+            ..where((seg) => seg.executionSetId.isIn(setIds)))
+          .go();
+    }
+    await (delete(executionSets)
+          ..where((s) => s.executionId.isIn(orphanedIds)))
+        .go();
+    await (delete(workoutExecutions)
+          ..where((e) => e.id.isIn(orphanedIds)))
+        .go();
+  }
+
   Future<void> deleteById(int id) async {
     final setIds = await (select(executionSets)
           ..where((s) => s.executionId.equals(id)))
@@ -93,6 +157,72 @@ class WorkoutExecutionDao extends DatabaseAccessor<AppDatabase>
       }
     }
     return result;
+  }
+
+  /// Returns completed, non-warmup sets from the most recent finished execution
+  /// that included [exerciseId]. Empty list if no history found.
+  Future<List<ExecutionSet>> getLastCompletedSetsForExercise(
+      int exerciseId) async {
+    final lastExec = await (select(workoutExecutions).join([
+      innerJoin(executionSets,
+          executionSets.executionId.equalsExp(workoutExecutions.id)),
+    ])
+          ..where(executionSets.exerciseId.equals(exerciseId) &
+              executionSets.isCompleted.equals(true) &
+              workoutExecutions.finishedAt.isNotNull())
+          ..orderBy([OrderingTerm.desc(workoutExecutions.startedAt)])
+          ..limit(1))
+        .getSingleOrNull();
+    if (lastExec == null) return [];
+
+    final execId = lastExec.readTable(workoutExecutions).id;
+    return (select(executionSets)
+          ..where((s) =>
+              s.executionId.equals(execId) &
+              s.exerciseId.equals(exerciseId) &
+              s.isCompleted.equals(true) &
+              s.isWarmup.equals(false))
+          ..orderBy([(s) => OrderingTerm.asc(s.setNumber)]))
+        .get();
+  }
+
+  /// All completed, non-warmup sets for [exerciseId] across all finished
+  /// executions. Used for PR detection and 1RM history.
+  Future<List<ExecutionSet>> getAllCompletedSetsForExercise(
+      int exerciseId) async {
+    return (select(executionSets).join([
+      innerJoin(workoutExecutions,
+          workoutExecutions.id.equalsExp(executionSets.executionId)),
+    ])
+          ..where(executionSets.exerciseId.equals(exerciseId) &
+              executionSets.isCompleted.equals(true) &
+              executionSets.isWarmup.equals(false) &
+              workoutExecutions.finishedAt.isNotNull())
+          ..orderBy([OrderingTerm.desc(workoutExecutions.startedAt)]))
+        .map((row) => row.readTable(executionSets))
+        .get();
+  }
+
+  /// Returns completed non-warmup sets for [exerciseId] paired with
+  /// the execution's startedAt date (for charting over time).
+  Future<List<({ExecutionSet set, DateTime date})>>
+      getCompletedSetsWithDateForExercise(int exerciseId) async {
+    final rows = await (select(executionSets).join([
+      innerJoin(workoutExecutions,
+          workoutExecutions.id.equalsExp(executionSets.executionId)),
+    ])
+          ..where(executionSets.exerciseId.equals(exerciseId) &
+              executionSets.isCompleted.equals(true) &
+              executionSets.isWarmup.equals(false) &
+              workoutExecutions.finishedAt.isNotNull())
+          ..orderBy([OrderingTerm.asc(workoutExecutions.startedAt)]))
+        .get();
+    return rows
+        .map((row) => (
+              set: row.readTable(executionSets),
+              date: row.readTable(workoutExecutions).startedAt,
+            ))
+        .toList();
   }
 
   // --- Execution sets ---

@@ -208,6 +208,13 @@ Map<String, String> _exerciseNameMap(AppLocalizations l10n) => {
   'bayesianCableCurl': l10n.exerciseBayesianCableCurl,
   'preacherHammerCurl': l10n.exercisePreacherHammerCurl,
   'reverseZottmanCurl': l10n.exerciseReverseZottmanCurl,
+  'neutralGripPullUp': l10n.exerciseNeutralGripPullUp,
+  'closeGripPulldown': l10n.exerciseCloseGripPulldown,
+  'neutralGripPulldown': l10n.exerciseNeutralGripPulldown,
+  'underhandBarbellRow': l10n.exerciseUnderhandBarbellRow,
+  'wideGripSeatedRow': l10n.exerciseWideGripSeatedRow,
+  'ropeTricepsPushdown': l10n.exerciseRopeTricepsPushdown,
+  'declineBarbellBenchPress': l10n.exerciseDeclineBarbellBenchPress,
 };
 
 Map<String, String> _muscleGroupMap(AppLocalizations l10n) => {

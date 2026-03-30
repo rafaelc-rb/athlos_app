@@ -196,7 +196,9 @@ class _FakeWorkoutExecutionRepository implements WorkoutExecutionRepository {
   ) =>
       _unsupported();
   @override
-  Future<Result<int>> start(int workoutId) => _unsupported();
+  Future<Result<int>> start(int workoutId,
+          {required int programId, String? exerciseConfigSnapshot}) =>
+      _unsupported();
   @override
   Future<Result<void>> finish(int executionId, {String? notes}) =>
       _unsupported();
@@ -217,6 +219,21 @@ class _FakeWorkoutExecutionRepository implements WorkoutExecutionRepository {
     int executionId,
   ) =>
       _unsupported();
+  @override
+  Future<Result<List<ExecutionSet>>> getLastCompletedSetsForExercise(
+    int exerciseId,
+  ) =>
+      _unsupported();
+  @override
+  Future<Result<List<ExecutionSet>>> getAllCompletedSetsForExercise(
+    int exerciseId,
+  ) =>
+      _unsupported();
+
+  @override
+  Future<Result<List<({ExecutionSet set, DateTime date})>>>
+      getCompletedSetsWithDateForExercise(int exerciseId) =>
+          _unsupported();
 }
 
 Future<Result<T>> _unsupported<T>() async {

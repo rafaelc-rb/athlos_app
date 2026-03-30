@@ -2,16 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/errors/result.dart';
 import '../../../../core/services/rest_timer_notification_service.dart';
 import '../../../../core/theme/athlos_custom_colors.dart';
 import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../data/repositories/training_providers.dart';
+import '../../domain/entities/training_program.dart';
 import '../../domain/entities/workout_exercise.dart';
 import '../helpers/exercise_l10n.dart';
 import '../helpers/rep_performance.dart';
 import '../providers/active_execution_notifier.dart';
 import '../providers/exercise_notifier.dart';
+import '../providers/program_notifier.dart';
 import '../helpers/duration_format.dart';
 import '../providers/cardio_timer_notifier.dart';
 import '../providers/rest_timer_notifier.dart';
@@ -55,8 +59,16 @@ class _WorkoutExecutionScreenState
   int _focusedSetNumber = 1;
   double _currentWeight = 0;
   int _currentReps = 0;
+  int _leftReps = 0;
+  double _leftWeight = 0;
+  int _rightReps = 0;
+  double _rightWeight = 0;
   int _currentDuration = 0;
   double _currentDistance = 0;
+  int? _selectedRpe;
+  bool _isWarmup = false;
+  String? _setNotes;
+  bool _showNotesField = false;
   List<_DropSegmentInput> _dropSegments = [];
 
   @override
@@ -110,9 +122,27 @@ class _WorkoutExecutionScreenState
         final l10n = AppLocalizations.of(context)!;
         final router = GoRouter.of(context);
         try {
+          final activeProgram =
+              await ref.read(activeProgramProvider.future);
+          if (activeProgram == null) throw Exception('No active program');
+          final deloadConfig = activeProgram.isInDeload
+              ? activeProgram.deloadConfig
+              : null;
+          final progressionRules = await ref
+              .read(progressionRuleRepositoryProvider)
+              .getByProgram(activeProgram.id)
+              .then((r) => r.getOrThrow());
           await ref
               .read(activeExecutionProvider.notifier)
-              .startExecution(widget.workoutId, exercisesAsync.value);
+              .startExecution(
+                widget.workoutId,
+                exercisesAsync.value,
+                programId: activeProgram.id,
+                deloadConfig: deloadConfig,
+                progressionRules: progressionRules,
+                defaultRestSeconds:
+                    activeProgram.defaultRestSeconds ?? 0,
+              );
         } on Exception catch (_) {
           messenger.showSnackBar(
             SnackBar(content: Text(l10n.genericError)),
@@ -356,10 +386,19 @@ class _WorkoutExecutionScreenState
             ? prevCompleted.last.reps ?? entry.reps ?? 0
             : entry.reps ?? 0;
       }
+      _selectedRpe = entry.rpe;
+      _isWarmup = entry.isWarmup;
+      _setNotes = entry.notes;
+      _showNotesField = entry.notes != null && entry.notes!.isNotEmpty;
       _dropSegments = entry.segments
           .skip(1)
           .map((s) => _DropSegmentInput(reps: s.reps, weight: s.weight ?? 0))
           .toList();
+
+      _leftReps = entry.leftReps ?? _currentReps;
+      _leftWeight = entry.leftWeight ?? _currentWeight;
+      _rightReps = entry.rightReps ?? _currentReps;
+      _rightWeight = entry.rightWeight ?? _currentWeight;
     });
   }
 
@@ -435,6 +474,31 @@ class _WorkoutExecutionScreenState
       ),
       body: Column(
         children: [
+          if (exec.isDeload)
+            Container(
+              width: double.infinity,
+              color: colorScheme.tertiaryContainer,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AthlosSpacing.md,
+                vertical: AthlosSpacing.xs,
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.spa,
+                      size: 16, color: colorScheme.onTertiaryContainer),
+                  const SizedBox(width: AthlosSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      l10n.deloadActiveChip,
+                      style: textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onTertiaryContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // Progress bar
           Padding(
             padding: const EdgeInsets.symmetric(
@@ -666,6 +730,34 @@ class _WorkoutExecutionScreenState
                   ],
                 ],
               ),
+            if (exercise.notes != null && exercise.notes!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: AthlosSpacing.sm),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.note_alt_outlined,
+                      size: 14,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: AthlosSpacing.xs),
+                    Flexible(
+                      child: Text(
+                        exercise.notes!,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             const Spacer(),
 
             if (_isFocusedCardio(exec)) ...[
@@ -718,8 +810,77 @@ class _WorkoutExecutionScreenState
                     colorScheme,
                     Theme.of(context).extension<AthlosCustomColors>()!,
                     _currentReps,
-                    exercise.reps ?? 0),
+                    exercise.minReps ?? 0,
+                    exercise.maxReps ?? 0,
+                    exercise.isAmrap),
               ),
+
+              if (exercise.isUnilateral) ...[
+                const SizedBox(height: AthlosSpacing.lg),
+                Text(l10n.leftSideLabel,
+                    style: textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant)),
+                const SizedBox(height: AthlosSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _NumberInput(
+                        value: _leftReps.toDouble(),
+                        suffix: l10n.repsShort,
+                        step: 1,
+                        onChanged: (v) =>
+                            setState(() => _leftReps = v.toInt()),
+                        textTheme: textTheme,
+                        colorScheme: colorScheme,
+                      ),
+                    ),
+                    const SizedBox(width: AthlosSpacing.sm),
+                    Expanded(
+                      child: _NumberInput(
+                        value: _leftWeight,
+                        suffix: l10n.weightKgSuffix,
+                        step: 2.5,
+                        onChanged: (v) =>
+                            setState(() => _leftWeight = v),
+                        textTheme: textTheme,
+                        colorScheme: colorScheme,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AthlosSpacing.sm),
+                Text(l10n.rightSideLabel,
+                    style: textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant)),
+                const SizedBox(height: AthlosSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _NumberInput(
+                        value: _rightReps.toDouble(),
+                        suffix: l10n.repsShort,
+                        step: 1,
+                        onChanged: (v) =>
+                            setState(() => _rightReps = v.toInt()),
+                        textTheme: textTheme,
+                        colorScheme: colorScheme,
+                      ),
+                    ),
+                    const SizedBox(width: AthlosSpacing.sm),
+                    Expanded(
+                      child: _NumberInput(
+                        value: _rightWeight,
+                        suffix: l10n.weightKgSuffix,
+                        step: 2.5,
+                        onChanged: (v) =>
+                            setState(() => _rightWeight = v),
+                        textTheme: textTheme,
+                        colorScheme: colorScheme,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
 
               const SizedBox(height: AthlosSpacing.md),
 
@@ -802,6 +963,83 @@ class _WorkoutExecutionScreenState
                   style: textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
+                ),
+              ),
+
+            // Warmup toggle + notes toggle + RPE selector
+            Padding(
+              padding:
+                  const EdgeInsets.only(bottom: AthlosSpacing.md),
+              child: Row(
+                children: [
+                  _WarmupChip(
+                    isSelected: _isWarmup,
+                    onTap: () =>
+                        setState(() => _isWarmup = !_isWarmup),
+                  ),
+                  const SizedBox(width: AthlosSpacing.xs),
+                  GestureDetector(
+                    onTap: () => setState(
+                        () => _showNotesField = !_showNotesField),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AthlosSpacing.sm,
+                        vertical: AthlosSpacing.xxs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _showNotesField
+                            ? colorScheme.secondaryContainer
+                            : colorScheme.surfaceContainerHighest,
+                        borderRadius: AthlosRadius.fullAll,
+                        border: Border.all(
+                          color: _showNotesField
+                              ? colorScheme.secondary
+                                  .withValues(alpha: 0.5)
+                              : colorScheme.outline
+                                  .withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.note_alt_outlined,
+                        size: 14,
+                        color: _showNotesField
+                            ? colorScheme.onSecondaryContainer
+                            : colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  if (!_isFocusedCardio(exec)) ...[
+                    const SizedBox(width: AthlosSpacing.md),
+                    Expanded(
+                      child: _RpeSelector(
+                        value: _selectedRpe,
+                        onChanged: (v) =>
+                            setState(() => _selectedRpe = v),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (_showNotesField)
+              Padding(
+                padding:
+                    const EdgeInsets.only(bottom: AthlosSpacing.md),
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: l10n.setNotesHint,
+                    isDense: true,
+                    border: const OutlineInputBorder(),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AthlosSpacing.sm,
+                      vertical: AthlosSpacing.sm,
+                    ),
+                  ),
+                  maxLines: 2,
+                  minLines: 1,
+                  textInputAction: TextInputAction.done,
+                  controller: TextEditingController(text: _setNotes),
+                  onChanged: (v) => _setNotes = v,
                 ),
               ),
 
@@ -1072,7 +1310,7 @@ class _WorkoutExecutionScreenState
     final exercise = exec.exercises[_focusedExerciseIndex];
     final sets = exec.exerciseSets[exercise.exerciseId] ?? [];
     final completedReps = sets
-        .where((s) => s.isCompleted && s.reps != null)
+        .where((s) => s.isCompleted && !s.isWarmup && s.reps != null)
         .map((s) => s.reps!)
         .toList();
 
@@ -1081,7 +1319,9 @@ class _WorkoutExecutionScreenState
       custom: Theme.of(context).extension<AthlosCustomColors>()!,
       l10n: l10n,
       completedReps: completedReps,
-      plannedReps: exercise.reps ?? 0,
+      minReps: exercise.minReps ?? 0,
+      maxReps: exercise.maxReps ?? 0,
+      isAmrap: exercise.isAmrap,
     );
     if (feedback == null) return null;
 
@@ -1604,9 +1844,12 @@ class _WorkoutExecutionScreenState
                 .map((d) => SegmentEntry(reps: d.reps, weight: d.weight)),
           ];
 
+    final isUni = exercise.isUnilateral;
     final int rest;
+    final double? suggestedWeight;
     try {
-      rest = await ref.read(activeExecutionProvider.notifier).completeSet(
+      final result =
+          await ref.read(activeExecutionProvider.notifier).completeSet(
             exercise.exerciseId,
             _focusedSetNumber,
             reps: isCardio ? null : _currentReps,
@@ -1615,8 +1858,17 @@ class _WorkoutExecutionScreenState
             duration: isCardio ? _currentDuration : null,
             distance:
                 isCardio ? (_currentDistance > 0 ? _currentDistance : null) : null,
+            isWarmup: _isWarmup,
+            rpe: _selectedRpe,
+            notes: _setNotes?.trim().isNotEmpty == true ? _setNotes!.trim() : null,
             segments: segments.isEmpty ? null : segments,
+            leftReps: isUni && _leftReps > 0 ? _leftReps : null,
+            leftWeight: isUni && _leftWeight > 0 ? _leftWeight : null,
+            rightReps: isUni && _rightReps > 0 ? _rightReps : null,
+            rightWeight: isUni && _rightWeight > 0 ? _rightWeight : null,
           );
+      rest = result.$1;
+      suggestedWeight = result.$2;
     } on Exception catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1629,6 +1881,16 @@ class _WorkoutExecutionScreenState
     }
 
     if (!mounted) return;
+
+    if (suggestedWeight != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!
+              .suggestedWeightIncrease(suggestedWeight.toStringAsFixed(1))),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
 
     final updatedExec = ref.read(activeExecutionProvider);
     if (updatedExec == null) return;
@@ -1662,13 +1924,17 @@ class _WorkoutExecutionScreenState
 
     final int rest;
     try {
-      rest = await ref.read(activeExecutionProvider.notifier).completeSet(
+      final (r, _) = await ref.read(activeExecutionProvider.notifier).completeSet(
             exercise.exerciseId,
             _focusedSetNumber,
             duration: _currentDuration > 0 ? _currentDuration : null,
             distance:
                 _currentDistance > 0 ? _currentDistance : null,
+            isWarmup: _isWarmup,
+            rpe: _selectedRpe,
+            notes: _setNotes?.trim().isNotEmpty == true ? _setNotes!.trim() : null,
           );
+      rest = r;
     } on Exception catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1713,7 +1979,28 @@ class _WorkoutExecutionScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.workoutFinished)),
         );
-        context.pop();
+
+        final program = ref.read(activeProgramProvider).value;
+
+        ref.invalidate(isDeloadDueProvider);
+        final isDeloadDue =
+            await ref.read(isDeloadDueProvider.future);
+        if (isDeloadDue && context.mounted && program != null) {
+          await _showDeloadPrompt(context, program);
+        }
+
+        if (program != null && context.mounted) {
+          ref.invalidate(programSessionCountProvider(program.id));
+          ref.invalidate(programProgressProvider(program.id));
+          final progress = await ref.read(
+            programProgressProvider(program.id).future,
+          );
+          if (progress.isCompleted && context.mounted) {
+            await _showProgramCompletionPrompt(context, program);
+          }
+        }
+
+        if (context.mounted) context.pop();
       }
     } on Exception catch (_) {
       if (context.mounted) {
@@ -1723,6 +2010,69 @@ class _WorkoutExecutionScreenState
           ),
         );
       }
+    }
+  }
+
+  Future<void> _showDeloadPrompt(
+      BuildContext context, TrainingProgram program) async {
+    final l10n = AppLocalizations.of(context)!;
+    final config = program.deloadConfig;
+    if (config == null) return;
+
+    final accept = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.deloadPromptTitle),
+        content: Text(l10n.deloadPromptMessage(config.frequency ?? 0)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.deloadSkip),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.deloadAccept),
+          ),
+        ],
+      ),
+    );
+
+    if (accept == true && mounted) {
+      await ref
+          .read(programActionsProvider.notifier)
+          .enterDeload(program.id);
+    }
+  }
+
+  Future<void> _showProgramCompletionPrompt(
+      BuildContext context, TrainingProgram program) async {
+    final l10n = AppLocalizations.of(context)!;
+    final action = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        icon: Icon(Icons.emoji_events_rounded,
+            color: Theme.of(ctx).colorScheme.primary, size: 40),
+        title: Text(l10n.programCompletedTitle),
+        content: Text(l10n.programCompletedMessage(program.name)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'continue'),
+            child: Text(l10n.programCompletedContinue),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, 'archive'),
+            child: Text(l10n.programCompletedArchive),
+          ),
+        ],
+      ),
+    );
+
+    if (action == 'archive' && mounted) {
+      await ref
+          .read(programActionsProvider.notifier)
+          .archiveProgram(program.id);
+      ref.invalidate(activeProgramProvider);
     }
   }
 
@@ -2320,6 +2670,164 @@ class _DropSegmentRowState extends State<_DropSegmentRow> {
             visualDensity: VisualDensity.compact,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _WarmupChip extends StatelessWidget {
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _WarmupChip({required this.isSelected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final l10n = AppLocalizations.of(context)!;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AthlosSpacing.sm,
+          vertical: AthlosSpacing.xxs,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? cs.secondaryContainer
+              : cs.surfaceContainerHighest,
+          borderRadius: AthlosRadius.fullAll,
+          border: Border.all(
+            color: isSelected
+                ? cs.secondary.withValues(alpha: 0.5)
+                : cs.outline.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.fitness_center,
+              size: 12,
+              color: isSelected
+                  ? cs.onSecondaryContainer
+                  : cs.onSurfaceVariant,
+            ),
+            const SizedBox(width: AthlosSpacing.xs),
+            Text(
+              l10n.warmupLabel,
+              style: textTheme.labelSmall?.copyWith(
+                color: isSelected
+                    ? cs.onSecondaryContainer
+                    : cs.onSurfaceVariant,
+                fontWeight: isSelected ? FontWeight.w600 : null,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact horizontal RPE selector (6–10 chips). Tap to select, tap again
+/// to deselect. Null = not recorded.
+class _RpeSelector extends StatelessWidget {
+  final int? value;
+  final ValueChanged<int?> onChanged;
+
+  const _RpeSelector({required this.value, required this.onChanged});
+
+  static const _values = [6, 7, 8, 9, 10];
+
+  Color _chipColor(int rpe, ColorScheme cs, AthlosCustomColors custom) {
+    if (rpe >= 10) return cs.error;
+    if (rpe >= 9) return custom.warning;
+    return cs.primary;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final custom = Theme.of(context).extension<AthlosCustomColors>()!;
+    final textTheme = Theme.of(context).textTheme;
+    final l10n = AppLocalizations.of(context)!;
+
+    return Row(
+      children: [
+        Tooltip(
+          message: l10n.rpeTooltip,
+          triggerMode: TooltipTriggerMode.longPress,
+          child: Text(
+            l10n.rpeLabel,
+            style: textTheme.labelSmall?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+        ),
+        const SizedBox(width: AthlosSpacing.sm),
+        for (final rpe in _values) ...[
+          _RpeChip(
+            label: '$rpe',
+            isSelected: value == rpe,
+            color: _chipColor(rpe, cs, custom),
+            colorScheme: cs,
+            onTap: () => onChanged(value == rpe ? null : rpe),
+          ),
+          if (rpe != _values.last)
+            const SizedBox(width: AthlosSpacing.xs),
+        ],
+      ],
+    );
+  }
+}
+
+class _RpeChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final Color color;
+  final ColorScheme colorScheme;
+  final VoidCallback onTap;
+
+  const _RpeChip({
+    required this.label,
+    required this.isSelected,
+    required this.color,
+    required this.colorScheme,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AthlosSpacing.sm,
+          vertical: AthlosSpacing.xxs,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? color.withValues(alpha: 0.15)
+              : colorScheme.surfaceContainerHighest,
+          borderRadius: AthlosRadius.fullAll,
+          border: Border.all(
+            color: isSelected
+                ? color.withValues(alpha: 0.6)
+                : colorScheme.outline.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: isSelected ? color : colorScheme.onSurfaceVariant,
+                fontWeight: isSelected ? FontWeight.w700 : null,
+              ),
+        ),
       ),
     );
   }

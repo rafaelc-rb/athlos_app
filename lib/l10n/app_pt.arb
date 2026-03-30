@@ -386,13 +386,13 @@
   "@profile": {
     "description": "Label do perfil"
   },
-  "tabHome": "Início",
-  "@tabHome": {
-    "description": "Label da tab Home na bottom bar"
+  "tabDashboard": "Dashboard",
+  "@tabDashboard": {
+    "description": "Label da tab Dashboard na bottom bar"
   },
-  "tabWorkouts": "Treinos",
-  "@tabWorkouts": {
-    "description": "Label da tab Workouts na bottom bar"
+  "tabTraining": "Treino",
+  "@tabTraining": {
+    "description": "Label da tab Treino na bottom bar"
   },
   "tabExercises": "Exercícios",
   "@tabExercises": {
@@ -918,23 +918,6 @@
     }
   },
 
-  "trainingSummarySection": "Resumo",
-  "@trainingSummarySection": { "description": "Section title for training home summary" },
-  "trainingSessionsPerWorkout": "Sessões por treino",
-  "trainingArchivedSessions": "Arquivados",
-  "trainingOtherSessions": "Outros",
-  "@trainingOtherSessions": {
-    "description": "Label in analytics for sessions from non-active (archived/other) workouts"
-  },
-  "trainingTotalSessions": "Total de sessões",
-  "trainingSessionsCount": "{count} sessões",
-  "@trainingSessionsCount": {
-    "description": "Session count for a workout or total",
-    "placeholders": {
-      "count": { "type": "int" }
-    }
-  },
-
   "trainingEvolutionRecent": "Comparativo recente",
   "trainingLastSession": "Última sessão",
   "trainingPreviousSession": "Sessão anterior",
@@ -950,41 +933,25 @@
   },
   "trainingLastVsPrevious": "Última vs anterior",
 
-  "trainingStreakLabel": "Sequência",
-  "trainingStreakCount": "{count} treinos na ordem",
-  "@trainingStreakCount": {
-    "description": "Streak count in cycle order",
-    "placeholders": { "count": { "type": "int" } }
-  },
-  "trainingRest": "Descanso",
-  "@trainingRest": { "description": "Rest day label in cycle" },
-  "trainingNextStepRest": "Próximo: Descanso",
-  "@trainingNextStepRest": { "description": "Next step is rest day" },
   "trainingCycleConfigure": "Configurar ciclo",
   "@trainingCycleConfigure": { "description": "Button to open cycle configuration" },
   "trainingCycleSection": "Ciclo",
   "@trainingCycleSection": { "description": "Section title for cycle strip on workouts screen" },
-  "trainingCycleRestLabel": "Descanso",
-  "@trainingCycleRestLabel": { "description": "Label for rest day in cycle strip" },
   "trainingWorkoutNewAction": "Novo treino",
   "@trainingWorkoutNewAction": {
     "description": "Main button label that opens menu: create manual, Chiron, configure cycle"
   },
-  "trainingWorkoutActionCreateManual": "Criar treino",
+  "trainingWorkoutActionCreateManual": "Criar novo treino",
   "@trainingWorkoutActionCreateManual": {
     "description": "FAB/menu option: create workout manually"
   },
   "trainingCycleTitle": "Ciclo de treinos",
   "@trainingCycleTitle": { "description": "Cycle edit screen title" },
-  "trainingCycleAddStep": "Adicionar passo",
-  "@trainingCycleAddStep": { "description": "Add step to cycle" },
+  "trainingCycleAddStep": "Adicionar treino",
+  "@trainingCycleAddStep": { "description": "Add workout to cycle" },
   "trainingCycleAddWorkout": "Treino",
-  "@trainingCycleAddWorkout": { "description": "Add workout step" },
-  "trainingCycleAddRest": "Descanso",
-  "@trainingCycleAddRest": { "description": "Add rest step" },
-  "trainingAddRestToCycleAction": "Adicionar descanso",
-  "@trainingAddRestToCycleAction": { "description": "FAB action to add a rest day to the cycle" },
-  "trainingCycleEmptyHint": "O ciclo está vazio. A ordem dos treinos usa a ordem da lista na aba Treinos. Adicione passos para definir um ciclo com descanso.",
+  "@trainingCycleAddWorkout": { "description": "Add workout to cycle" },
+  "trainingCycleEmptyHint": "O ciclo está vazio. A ordem dos treinos usa a ordem da lista na aba Treinos. Adicione treinos para definir a rotação.",
   "@trainingCycleEmptyHint": { "description": "Hint when cycle has no steps" },
   "trainingCycleSave": "Guardar ciclo",
   "@trainingCycleSave": { "description": "Save cycle button" },
@@ -1092,7 +1059,7 @@
   "@exerciseLatPulldown": { "description": "Exercise name" },
   "exerciseSeatedCableRow": "Remada Sentada no Cabo",
   "@exerciseSeatedCableRow": { "description": "Exercise name" },
-  "exerciseDumbbellRow": "Remada Unilateral com Halter",
+  "exerciseDumbbellRow": "Remada com Halter",
   "@exerciseDumbbellRow": { "description": "Exercise name" },
   "exerciseOverheadPress": "Desenvolvimento com Barra",
   "@exerciseOverheadPress": { "description": "Exercise name" },
@@ -1330,6 +1297,22 @@
   "@setsLabel": { "description": "Label for sets field" },
   "repsLabel": "Reps",
   "@repsLabel": { "description": "Label for reps field" },
+  "minRepsLabel": "Reps mín",
+  "@minRepsLabel": { "description": "Short label for minimum reps field" },
+  "maxRepsLabel": "Reps máx",
+  "@maxRepsLabel": { "description": "Short label for maximum reps field" },
+  "amrapLabel": "AMRAP",
+  "@amrapLabel": { "description": "Label for AMRAP (As Many Reps As Possible) toggle" },
+  "amrapTooltip": "As Many Reps As Possible — faça o máximo de repetições que conseguir",
+  "@amrapTooltip": { "description": "Tooltip explaining what AMRAP means" },
+  "rpeLabel": "RPE",
+  "@rpeLabel": { "description": "Label for Rate of Perceived Exertion selector" },
+  "rpeTooltip": "Rate of Perceived Exertion — escala de 1 a 10 do esforço percebido",
+  "@rpeTooltip": { "description": "Tooltip explaining what RPE means" },
+  "warmupLabel": "Warmup",
+  "@warmupLabel": { "description": "Label for warmup set toggle" },
+  "setNotesHint": "Notas do set (ex: dor no ombro, grip mais largo...)",
+  "@setNotesHint": { "description": "Hint text for per-set notes input during execution" },
   "restSecondsLabel": "Desc.",
   "@restSecondsLabel": { "description": "Short label for rest seconds" },
   "removeExercise": "Remover exercício",
@@ -1754,6 +1737,22 @@
   "@exercisePreacherHammerCurl": { "description": "Exercise name: preacher hammer curl" },
   "exerciseReverseZottmanCurl": "Rosca Zottman Inversa",
   "@exerciseReverseZottmanCurl": { "description": "Exercise name: reverse zottman curl" },
+  "exerciseNeutralGripPullUp": "Barra Fixa Neutra",
+  "@exerciseNeutralGripPullUp": { "description": "Exercise name: neutral grip pull-up" },
+  "exerciseCloseGripPulldown": "Puxada Supinada na Pulley",
+  "@exerciseCloseGripPulldown": { "description": "Exercise name: close grip (supinated) pulldown" },
+  "exerciseNeutralGripPulldown": "Puxada Neutra na Pulley",
+  "@exerciseNeutralGripPulldown": { "description": "Exercise name: neutral grip pulldown" },
+  "exerciseUnderhandBarbellRow": "Remada Supinada com Barra",
+  "@exerciseUnderhandBarbellRow": { "description": "Exercise name: underhand barbell row" },
+  "exerciseWideGripSeatedRow": "Remada Sentada Aberta",
+  "@exerciseWideGripSeatedRow": { "description": "Exercise name: wide grip seated row" },
+  "exerciseRopeTricepsPushdown": "Tríceps Corda",
+  "@exerciseRopeTricepsPushdown": { "description": "Exercise name: rope triceps pushdown" },
+  "exerciseDeclineBarbellBenchPress": "Supino Declinado com Barra",
+  "@exerciseDeclineBarbellBenchPress": { "description": "Exercise name: decline barbell bench press" },
+  "exerciseNotesHint": "Notas do exercício (ex: pegada larga, pés altos...)",
+  "@exerciseNotesHint": { "description": "Hint text for exercise notes in workout builder" },
   "musclePrimary": "Primário",
   "@musclePrimary": {
     "description": "Muscle role: primary"
@@ -1876,7 +1875,7 @@
   "@chironAskToCreateWorkout": {
     "description": "Pre-filled message to ask Chiron to create a workout (shortcut)"
   },
-  "chironCreateWorkoutShortcut": "Pedir ao Quíron para montar",
+  "chironCreateWorkoutShortcut": "Pedir um novo treino ao Quíron",
   "@chironCreateWorkoutShortcut": {
     "description": "Button when no active workouts: open Chiron to create first plan"
   },
@@ -2011,5 +2010,335 @@
   "setupChatStart": "Começar",
   "setupChatSkipped": "Prefiro não dizer",
   "setupChatNone": "Nenhuma",
-  "setupChatChipHint": "Segure em uma opção para ver o que significa"
+  "setupChatChipHint": "Segure em uma opção para ver o que significa",
+
+  "programListTitle": "Programas",
+  "programEmpty": "Nenhum programa",
+  "programEmptyHint": "Crie um programa para organizar seu mesociclo de treino.",
+  "programCreateTitle": "Novo Programa",
+  "programEditTitle": "Editar Programa",
+  "programNameLabel": "Nome",
+  "programNameHint": "Ex: PPL Hipertrofia",
+  "programFocusLabel": "Foco",
+  "programFocusHypertrophy": "Hipertrofia",
+  "programFocusStrength": "Força",
+  "programFocusEndurance": "Resistência",
+  "programFocusCustom": "Personalizado",
+  "programDurationModeLabel": "Medida de duração",
+  "programDurationModeSessions": "Sessões",
+  "programDurationModeRotations": "Rotações",
+  "programDurationValueLabel": "Duração",
+  "programDurationValueHintSessions": "Número de sessões",
+  "programDurationValueHintRotations": "Número de rotações do ciclo",
+  "programDefaultRestLabel": "Descanso padrão (s)",
+  "programDefaultRestHint": "Sobrescreve o descanso global por foco",
+  "programCycleSection": "Ciclo do programa",
+  "programCycleHint": "Defina a ordem dos treinos neste programa.",
+  "programSaveAction": "Salvar",
+  "programActivateAndSave": "Salvar e ativar",
+  "programActivate": "Ativar",
+  "programArchive": "Arquivar",
+  "programArchived": "Programa arquivado",
+  "programActivated": "Programa ativado",
+  "programCreated": "Programa criado",
+  "programUpdated": "Programa atualizado",
+  "programDeleteTitle": "Excluir programa?",
+  "programDeleteMessage": "Isso não pode ser desfeito. O histórico de execuções será mantido.",
+  "programActiveBadge": "Ativo",
+  "programArchivedBadge": "Arquivado",
+  "programProgressLabel": "Progresso",
+  "programSessionsProgress": "{completed}/{total} sessões",
+  "@programSessionsProgress": {
+    "placeholders": {
+      "completed": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "programRotationsProgress": "{completed}/{total} sessões ({rotations} rotações)",
+  "@programRotationsProgress": {
+    "placeholders": {
+      "completed": {"type": "int"},
+      "total": {"type": "int"},
+      "rotations": {"type": "String"}
+    }
+  },
+  "programCompletedMessage": "Programa concluído! Revise os resultados ou inicie um novo.",
+  "programFreeCycleLabel": "Ciclo livre",
+  "programFreeCycleHint": "Sem programa ativo — treino em modo livre",
+
+  "deloadSectionTitle": "Deload",
+  "deloadEnableLabel": "Configurar deload automático",
+  "deloadStrategyLabel": "Estratégia",
+  "deloadStrategyReduceVolume": "Reduzir volume",
+  "deloadStrategyReduceIntensity": "Reduzir intensidade",
+  "deloadStrategyReduceBoth": "Reduzir ambos",
+  "deloadFrequencyLabel": "Frequência (rotações)",
+  "deloadFrequencyHint": "Ex: a cada 4 rotações",
+  "deloadFrequencyManualHint": "Vazio = apenas manual",
+  "deloadVolumeMultiplierLabel": "Multiplicador de volume",
+  "deloadVolumeMultiplierHint": "Ex: 0.6 = manter 60% dos sets",
+  "deloadIntensityMultiplierLabel": "Multiplicador de intensidade",
+  "deloadIntensityMultiplierHint": "Ex: 0.5 = usar 50% da carga",
+  "deloadActiveChip": "Deload ativo",
+  "deloadPromptTitle": "Hora do deload",
+  "deloadPromptMessage": "Seu programa completou {rotations} rotações. Quer uma semana leve?",
+  "@deloadPromptMessage": {
+    "placeholders": {
+      "rotations": { "type": "int" }
+    }
+  },
+  "deloadAccept": "Iniciar deload",
+  "deloadSkip": "Pular",
+  "deloadEndAction": "Encerrar deload",
+  "deloadEndConfirmTitle": "Encerrar deload?",
+  "deloadEndConfirmMessage": "Seus próximos treinos voltarão à intensidade e volume normais.",
+  "deloadInfoVolume": "Volume reduzido a {percent}%",
+  "@deloadInfoVolume": {
+    "placeholders": {
+      "percent": { "type": "int" }
+    }
+  },
+  "deloadInfoIntensity": "Intensidade reduzida a {percent}%",
+  "@deloadInfoIntensity": {
+    "placeholders": {
+      "percent": { "type": "int" }
+    }
+  },
+
+  "progressionSectionTitle": "Progressão",
+  "progressionEmpty": "Sem regras de progressão",
+  "progressionEmptyHint": "Adicione regras para progredir automaticamente.",
+  "progressionAddRule": "Adicionar regra",
+  "progressionTypeLabel": "Tipo",
+  "progressionTypeIncrementWeight": "Incrementar peso",
+  "progressionTypeIncrementReps": "Incrementar reps",
+  "progressionTypeIncrementSets": "Incrementar sets",
+  "progressionValueLabel": "Valor",
+  "progressionValueHintWeight": "Ex: 2.5 (kg)",
+  "progressionValueHintReps": "Ex: 1 (rep)",
+  "progressionValueHintSets": "Ex: 1 (set)",
+  "progressionFrequencyLabel": "Frequência",
+  "progressionFrequencyEverySession": "Cada sessão",
+  "progressionFrequencyEveryRotation": "Cada rotação",
+  "progressionConditionLabel": "Condição (opcional)",
+  "progressionConditionNone": "Sempre",
+  "progressionConditionHitsMaxReps": "Atingir reps máximas",
+  "progressionConditionCompletesAllSets": "Completar todos os sets",
+  "progressionConditionRpeBelow": "RPE abaixo de",
+  "progressionConditionValueHint": "Limiar RPE",
+  "progressionExerciseLabel": "Exercício",
+  "progressionSelectExercise": "Selecionar exercício",
+  "progressionSuggested": "Sugerido: {value}",
+  "@progressionSuggested": {
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
+  "progressionApplied": "+{value}{unit}",
+  "@progressionApplied": {
+    "placeholders": {
+      "value": { "type": "String" },
+      "unit": { "type": "String" }
+    }
+  },
+
+  "prBadge": "PR",
+  "prTooltip": "Recorde Pessoal (PR) — o maior peso estimado para 1 repetição máxima (1RM) num exercício.",
+  "@prTooltip": { "description": "Tooltip explaining what PR means" },
+  "prEstimated1rm": "1RM estimado: {value} kg",
+  "@prEstimated1rm": {
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
+  "prBestSet": "Melhor set: {weight} kg × {reps}",
+  "@prBestSet": {
+    "placeholders": {
+      "weight": { "type": "String" },
+      "reps": { "type": "int" }
+    }
+  },
+  "prNewRecord": "Novo recorde pessoal!",
+  "bodyweightExercise": "Exercício de peso corporal",
+  "weeklyVolume": "Volume semanal",
+  "weeklyVolumeTooltip": "Séries de trabalho (excl. aquecimento) por grupo muscular nos últimos 7 dias.",
+  "@weeklyVolumeTooltip": { "description": "Tooltip explaining the weekly volume card" },
+  "weeklyVolumeSets": "{count} sets",
+  "@weeklyVolumeSets": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "volumeUnderTarget": "Abaixo do alvo",
+  "volumeOnTarget": "No alvo",
+  "volumeOverTarget": "Acima do alvo",
+
+  "bodyMetricsSectionTitle": "Peso corporal",
+  "bodyMetricsRecordWeight": "Registar peso",
+  "bodyMetricsWeightLabel": "Peso (kg)",
+  "bodyMetricsBodyFatLabel": "Gordura corporal (%)",
+  "bodyMetricsBodyFatHint": "Opcional",
+  "bodyMetricsLatest": "Último: {weight} kg",
+  "@bodyMetricsLatest": {
+    "placeholders": {
+      "weight": { "type": "String" }
+    }
+  },
+  "bodyMetricsEmpty": "Sem registos de peso",
+  "bodyMetricsEmptyHint": "Registe o seu peso para acompanhar a evolução.",
+  "bodyMetricsHistory": "Histórico de peso",
+  "bodyMetricsDeleteConfirm": "Eliminar este registo?",
+  "bodyMetricsWeeklyPromptTitle": "Registar peso?",
+  "bodyMetricsWeeklyPromptMessage": "Já passou uma semana desde o último registo. Quer atualizar?",
+  "bodyMetricsWeeklyPromptSkip": "Agora não",
+  "bodyMetricsWeeklyPromptRecord": "Registar",
+  "bodyMetricsChartTitle": "Evolução do peso",
+  "bodyMetricsNoData": "Dados insuficientes para o gráfico",
+
+  "loadChartTitle": "Evolução de 1RM estimado",
+  "loadChartRange30": "30 dias",
+  "loadChartRange90": "90 dias",
+  "loadChartRangeAll": "Todo",
+
+  "prHistoryTitle": "Recordes pessoais",
+  "prHistorySubtitle": "Maior 1RM estimado em cada exercício.",
+  "@prHistorySubtitle": { "description": "Brief inline subtitle on the PR history screen" },
+  "prHistoryDescription": "Se fez 80 kg × 8 reps, provavelmente conseguiria levantar ~100 kg numa única repetição. Essa estimativa é o 1RM. O PR é o seu maior 1RM estimado em cada exercício — útil para acompanhar evolução de força.",
+  "@prHistoryDescription": { "description": "Full explanatory text shown in the info dialog" },
+  "prHistoryEmpty": "Nenhum recorde pessoal registado. Complete treinos para detectar PRs automaticamente.",
+
+  "volumeTrendTitle": "Volume semanal",
+  "volumeTrendSubtitle": "Séries de trabalho por grupo muscular.",
+  "@volumeTrendSubtitle": { "description": "Brief inline subtitle on the volume trend screen" },
+  "volumeTrendDescription": "Volume é o total de séries de trabalho (excluindo aquecimento) por grupo muscular. As linhas tracejadas indicam a faixa recomendada para o seu nível de experiência.",
+  "volumeTrendLegendMin": "Mín. recomendado ({value})",
+  "@volumeTrendLegendMin": {
+    "description": "Legend label for the minimum target line",
+    "placeholders": { "value": { "type": "int" } }
+  },
+  "volumeTrendLegendMax": "Máx. recomendado ({value})",
+  "@volumeTrendLegendMax": {
+    "description": "Legend label for the maximum target line",
+    "placeholders": { "value": { "type": "int" } }
+  },
+  "@volumeTrendDescription": { "description": "Explanatory text shown on the volume trend chart screen" },
+
+  "programCompletedTitle": "Programa concluído!",
+  "programCompletedMessage": "Completou todas as sessões planeadas de \"{programName}\". Quer arquivar o programa ou continuar a treinar?",
+  "@programCompletedMessage": {
+    "placeholders": {
+      "programName": { "type": "String" }
+    }
+  },
+  "programCompletedArchive": "Arquivar",
+  "programCompletedContinue": "Continuar",
+
+  "suggestedWeightIncrease": "Sugestão: aumentar carga para {weight} kg",
+  "@suggestedWeightIncrease": {
+    "placeholders": {
+      "weight": { "type": "String" }
+    }
+  },
+
+  "warmupSuggestionTitle": "Aquecimento sugerido",
+  "warmupSets": "{count} séries de aquecimento",
+  "@warmupSets": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "leftSideLabel": "Lado esquerdo",
+  "rightSideLabel": "Lado direito",
+  "leftAbbr": "E",
+  "rightAbbr": "D",
+
+  "dashboardOverviewTab": "Visão Geral",
+  "@dashboardOverviewTab": { "description": "Sub-tab label for dashboard overview" },
+  "dashboardCatalogsTab": "Catálogos",
+  "@dashboardCatalogsTab": { "description": "Sub-tab label for dashboard catalogs" },
+
+  "trainingActiveProgramHero": "Programa ativo",
+  "@trainingActiveProgramHero": { "description": "Section label for active program hero card" },
+  "trainingEditProgram": "Editar programa",
+  "@trainingEditProgram": { "description": "Button label to edit the active program" },
+  "trainingViewArchivedPrograms": "Ver programas arquivados",
+  "@trainingViewArchivedPrograms": { "description": "Button label to view archived programs" },
+  "trainingFreeModeTitle": "Modo livre",
+  "@trainingFreeModeTitle": { "description": "Title when no active program" },
+  "trainingFreeModeHint": "Treine sem programa — crie um quando quiser",
+  "@trainingFreeModeHint": { "description": "Hint for free mode training" },
+  "trainingCreateProgram": "Criar programa",
+  "@trainingCreateProgram": { "description": "CTA to create a program from free mode" },
+  "trainingStartNext": "Iniciar treino",
+  "@trainingStartNext": { "description": "Button to start the next workout in the cycle" },
+
+  "dashboardFrequencyTitle": "Frequência",
+  "@dashboardFrequencyTitle": { "description": "Title for the frequency stat pill" },
+  "dashboardFrequencyProgress": "{done}/{target}",
+  "@dashboardFrequencyProgress": {
+    "description": "This week sessions done vs target",
+    "placeholders": {
+      "done": { "type": "int" },
+      "target": { "type": "int" }
+    }
+  },
+  "dashboardConsistencyStreak": "{count} sem.",
+  "@dashboardConsistencyStreak": {
+    "description": "Consistency streak in weeks (abbreviated)",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "dashboardConsistencyTooltip": "Semanas consecutivas em que atingiu a meta de {target} treinos. A semana atual conta assim que a meta é atingida.",
+  "@dashboardConsistencyTooltip": {
+    "description": "Tooltip explaining the consistency streak metric",
+    "placeholders": { "target": { "type": "int" } }
+  },
+  "dashboardCycleTitle": "Ciclo",
+  "@dashboardCycleTitle": { "description": "Title for the cycle streak stat pill" },
+  "dashboardCycleStreakCount": "{count} treinos",
+  "@dashboardCycleStreakCount": {
+    "description": "Cycle streak count in consecutive workouts",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "dashboardCycleTooltip": "Treinos consecutivos seguindo a ordem correta do ciclo (ex: A → B → C → A).",
+  "@dashboardCycleTooltip": { "description": "Tooltip explaining the cycle streak metric" },
+  "dashboardVolumeTargetRange": "{min}–{max}",
+  "@dashboardVolumeTargetRange": {
+    "description": "Volume target range display",
+    "placeholders": {
+      "min": { "type": "int" },
+      "max": { "type": "int" }
+    }
+  },
+  "remove": "Remover",
+  "@remove": { "description": "Generic remove action" },
+  "archiveProgramAction": "Arquivar programa",
+  "@archiveProgramAction": { "description": "Button label to archive the current program" },
+  "workoutsCatalog": "Catálogo de treinos",
+  "@workoutsCatalog": { "description": "Workout catalog title" },
+  "workoutsCount": "{count,plural, =0{Nenhum treino} =1{1 treino} other{{count} treinos}}",
+  "@workoutsCount": {
+    "description": "Workout count display",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "workoutsCatalogDesc": "Seus treinos salvos",
+  "@workoutsCatalogDesc": { "description": "Workout catalog description" },
+  "programAdvancedSettings": "Configurações do programa",
+  "@programAdvancedSettings": { "description": "Tooltip for advanced program settings gear icon" },
+
+  "danglingExecutionTitle": "Treino não finalizado",
+  "@danglingExecutionTitle": { "description": "Dialog title for unfinished workout detection" },
+  "danglingExecutionMessage": "Você tem um treino em andamento: {workoutName}. Deseja retomar ou descartar?",
+  "@danglingExecutionMessage": {
+    "description": "Dialog body for unfinished workout",
+    "placeholders": {
+      "workoutName": { "type": "String" }
+    }
+  },
+  "danglingExecutionResume": "Retomar",
+  "@danglingExecutionResume": { "description": "Button to resume unfinished workout" },
+  "danglingExecutionDiscard": "Descartar",
+  "@danglingExecutionDiscard": { "description": "Button to discard unfinished workout" }
 }

@@ -28,7 +28,6 @@ void main() {
         const domain.UserProfile(
           id: 0,
           name: 'Rafa',
-          weight: 72.5,
           height: 181,
           age: 24,
           lastActiveModule: AppModule.training,
@@ -42,7 +41,7 @@ void main() {
       final loaded = (await repository.get()).getOrThrow();
       expect(loaded, isNotNull);
       expect(loaded!.name, 'Rafa');
-      expect(loaded.weight, 72.5);
+      expect(loaded.height, 181);
     });
 
     test('update altera campos esperados', () async {
@@ -50,7 +49,6 @@ void main() {
         const domain.UserProfile(
           id: 0,
           name: 'Antes',
-          weight: 70,
           height: 180,
           age: 20,
           lastActiveModule: AppModule.training,
@@ -62,7 +60,6 @@ void main() {
         const domain.UserProfile(
           id: 0,
           name: 'Depois',
-          weight: 75,
           height: 180,
           age: 20,
           lastActiveModule: AppModule.diet,
@@ -72,7 +69,6 @@ void main() {
 
       final loaded = (await repository.get()).getOrThrow()!;
       expect(loaded.name, 'Depois');
-      expect(loaded.weight, 75);
       expect(loaded.lastActiveModule, AppModule.diet);
     });
   });

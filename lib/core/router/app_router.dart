@@ -10,7 +10,10 @@ import '../../features/profile/presentation/screens/profile_setup_screen.dart';
 import '../../features/training/presentation/screens/execution_detail_screen.dart';
 import '../../features/training/presentation/screens/equipment_detail_screen.dart';
 import '../../features/training/presentation/screens/exercise_detail_screen.dart';
+import '../../features/training/presentation/screens/exercise_load_chart_screen.dart';
+import '../../features/training/presentation/screens/pr_history_screen.dart';
 import '../../features/training/presentation/screens/training_shell.dart';
+import '../../features/training/presentation/screens/volume_trend_chart_screen.dart';
 import '../../features/training/presentation/screens/workout_detail_screen.dart';
 import '../../features/training/presentation/screens/workout_execution_screen.dart';
 import '../../features/training/presentation/screens/workout_form_screen.dart';
@@ -143,6 +146,23 @@ GoRouter appRouter(Ref ref) {
           final id = int.parse(state.pathParameters['executionId']!);
           return ExecutionDetailScreen(executionId: id);
         },
+      ),
+
+      // Progress visualization (Phase 10)
+      GoRoute(
+        path: '${RoutePaths.trainingExercises}/:exerciseId/load-chart',
+        builder: (context, state) {
+          final id = int.parse(state.pathParameters['exerciseId']!);
+          return ExerciseLoadChartScreen(exerciseId: id);
+        },
+      ),
+      GoRoute(
+        path: RoutePaths.trainingPRHistory,
+        builder: (context, state) => const PRHistoryScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.trainingVolumeTrend,
+        builder: (context, state) => const VolumeTrendChartScreen(),
       ),
     ],
   );

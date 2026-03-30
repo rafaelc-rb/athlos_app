@@ -27,7 +27,6 @@ class ProfileNotifier extends _$ProfileNotifier {
   /// Creates a new user profile and updates the state.
   Future<void> create({
     String? name,
-    double? weight,
     double? height,
     int? age,
     TrainingGoal? goal,
@@ -44,7 +43,6 @@ class ProfileNotifier extends _$ProfileNotifier {
     final profile = UserProfile(
       id: 0,
       name: name,
-      weight: weight,
       height: height,
       age: age,
       goal: goal,

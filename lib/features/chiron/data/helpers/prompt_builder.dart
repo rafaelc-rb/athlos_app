@@ -1,5 +1,7 @@
 import '../../../../core/errors/result.dart';
+import '../../../profile/domain/entities/body_metric.dart';
 import '../../../profile/domain/entities/user_profile.dart';
+import '../../../profile/domain/repositories/body_metric_repository.dart';
 import '../../../profile/domain/repositories/user_profile_repository.dart';
 import '../../../training/domain/entities/equipment.dart';
 import '../../../training/domain/entities/exercise.dart';
@@ -23,6 +25,7 @@ class PromptBuilder {
   static const int maxExerciseNamesInContext = 80;
 
   final UserProfileRepository _profileRepo;
+  final BodyMetricRepository _bodyMetricRepo;
   final EquipmentRepository _equipmentRepo;
   final WorkoutRepository _workoutRepo;
   final WorkoutExecutionRepository _executionRepo;
@@ -30,11 +33,13 @@ class PromptBuilder {
 
   const PromptBuilder({
     required UserProfileRepository profileRepo,
+    required BodyMetricRepository bodyMetricRepo,
     required EquipmentRepository equipmentRepo,
     required WorkoutRepository workoutRepo,
     required WorkoutExecutionRepository executionRepo,
     required ExerciseRepository exerciseRepo,
   }) : _profileRepo = profileRepo,
+       _bodyMetricRepo = bodyMetricRepo,
        _equipmentRepo = equipmentRepo,
        _workoutRepo = workoutRepo,
        _executionRepo = executionRepo,
@@ -53,6 +58,7 @@ class PromptBuilder {
       _workoutRepo.getActive(),
       _executionRepo.getAll(),
       _exerciseRepo.getAll(),
+      _bodyMetricRepo.getLatest(),
     ]);
 
     final profileResult = futures[0] as Result<UserProfile?>;
@@ -60,6 +66,10 @@ class PromptBuilder {
     final workoutResult = futures[2] as Result<List<Workout>>;
     final execResult = futures[3] as Result<List<WorkoutExecution>>;
     final exerciseResult = futures[4] as Result<List<Exercise>>;
+    final bodyMetricResult = futures[5] as Result<BodyMetric?>;
+    final bodyWeight = bodyMetricResult.isSuccess
+        ? bodyMetricResult.getOrThrow()?.weight
+        : null;
 
     // Pre-build exercise ID → name map (avoids N+1 later)
     final exerciseMap = <int, String>{};
@@ -76,7 +86,7 @@ class PromptBuilder {
     final profile = profileResult.isSuccess ? profileResult.getOrThrow() : null;
 
     // --- Profile ---
-    _buildProfile(profileResult, sections);
+    _buildProfile(profileResult, bodyWeight, sections);
 
     // --- Equipment ---
     final isHomeUser = profile?.trainsAtGym == false;
@@ -107,6 +117,7 @@ class PromptBuilder {
 
   void _buildProfile(
     Result<UserProfile?> profileResult,
+    double? bodyWeight,
     List<String> sections,
   ) {
     if (!profileResult.isSuccess) return;
@@ -116,7 +127,7 @@ class PromptBuilder {
     final lines = <String>['## User Profile'];
     if (profile.name != null) lines.add('- Name: ${profile.name}');
     if (profile.age != null) lines.add('- Age: ${profile.age} years');
-    if (profile.weight != null) lines.add('- Weight: ${profile.weight} kg');
+    if (bodyWeight != null) lines.add('- Weight: $bodyWeight kg');
     if (profile.height != null) lines.add('- Height: ${profile.height} cm');
     if (profile.goal != null) {
       lines.add('- Goal: ${_humanize(profile.goal!.name)}');
@@ -261,19 +272,30 @@ class PromptBuilder {
       if (setsResult.isSuccess) {
         final sets = setsResult.getOrThrow();
         final bestByExercise = <int, String>{};
-        for (final s in sets.where((s) => s.isCompleted)) {
-          final label = s.weight != null
+        final setNotes = <int, List<String>>{};
+        for (final s in sets.where((s) => s.isCompleted && !s.isWarmup)) {
+          final base = s.weight != null
               ? '${s.weight}kg×${s.reps ?? 0}'
               : s.duration != null
                   ? '${s.duration}s'
                   : '${s.reps ?? 0}r';
+          final label = s.rpe != null ? '$base @RPE${s.rpe}' : base;
           final prev = bestByExercise[s.exerciseId];
           if (prev == null) bestByExercise[s.exerciseId] = label;
+          if (s.notes != null && s.notes!.isNotEmpty) {
+            setNotes
+                .putIfAbsent(s.exerciseId, () => [])
+                .add(s.notes!);
+          }
         }
         final summary = bestByExercise.entries
             .map((e) {
               final exName = exerciseMap[e.key] ?? '#${e.key}';
-              return '$exName ${e.value}';
+              final notes = setNotes[e.key];
+              final noteSuffix = notes != null && notes.isNotEmpty
+                  ? ' (${notes.join('; ')})'
+                  : '';
+              return '$exName ${e.value}$noteSuffix';
             })
             .join(', ');
         lines.add('- $dateFmt $wName ($duration) [$summary]');

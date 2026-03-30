@@ -1,20 +1,19 @@
 import '../../../../core/errors/result.dart';
 import '../entities/cycle_step.dart';
 
-/// Contract for training cycle (ordered steps: workout or rest).
+/// Contract for the training cycle (ordered queue of workouts).
+///
+/// Every cycle belongs to a program — there is no free cycle.
 abstract interface class CycleRepository {
-  Future<Result<List<TrainingCycleStep>>> getSteps();
-  Future<Result<void>> setSteps(List<TrainingCycleStep> steps);
+  Future<Result<List<TrainingCycleStep>>> getSteps(int programId);
+  Future<Result<void>> setSteps(List<TrainingCycleStep> steps, int programId);
 
-  /// Removes any cycle step that references this workout (e.g. when workout is archived).
-  Future<Result<void>> removeWorkoutFromCycle(int workoutId);
+  /// Removes any cycle step that references this workout (e.g. when archived).
+  Future<Result<void>> removeWorkoutFromCycle(int workoutId, int programId);
 
-  /// Appends a workout step at the end of the cycle (e.g. when creating or unarchiving a workout).
-  Future<Result<void>> appendWorkoutToCycle(int workoutId);
+  /// Removes a workout from ALL programs' cycles (used when archiving).
+  Future<Result<void>> removeWorkoutFromAllCycles(int workoutId);
 
-  /// Appends a rest step at the end of the cycle.
-  Future<Result<void>> appendRestToCycle();
-
-  /// Ensures every [activeIds] workout is in the cycle; appends any missing at the end.
-  Future<Result<void>> syncWithActiveWorkoutIds(List<int> activeIds);
+  /// Appends a workout step at the end of the cycle.
+  Future<Result<void>> appendWorkoutToCycle(int workoutId, int programId);
 }

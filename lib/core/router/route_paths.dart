@@ -21,14 +21,26 @@ abstract final class RoutePaths {
   static const trainingExercises = '/training/exercises';
   static const trainingHistory = '/training/history';
   static const trainingEquipment = '/training/equipment';
+  static const trainingWorkoutCatalog = '/training/workout-catalog';
   static const trainingWorkoutNew = '/training/workouts/new';
-  static const trainingCycleEdit = '/training/cycle';
+  static const trainingPrograms = '/training/programs';
+  static const trainingProgramNew = '/training/programs/new';
+  static String trainingProgramDetail(int programId) =>
+      '$trainingPrograms/$programId';
+  static String trainingProgramEdit(int programId) =>
+      '$trainingPrograms/$programId/edit';
   static String trainingEquipmentDetail(int equipmentId) =>
       '$trainingEquipment/$equipmentId';
   // :executionId used via string interpolation
   // e.g. '${trainingHistory}/$id'
   // :workoutId used via string interpolation
   // e.g. '${trainingWorkouts}/$id' and '${trainingWorkouts}/$id/edit'
+
+  // Progress visualization
+  static String trainingExerciseLoadChart(int exerciseId) =>
+      '$trainingExercises/$exerciseId/load-chart';
+  static const trainingPRHistory = '/training/pr-history';
+  static const trainingVolumeTrend = '/training/volume-trend';
 
   // Diet module (future)
   static const diet = '/diet';

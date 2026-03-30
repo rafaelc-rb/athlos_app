@@ -31,6 +31,25 @@ class ExecutionSets extends Table {
   BoolColumn get isCompleted =>
       boolean().withDefault(const Constant(false))();
 
+  /// Whether this is a warmup set (excluded from volume and progression).
+  BoolColumn get isWarmup =>
+      boolean().withDefault(const Constant(false))();
+
+  /// Rate of Perceived Exertion (1–10). Null when not recorded.
+  IntColumn get rpe => integer().nullable()();
+
   /// Per-set user notes (e.g. "felt easy", "pain in shoulder").
   TextColumn get notes => text().nullable()();
+
+  /// Reps performed with the left side (unilateral exercises only).
+  IntColumn get leftReps => integer().nullable()();
+
+  /// Weight used for the left side (unilateral exercises only).
+  RealColumn get leftWeight => real().nullable()();
+
+  /// Reps performed with the right side (unilateral exercises only).
+  IntColumn get rightReps => integer().nullable()();
+
+  /// Weight used for the right side (unilateral exercises only).
+  RealColumn get rightWeight => real().nullable()();
 }

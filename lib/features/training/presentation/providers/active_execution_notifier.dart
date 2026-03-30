@@ -1,13 +1,23 @@
+import 'dart:convert';
+import 'dart:math' as math;
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/errors/result.dart';
 import '../../data/repositories/training_providers.dart';
+import '../../domain/entities/deload_config.dart';
 import '../../domain/entities/execution_set.dart';
 import '../../domain/entities/execution_set_segment.dart';
+import '../../domain/entities/progression_rule.dart';
 import '../../domain/entities/workout_exercise.dart';
+import '../../domain/repositories/workout_execution_repository.dart';
+import '../../domain/enums/deload_strategy.dart';
+import '../../domain/enums/progression_condition.dart';
+import '../../domain/enums/progression_type.dart';
 import '../../domain/usecases/complete_set_use_case.dart';
 import 'active_execution_state.dart';
 export 'active_execution_state.dart';
+import 'program_notifier.dart';
 import 'workout_execution_notifier.dart';
 import 'workout_notifier.dart';
 
@@ -19,13 +29,23 @@ class ActiveExecution extends _$ActiveExecution {
   ActiveExecutionState? build() => null;
 
   /// Start a new execution, creating the DB record and pre-populating sets
-  /// from the workout template.
+  /// from the workout template. Applies deload and progression adjustments.
+  /// Snapshots the exercise configuration as JSON for robust history.
   Future<void> startExecution(
     int workoutId,
-    List<WorkoutExercise> exercises,
-  ) async {
+    List<WorkoutExercise> exercises, {
+    required int programId,
+    DeloadConfig? deloadConfig,
+    List<ProgressionRule> progressionRules = const [],
+    int defaultRestSeconds = 0,
+  }) async {
     final repo = ref.read(workoutExecutionRepositoryProvider);
-    final result = await repo.start(workoutId);
+    final snapshot = _buildExerciseConfigSnapshot(exercises);
+    final result = await repo.start(
+      workoutId,
+      programId: programId,
+      exerciseConfigSnapshot: snapshot,
+    );
     final executionId = result.getOrThrow();
 
     final exerciseIds = exercises.map((e) => e.exerciseId).toList();
@@ -33,17 +53,59 @@ class ActiveExecution extends _$ActiveExecution {
         await repo.getLastWeightsForExercises(exerciseIds);
     final lastWeights = weightsResult.getOrThrow();
 
+    final reduceVol = deloadConfig != null &&
+        (deloadConfig.strategy == DeloadStrategy.reduceVolume ||
+            deloadConfig.strategy == DeloadStrategy.reduceBoth);
+    final reduceInt = deloadConfig != null &&
+        (deloadConfig.strategy == DeloadStrategy.reduceIntensity ||
+            deloadConfig.strategy == DeloadStrategy.reduceBoth);
+
+    final rulesByExercise = {
+      for (final r in progressionRules) r.exerciseId: r,
+    };
+
     final exerciseSets = <int, List<SetEntry>>{};
     for (final ex in exercises) {
-      final lastWeight = lastWeights[ex.exerciseId];
+      var lastWeight = lastWeights[ex.exerciseId];
       final isCardio = ex.duration != null;
+      var repsTarget = isCardio ? null : ex.targetReps;
+      var sets = ex.sets;
+
+      if (deloadConfig == null) {
+        final rule = rulesByExercise[ex.exerciseId];
+        if (rule != null && lastWeight != null) {
+          final shouldApply =
+              await _evaluateCondition(repo, rule, ex);
+          if (shouldApply) {
+            switch (rule.type) {
+              case ProgressionType.incrementWeight:
+                lastWeight = lastWeight + rule.value;
+              case ProgressionType.incrementReps:
+                if (repsTarget != null) {
+                  repsTarget = repsTarget + rule.value.toInt();
+                }
+              case ProgressionType.incrementSets:
+                sets = sets + rule.value.toInt();
+            }
+          }
+        }
+      }
+
+      final effectiveSets = reduceVol
+          ? math.max(1, (sets * deloadConfig.volumeMultiplier).ceil())
+          : sets;
+
+      final effectiveWeight = (reduceInt && lastWeight != null)
+          ? lastWeight * deloadConfig.intensityMultiplier
+          : lastWeight;
+
       exerciseSets[ex.exerciseId] = List.generate(
-        ex.sets,
+        effectiveSets,
         (i) => SetEntry(
           setNumber: i + 1,
-          plannedReps: isCardio ? null : ex.reps,
-          plannedWeight: isCardio ? null : lastWeight,
-          reps: isCardio ? null : ex.reps,
+          plannedReps: repsTarget,
+          plannedWeight: isCardio ? null : effectiveWeight,
+          reps: repsTarget,
           duration: isCardio ? ex.duration : null,
         ),
       );
@@ -54,7 +116,43 @@ class ActiveExecution extends _$ActiveExecution {
       workoutId: workoutId,
       exerciseSets: exerciseSets,
       exercises: exercises,
+      isDeload: deloadConfig != null,
+      defaultRestSeconds: defaultRestSeconds,
     );
+  }
+
+  Future<bool> _evaluateCondition(
+    WorkoutExecutionRepository repo,
+    ProgressionRule rule,
+    WorkoutExercise exercise,
+  ) async {
+    if (rule.condition == null) return true;
+
+    final setsResult =
+        await repo.getLastCompletedSetsForExercise(rule.exerciseId);
+    final lastSets =
+        setsResult.isSuccess ? setsResult.getOrThrow() : <ExecutionSet>[];
+    if (lastSets.isEmpty) return false;
+
+    switch (rule.condition!) {
+      case ProgressionCondition.hitsMaxReps:
+        final maxReps = exercise.maxReps;
+        if (maxReps == null) return false;
+        return lastSets.every((s) => (s.reps ?? 0) >= maxReps);
+
+      case ProgressionCondition.completesAllSets:
+        return lastSets.length >= exercise.sets;
+
+      case ProgressionCondition.rpeBelow:
+        final threshold = rule.conditionValue ?? 8;
+        final rpeSets =
+            lastSets.where((s) => s.rpe != null).toList();
+        if (rpeSets.isEmpty) return false;
+        final avgRpe =
+            rpeSets.map((s) => s.rpe!).reduce((a, b) => a + b) /
+                rpeSets.length;
+        return avgRpe < threshold;
+    }
   }
 
   /// Update local set values (weight/reps or duration/distance) without
@@ -147,20 +245,29 @@ class ActiveExecution extends _$ActiveExecution {
   /// Mark a set as completed and persist it to the database.
   /// Returns the rest time (seconds) for the exercise so the caller can start
   /// the timer.
-  Future<int> completeSet(
+  /// Returns (restSeconds, suggestedNextWeight) — suggestedNextWeight is non-null
+  /// when all working sets hit maxReps and no progression rule is defined.
+  Future<(int, double?)> completeSet(
     int exerciseId,
     int setNumber, {
     int? reps,
     double? weight,
     int? duration,
     double? distance,
+    bool isWarmup = false,
+    int? rpe,
+    String? notes,
     List<SegmentEntry>? segments,
+    int? leftReps,
+    double? leftWeight,
+    int? rightReps,
+    double? rightWeight,
   }) async {
     final current = state;
-    if (current == null) return 0;
+    if (current == null) return (0, null);
 
     final sets = current.exerciseSets[exerciseId];
-    if (sets == null) return 0;
+    if (sets == null) return (0, null);
 
     final entry = sets.firstWhere((s) => s.setNumber == setNumber);
     final effectiveSegments = segments ?? entry.segments;
@@ -177,6 +284,13 @@ class ActiveExecution extends _$ActiveExecution {
       duration: duration,
       distance: distance,
       isCompleted: true,
+      isWarmup: isWarmup,
+      rpe: rpe,
+      notes: notes,
+      leftReps: leftReps,
+      leftWeight: leftWeight,
+      rightReps: rightReps,
+      rightWeight: rightWeight,
     );
 
     final domainSegments = effectiveSegments
@@ -205,6 +319,13 @@ class ActiveExecution extends _$ActiveExecution {
             duration: duration != null ? () => duration : null,
             distance: distance != null ? () => distance : null,
             isCompleted: true,
+            isWarmup: isWarmup,
+            rpe: () => rpe,
+            notes: () => notes,
+            leftReps: () => leftReps,
+            leftWeight: () => leftWeight,
+            rightReps: () => rightReps,
+            rightWeight: () => rightWeight,
             segments: effectiveSegments,
           )
         else
@@ -218,7 +339,28 @@ class ActiveExecution extends _$ActiveExecution {
     final exercise = current.exercises.firstWhere(
       (e) => e.exerciseId == exerciseId,
     );
-    return exercise.rest;
+    final rest = exercise.rest > 0 ? exercise.rest : current.defaultRestSeconds;
+
+    double? suggestedWeight;
+    final maxReps = exercise.maxReps;
+    if (maxReps != null && maxReps > 0) {
+      final latestSets = state!.exerciseSets[exerciseId] ?? [];
+      final workingSets = latestSets.where((s) => !s.isWarmup);
+      final allComplete = workingSets.every((s) => s.isCompleted);
+      final allHitMax =
+          workingSets.every((s) => s.reps != null && s.reps! >= maxReps);
+      if (allComplete && allHitMax && workingSets.isNotEmpty) {
+        final currentWeight = workingSets
+            .map((s) => s.weight ?? 0.0)
+            .reduce((a, b) => a > b ? a : b);
+        if (currentWeight > 0) {
+          suggestedWeight =
+              (currentWeight * 1.025 * 4).roundToDouble() / 4;
+        }
+      }
+    }
+
+    return (rest, suggestedWeight);
   }
 
   /// Finish the active execution, persisting finishedAt.
@@ -234,8 +376,75 @@ class ActiveExecution extends _$ActiveExecution {
 
     ref.invalidate(lastFinishedWorkoutIdProvider);
     ref.invalidate(workoutExecutionListProvider);
+    ref.invalidate(programSessionCountProvider);
 
     state = null;
+  }
+
+  /// Resume a previously started but unfinished execution.
+  /// Reconstructs in-memory state from the DB.
+  Future<void> resumeExecution(
+    int executionId,
+    int workoutId,
+    List<WorkoutExercise> exercises, {
+    required int programId,
+    int defaultRestSeconds = 0,
+  }) async {
+    final repo = ref.read(workoutExecutionRepositoryProvider);
+
+    final setsResult = await repo.getSets(executionId);
+    final dbSets = setsResult.getOrThrow();
+
+    final exerciseSets = <int, List<SetEntry>>{};
+    for (final ex in exercises) {
+      final completed = dbSets
+          .where((s) => s.exerciseId == ex.exerciseId)
+          .toList();
+      final maxCompleted = completed.isEmpty
+          ? 0
+          : completed.map((s) => s.setNumber).reduce((a, b) => a > b ? a : b);
+      final totalSets = ex.sets < maxCompleted ? maxCompleted : ex.sets;
+
+      exerciseSets[ex.exerciseId] = List.generate(totalSets, (i) {
+        final setNum = i + 1;
+        final existing = completed.where((s) => s.setNumber == setNum).firstOrNull;
+        if (existing != null) {
+          return SetEntry(
+            id: existing.id,
+            setNumber: setNum,
+            plannedReps: existing.plannedReps,
+            plannedWeight: existing.plannedWeight,
+            reps: existing.reps,
+            weight: existing.weight,
+            duration: existing.duration,
+            distance: existing.distance,
+            isCompleted: existing.isCompleted,
+            isWarmup: existing.isWarmup,
+            rpe: existing.rpe,
+            notes: existing.notes,
+            leftReps: existing.leftReps,
+            leftWeight: existing.leftWeight,
+            rightReps: existing.rightReps,
+            rightWeight: existing.rightWeight,
+          );
+        }
+        final isCardio = ex.duration != null;
+        return SetEntry(
+          setNumber: setNum,
+          plannedReps: isCardio ? null : ex.targetReps,
+          reps: isCardio ? null : ex.targetReps,
+          duration: isCardio ? ex.duration : null,
+        );
+      });
+    }
+
+    state = ActiveExecutionState(
+      executionId: executionId,
+      workoutId: workoutId,
+      exerciseSets: exerciseSets,
+      exercises: exercises,
+      defaultRestSeconds: defaultRestSeconds,
+    );
   }
 
   /// Cancel the active execution, deleting the DB record.
@@ -251,5 +460,22 @@ class ActiveExecution extends _$ActiveExecution {
     ref.invalidate(workoutExecutionListProvider);
 
     state = null;
+  }
+
+  String _buildExerciseConfigSnapshot(List<WorkoutExercise> exercises) {
+    final list = exercises.map((e) => {
+      'exerciseId': e.exerciseId,
+      'sets': e.sets,
+      'minReps': e.minReps,
+      'maxReps': e.maxReps,
+      'rest': e.rest,
+      'duration': e.duration,
+      'order': e.order,
+      'groupId': e.groupId,
+      'isAmrap': e.isAmrap,
+      'isUnilateral': e.isUnilateral,
+      if (e.notes != null) 'notes': e.notes,
+    }).toList();
+    return jsonEncode(list);
   }
 }

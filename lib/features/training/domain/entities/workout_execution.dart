@@ -2,16 +2,22 @@
 class WorkoutExecution {
   final int id;
   final int workoutId;
+  final int programId;
   final DateTime startedAt;
   final DateTime? finishedAt;
   final String? notes;
 
+  /// JSON snapshot of the workout exercise configuration at execution start.
+  final String? exerciseConfigSnapshot;
+
   const WorkoutExecution({
     required this.id,
     required this.workoutId,
+    required this.programId,
     required this.startedAt,
     this.finishedAt,
     this.notes,
+    this.exerciseConfigSnapshot,
   });
 
   bool get isFinished => finishedAt != null;

@@ -31,6 +31,17 @@ class WorkoutExecutionList extends _$WorkoutExecutionList {
   }
 }
 
+/// Unfinished execution whose workout still exists. Null if clean.
+/// Auto-deletes orphaned executions (workout was deleted) on first load.
+@riverpod
+Future<WorkoutExecution?> danglingExecution(Ref ref) async {
+  final repo = ref.watch(workoutExecutionRepositoryProvider);
+  await repo.deleteOrphaned();
+  final result = await repo.getDangling();
+  final list = result.getOrThrow();
+  return list.firstOrNull;
+}
+
 /// Sets for a specific execution, with segments loaded.
 @riverpod
 Future<List<ExecutionSet>> executionSetsWithSegments(

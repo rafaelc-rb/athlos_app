@@ -100,6 +100,39 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
   }
 
   @override
+  Future<Result<List<domain.WorkoutExecution>>> getDangling() async {
+    try {
+      final rows = await _dao.getDangling();
+      return Success(rows.map(_executionToDomain).toList());
+    } on Exception catch (e) {
+      return Failure(
+          DatabaseException('Failed to load dangling executions: $e'));
+    }
+  }
+
+  @override
+  Future<Result<void>> deleteUnfinishedByWorkout(int workoutId) async {
+    try {
+      await _dao.deleteUnfinishedByWorkout(workoutId);
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseException(
+          'Failed to delete unfinished executions for workout $workoutId: $e'));
+    }
+  }
+
+  @override
+  Future<Result<void>> deleteOrphaned() async {
+    try {
+      await _dao.deleteOrphaned();
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(
+          DatabaseException('Failed to delete orphaned executions: $e'));
+    }
+  }
+
+  @override
   Future<Result<int>> start(int workoutId,
       {required int programId, String? exerciseConfigSnapshot}) async {
     try {
@@ -107,6 +140,7 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
         WorkoutExecutionsCompanion.insert(
           workoutId: workoutId,
           programId: programId,
+          startedAt: Value(DateTime.now()),
           exerciseConfigSnapshot: Value(exerciseConfigSnapshot),
         ),
       );

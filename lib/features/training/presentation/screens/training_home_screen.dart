@@ -4,20 +4,25 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart' as intl;
 
+import '../../../../core/errors/result.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../data/repositories/training_providers.dart';
 import '../../domain/entities/execution_comparison.dart';
+import '../../domain/entities/workout_execution.dart';
 import '../../domain/enums/muscle_group.dart';
 import '../../domain/enums/program_focus.dart';
 import '../helpers/duration_format.dart';
 import '../helpers/exercise_l10n.dart';
+import '../providers/active_execution_notifier.dart';
 import '../providers/equipment_notifier.dart';
 import '../providers/exercise_notifier.dart';
 import '../providers/program_notifier.dart';
 import '../providers/training_analytics_provider.dart';
 import '../providers/training_metrics_provider.dart';
+import '../providers/workout_execution_notifier.dart';
 import '../providers/workout_notifier.dart';
 import '../../../profile/presentation/providers/body_metric_notifier.dart';
 import '../../../profile/presentation/providers/profile_notifier.dart'
@@ -28,14 +33,30 @@ import '../../../profile/presentation/providers/profile_notifier.dart'
 /// Single scrollable view with: compact program banner, stat pills,
 /// weekly volume, recent PR, evolution, weight prompt, library section,
 /// and a FAB to start the next workout.
-class TrainingHomeScreen extends ConsumerWidget {
+class TrainingHomeScreen extends ConsumerStatefulWidget {
   const TrainingHomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TrainingHomeScreen> createState() =>
+      _TrainingHomeScreenState();
+}
+
+class _TrainingHomeScreenState extends ConsumerState<TrainingHomeScreen> {
+  bool _danglingDialogShown = false;
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final nextWorkoutAsync = ref.watch(nextWorkoutToStartProvider);
     final nextWorkout = nextWorkoutAsync.value;
+
+    ref.listen(danglingExecutionProvider, (prev, next) {
+      if (_danglingDialogShown) return;
+      final execution = next.value;
+      if (execution == null) return;
+      _danglingDialogShown = true;
+      _showDanglingExecutionDialog(context, execution);
+    });
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -61,6 +82,76 @@ class TrainingHomeScreen extends ConsumerWidget {
       ),
       floatingActionButton: _StartNextWorkoutFab(nextWorkout: nextWorkout),
     );
+  }
+
+  Future<void> _showDanglingExecutionDialog(
+    BuildContext context,
+    WorkoutExecution execution,
+  ) async {
+    final l10n = AppLocalizations.of(context)!;
+    final workout =
+        await ref.read(workoutByIdProvider(execution.workoutId).future);
+    final workoutName = workout?.name ?? '—';
+    if (!context.mounted) return;
+
+    final resumed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.danglingExecutionTitle),
+        content: Text(l10n.danglingExecutionMessage(workoutName)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.danglingExecutionDiscard),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.danglingExecutionResume),
+          ),
+        ],
+      ),
+    );
+
+    if (!context.mounted) return;
+
+    if (resumed == true) {
+      try {
+        final exercises = await ref
+            .read(workoutExercisesProvider(execution.workoutId).future);
+        final program = await ref.read(activeProgramProvider.future);
+        await ref.read(activeExecutionProvider.notifier).resumeExecution(
+              execution.id,
+              execution.workoutId,
+              exercises,
+              programId: execution.programId,
+              defaultRestSeconds: program?.defaultRestSeconds ?? 0,
+            );
+        if (context.mounted) {
+          context.push(
+            '${RoutePaths.trainingWorkouts}/${execution.workoutId}/execute',
+          );
+        }
+      } on Exception catch (_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.genericError)),
+          );
+        }
+      }
+    } else {
+      try {
+        final repo = ref.read(workoutExecutionRepositoryProvider);
+        await repo.delete(execution.id).then((r) => r.getOrThrow());
+        ref.invalidate(danglingExecutionProvider);
+      } on Exception catch (_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.genericError)),
+          );
+        }
+      }
+    }
   }
 }
 

@@ -381,6 +381,72 @@ class ActiveExecution extends _$ActiveExecution {
     state = null;
   }
 
+  /// Resume a previously started but unfinished execution.
+  /// Reconstructs in-memory state from the DB.
+  Future<void> resumeExecution(
+    int executionId,
+    int workoutId,
+    List<WorkoutExercise> exercises, {
+    required int programId,
+    int defaultRestSeconds = 0,
+  }) async {
+    final repo = ref.read(workoutExecutionRepositoryProvider);
+
+    final setsResult = await repo.getSets(executionId);
+    final dbSets = setsResult.getOrThrow();
+
+    final exerciseSets = <int, List<SetEntry>>{};
+    for (final ex in exercises) {
+      final completed = dbSets
+          .where((s) => s.exerciseId == ex.exerciseId)
+          .toList();
+      final maxCompleted = completed.isEmpty
+          ? 0
+          : completed.map((s) => s.setNumber).reduce((a, b) => a > b ? a : b);
+      final totalSets = ex.sets < maxCompleted ? maxCompleted : ex.sets;
+
+      exerciseSets[ex.exerciseId] = List.generate(totalSets, (i) {
+        final setNum = i + 1;
+        final existing = completed.where((s) => s.setNumber == setNum).firstOrNull;
+        if (existing != null) {
+          return SetEntry(
+            id: existing.id,
+            setNumber: setNum,
+            plannedReps: existing.plannedReps,
+            plannedWeight: existing.plannedWeight,
+            reps: existing.reps,
+            weight: existing.weight,
+            duration: existing.duration,
+            distance: existing.distance,
+            isCompleted: existing.isCompleted,
+            isWarmup: existing.isWarmup,
+            rpe: existing.rpe,
+            notes: existing.notes,
+            leftReps: existing.leftReps,
+            leftWeight: existing.leftWeight,
+            rightReps: existing.rightReps,
+            rightWeight: existing.rightWeight,
+          );
+        }
+        final isCardio = ex.duration != null;
+        return SetEntry(
+          setNumber: setNum,
+          plannedReps: isCardio ? null : ex.targetReps,
+          reps: isCardio ? null : ex.targetReps,
+          duration: isCardio ? ex.duration : null,
+        );
+      });
+    }
+
+    state = ActiveExecutionState(
+      executionId: executionId,
+      workoutId: workoutId,
+      exerciseSets: exerciseSets,
+      exercises: exercises,
+      defaultRestSeconds: defaultRestSeconds,
+    );
+  }
+
   /// Cancel the active execution, deleting the DB record.
   Future<void> cancelExecution() async {
     final current = state;

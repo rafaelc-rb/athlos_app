@@ -15,8 +15,18 @@ abstract interface class WorkoutExecutionRepository {
   /// Returns null if there are fewer than two finished executions.
   Future<Result<ExecutionComparison?>> getLastTwoFinishedWithVolume(
       int workoutId);
+  /// Unfinished executions (started but never finished/cancelled).
+  Future<Result<List<WorkoutExecution>>> getDangling();
+
   Future<Result<int>> start(int workoutId,
       {required int programId, String? exerciseConfigSnapshot});
+
+  /// Deletes only unfinished executions (with sets/segments) for a workout.
+  /// Finished executions are preserved as training history.
+  Future<Result<void>> deleteUnfinishedByWorkout(int workoutId);
+
+  /// Deletes executions referencing workouts that no longer exist.
+  Future<Result<void>> deleteOrphaned();
   Future<Result<void>> finish(int executionId, {String? notes});
   Future<Result<void>> delete(int id);
   Future<Result<List<ExecutionSet>>> getSets(int executionId);

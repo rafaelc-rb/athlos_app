@@ -2310,5 +2310,19 @@
   "workoutsCatalogDesc": "Seus treinos salvos",
   "@workoutsCatalogDesc": { "description": "Workout catalog description" },
   "programAdvancedSettings": "Configurações do programa",
-  "@programAdvancedSettings": { "description": "Tooltip for advanced program settings gear icon" }
+  "@programAdvancedSettings": { "description": "Tooltip for advanced program settings gear icon" },
+
+  "danglingExecutionTitle": "Treino não finalizado",
+  "@danglingExecutionTitle": { "description": "Dialog title for unfinished workout detection" },
+  "danglingExecutionMessage": "Você tem um treino em andamento: {workoutName}. Deseja retomar ou descartar?",
+  "@danglingExecutionMessage": {
+    "description": "Dialog body for unfinished workout",
+    "placeholders": {
+      "workoutName": { "type": "String" }
+    }
+  },
+  "danglingExecutionResume": "Retomar",
+  "@danglingExecutionResume": { "description": "Button to resume unfinished workout" },
+  "danglingExecutionDiscard": "Descartar",
+  "@danglingExecutionDiscard": { "description": "Button to discard unfinished workout" }
 }

@@ -3,8 +3,9 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/errors/result.dart';
 import '../../data/repositories/training_providers.dart';
 import '../../domain/entities/workout.dart';
-import 'training_analytics_provider.dart';
 import '../../domain/entities/workout_exercise.dart';
+import 'training_analytics_provider.dart';
+import 'workout_execution_notifier.dart';
 
 part 'workout_notifier.g.dart';
 
@@ -49,12 +50,17 @@ class WorkoutList extends _$WorkoutList {
   }
 
   Future<void> deleteWorkout(int id) async {
+    final execRepo = ref.read(workoutExecutionRepositoryProvider);
+    final cascadeResult = await execRepo.deleteUnfinishedByWorkout(id);
+    cascadeResult.getOrThrow();
+
     final repo = ref.read(workoutRepositoryProvider);
     final result = await repo.delete(id);
     result.getOrThrow();
     ref.invalidateSelf();
     ref.invalidate(workoutByIdProvider(id));
     ref.invalidate(workoutExercisesProvider(id));
+    ref.invalidate(workoutExecutionListProvider);
   }
 
   Future<void> archiveWorkout(int id) async {

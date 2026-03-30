@@ -122,7 +122,8 @@ class _WorkoutExecutionScreenState
         final l10n = AppLocalizations.of(context)!;
         final router = GoRouter.of(context);
         try {
-          final activeProgram = ref.read(activeProgramProvider).value;
+          final activeProgram =
+              await ref.read(activeProgramProvider.future);
           if (activeProgram == null) throw Exception('No active program');
           final deloadConfig = activeProgram.isInDeload
               ? activeProgram.deloadConfig

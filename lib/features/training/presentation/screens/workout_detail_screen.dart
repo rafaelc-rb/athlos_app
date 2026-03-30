@@ -503,8 +503,36 @@ class _ExerciseDetailTile extends ConsumerWidget {
                 ),
             ],
           ),
-          subtitle: Text(
-            _exerciseSubtitle(exercise, groupName),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_exerciseSubtitle(exercise, groupName)),
+              if (exercise.notes != null && exercise.notes!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: AthlosSpacing.xxs),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.note_alt_outlined,
+                        size: 12,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: AthlosSpacing.xs),
+                      Flexible(
+                        child: Text(
+                          exercise.notes!,
+                          style: textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
         ),
       ),

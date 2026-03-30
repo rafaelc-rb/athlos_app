@@ -730,6 +730,34 @@ class _WorkoutExecutionScreenState
                   ],
                 ],
               ),
+            if (exercise.notes != null && exercise.notes!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: AthlosSpacing.sm),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.note_alt_outlined,
+                      size: 14,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: AthlosSpacing.xs),
+                    Flexible(
+                      child: Text(
+                        exercise.notes!,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             const Spacer(),
 
             if (_isFocusedCardio(exec)) ...[

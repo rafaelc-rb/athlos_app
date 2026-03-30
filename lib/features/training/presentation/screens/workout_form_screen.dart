@@ -386,6 +386,7 @@ class _WorkoutFormScreenState extends ConsumerState<WorkoutFormScreen> {
                           key: ValueKey(
                               '${entry.exercise.id}_$index'),
                           entry: entry,
+                          index: index,
                           isLinkedToNext: isLinkedToNext,
                           isLinkedToPrevious: isLinkedToPrevious,
                           groupColorIndex: groupColorIndex,

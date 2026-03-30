@@ -46,7 +46,7 @@ class WorkoutExerciseEntry {
 /// When the exercise belongs to a superset group, a colored left border
 /// and a small "Superset" badge are shown. Each group gets a distinct
 /// color from [supersetGroupPalette] via [groupColorIndex].
-class WorkoutExerciseTile extends StatelessWidget {
+class WorkoutExerciseTile extends StatefulWidget {
   final WorkoutExerciseEntry entry;
   final VoidCallback onRemove;
   final ValueChanged<WorkoutExerciseEntry> onChanged;
@@ -54,12 +54,14 @@ class WorkoutExerciseTile extends StatelessWidget {
   final bool isLinkedToPrevious;
   final VoidCallback? onToggleLinkNext;
   final int? groupColorIndex;
+  final int index;
 
   const WorkoutExerciseTile({
     super.key,
     required this.entry,
     required this.onRemove,
     required this.onChanged,
+    required this.index,
     this.isLinkedToNext = false,
     this.isLinkedToPrevious = false,
     this.onToggleLinkNext,
@@ -67,14 +69,28 @@ class WorkoutExerciseTile extends StatelessWidget {
   });
 
   @override
+  State<WorkoutExerciseTile> createState() => _WorkoutExerciseTileState();
+}
+
+class _WorkoutExerciseTileState extends State<WorkoutExerciseTile> {
+  late bool _showNotes;
+
+  @override
+  void initState() {
+    super.initState();
+    _showNotes = widget.entry.notes != null && widget.entry.notes!.isNotEmpty;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final isInGroup = isLinkedToNext || isLinkedToPrevious;
+    final entry = widget.entry;
+    final isInGroup = widget.isLinkedToNext || widget.isLinkedToPrevious;
     final groupColor =
-        isInGroup && groupColorIndex != null
-            ? supersetColorFor(groupColorIndex!, colorScheme)
+        isInGroup && widget.groupColorIndex != null
+            ? supersetColorFor(widget.groupColorIndex!, colorScheme)
             : null;
 
     final displayName = localizedExerciseName(
@@ -110,7 +126,7 @@ class WorkoutExerciseTile extends StatelessWidget {
           child: Row(
             children: [
               ReorderableDragStartListener(
-                index: 0,
+                index: widget.index,
                 child: Icon(
                   Icons.drag_handle,
                   color: colorScheme.onSurfaceVariant,
@@ -123,7 +139,7 @@ class WorkoutExerciseTile extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        if (isInGroup && !isLinkedToPrevious &&
+                        if (isInGroup && !widget.isLinkedToPrevious &&
                             groupColor != null)
                           Padding(
                             padding: const EdgeInsets.only(
@@ -180,7 +196,7 @@ class WorkoutExerciseTile extends StatelessWidget {
                         GestureDetector(
                           onTap: () {
                             entry.isUnilateral = !entry.isUnilateral;
-                            onChanged(entry);
+                            widget.onChanged(entry);
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -237,7 +253,7 @@ class WorkoutExerciseTile extends StatelessWidget {
                             value: entry.sets,
                             onChanged: (v) {
                               entry.sets = v;
-                              onChanged(entry);
+                              widget.onChanged(entry);
                             },
                           ),
                         ),
@@ -249,7 +265,7 @@ class WorkoutExerciseTile extends StatelessWidget {
                               value: entry.duration ?? 60,
                               onChanged: (v) {
                                 entry.duration = v;
-                                onChanged(entry);
+                                widget.onChanged(entry);
                               },
                             ),
                           ),
@@ -260,7 +276,7 @@ class WorkoutExerciseTile extends StatelessWidget {
                             value: entry.rest,
                             onChanged: (v) {
                               entry.rest = v;
-                              onChanged(entry);
+                              widget.onChanged(entry);
                             },
                           ),
                         ),
@@ -282,7 +298,7 @@ class WorkoutExerciseTile extends StatelessWidget {
                                       entry.maxReps! < v) {
                                     entry.maxReps = v;
                                   }
-                                  onChanged(entry);
+                                  widget.onChanged(entry);
                                 },
                               ),
                             ),
@@ -298,7 +314,7 @@ class WorkoutExerciseTile extends StatelessWidget {
                                       entry.minReps! > v) {
                                     entry.minReps = v;
                                   }
-                                  onChanged(entry);
+                                  widget.onChanged(entry);
                                 },
                               ),
                             ),
@@ -317,7 +333,7 @@ class WorkoutExerciseTile extends StatelessWidget {
                               child: GestureDetector(
                                 onTap: () {
                                   entry.isAmrap = !entry.isAmrap;
-                                  onChanged(entry);
+                                  widget.onChanged(entry);
                                 },
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
@@ -374,12 +390,80 @@ class WorkoutExerciseTile extends StatelessWidget {
                           ],
                         ),
                       ),
+                    Padding(
+                      padding:
+                          const EdgeInsets.only(top: AthlosSpacing.xs),
+                      child: GestureDetector(
+                        onTap: () => setState(() => _showNotes = !_showNotes),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AthlosSpacing.sm,
+                            vertical: AthlosSpacing.xxs,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _showNotes
+                                ? colorScheme.secondaryContainer
+                                : colorScheme.surfaceContainerHighest,
+                            borderRadius: AthlosRadius.fullAll,
+                            border: Border.all(
+                              color: _showNotes
+                                  ? colorScheme.secondary
+                                      .withValues(alpha: 0.5)
+                                  : colorScheme.outline
+                                      .withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.note_alt_outlined,
+                                size: 12,
+                                color: _showNotes
+                                    ? colorScheme.onSecondaryContainer
+                                    : colorScheme.onSurfaceVariant,
+                              ),
+                              if (entry.notes != null &&
+                                  entry.notes!.isNotEmpty &&
+                                  !_showNotes) ...[
+                                const SizedBox(width: AthlosSpacing.xs),
+                                Flexible(
+                                  child: Text(
+                                    entry.notes!,
+                                    style: textTheme.labelSmall?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (_showNotes)
+                      Padding(
+                        padding:
+                            const EdgeInsets.only(top: AthlosSpacing.xs),
+                        child: _NotesField(
+                          value: entry.notes ?? '',
+                          hintText: l10n.exerciseNotesHint,
+                          onChanged: (v) {
+                            entry.notes =
+                                v.trim().isEmpty ? null : v.trim();
+                            widget.onChanged(entry);
+                          },
+                        ),
+                      ),
                   ],
                 ),
               ),
               IconButton(
                 icon: Icon(Icons.close, color: colorScheme.error),
-                onPressed: onRemove,
+                onPressed: widget.onRemove,
                 tooltip: l10n.removeExercise,
               ),
             ],
@@ -392,11 +476,11 @@ class WorkoutExerciseTile extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         cardWidget,
-        if (onToggleLinkNext != null)
+        if (widget.onToggleLinkNext != null)
           _SupersetLinkButton(
-            isLinked: isLinkedToNext,
-            onTap: onToggleLinkNext!,
-            linkedColor: isLinkedToNext ? groupColor : null,
+            isLinked: widget.isLinkedToNext,
+            onTap: widget.onToggleLinkNext!,
+            linkedColor: widget.isLinkedToNext ? groupColor : null,
           ),
       ],
     );
@@ -509,6 +593,57 @@ class _NumberFieldState extends State<_NumberField> {
         final v = int.tryParse(text);
         if (v != null && v > 0) widget.onChanged(v);
       },
+    );
+  }
+}
+
+class _NotesField extends StatefulWidget {
+  final String value;
+  final String hintText;
+  final ValueChanged<String> onChanged;
+
+  const _NotesField({
+    required this.value,
+    required this.hintText,
+    required this.onChanged,
+  });
+
+  @override
+  State<_NotesField> createState() => _NotesFieldState();
+}
+
+class _NotesFieldState extends State<_NotesField> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      decoration: InputDecoration(
+        hintText: widget.hintText,
+        isDense: true,
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AthlosSpacing.sm,
+          vertical: AthlosSpacing.sm,
+        ),
+      ),
+      maxLines: 2,
+      minLines: 1,
+      textInputAction: TextInputAction.done,
+      onChanged: widget.onChanged,
     );
   }
 }

@@ -102,7 +102,7 @@ class AppDatabase extends _$AppDatabase {
   bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed && _enableDevSeed;
 
   @override
-  int get schemaVersion => 25;
+  int get schemaVersion => 26;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -113,7 +113,7 @@ class AppDatabase extends _$AppDatabase {
       if (_shouldSeedDevData) await seedDevData(this);
     },
     onUpgrade: (m, from, to) async {
-      if (_shouldSeedDevData && from >= 3 && from <= 24) {
+      if (_shouldSeedDevData && from >= 3 && from <= 25) {
         for (final table in allTables) {
           await m.deleteTable(table.actualTableName);
         }
@@ -563,6 +563,10 @@ class AppDatabase extends _$AppDatabase {
             'UPDATE programs SET is_active = 1 WHERE id = $defaultProgramId',
           );
         }
+      }
+
+      if (from < 26) {
+        await seedExercisesV6(this);
       }
 
     },

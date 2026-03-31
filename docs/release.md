@@ -35,6 +35,38 @@ Both `versionName` (Android) and `CFBundleShortVersionString` (iOS) are derived 
 
 See [Versioning Strategy](./context.md#versioning-strategy) for the full release roadmap.
 
+## Git Tagging (Release Standard)
+
+Release tags must follow this standard:
+
+- **Name format:** `vMAJOR.MINOR.PATCH` (example: `v1.6.0`)
+- **Tag type:** **annotated tag** (always use `git tag -a`, never lightweight tags for releases)
+- **Tag message format:** `vX.Y.Z — <main release theme>`
+
+Recommended flow:
+
+```bash
+# 1) Commit the release bump
+git commit -m "chore(release): bump version to 1.6.0+9"
+
+# 2) Create annotated tag
+git tag -a v1.6.0 -m "v1.6.0 — Training periodization and program model evolution"
+
+# 3) Publish commit and tag
+git push origin main
+git push origin v1.6.0
+```
+
+Quick checks:
+
+```bash
+# Local annotated tag details (must show Tagger)
+git show -s v1.6.0
+
+# Remote tag and peeled commit
+git ls-remote --tags origin "v1.6.0*"
+```
+
 ## Android Signing
 
 ### Keystore

@@ -2500,8 +2500,9 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     for (final row in rows) {
       final id = _asInt(row['id']);
       final name = (row['name'] as String?)?.trim();
-      if (id == null || id == winnerId || name == null || name.isEmpty)
+      if (id == null || id == winnerId || name == null || name.isEmpty) {
         continue;
+      }
       if (_asBool(row['is_verified'])) continue;
       if (_normalizeName(name) == normalizedName) return id;
     }
@@ -2698,8 +2699,9 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     if (value is int) return Variable<int>(value) as Variable<Object>;
     if (value is double) return Variable<double>(value) as Variable<Object>;
     if (value is num) {
-      if (value % 1 == 0)
+      if (value % 1 == 0) {
         return Variable<int>(value.toInt()) as Variable<Object>;
+      }
       return Variable<double>(value.toDouble()) as Variable<Object>;
     }
     if (value is DateTime) return Variable<DateTime>(value) as Variable<Object>;

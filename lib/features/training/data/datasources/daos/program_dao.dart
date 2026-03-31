@@ -59,6 +59,10 @@ class ProgramDao extends DatabaseAccessor<AppDatabase>
         ProgramsCompanion(isInDeload: Value(active)),
       );
 
+  Future<void> deleteProgram(int id) async {
+    await (delete(programs)..where((p) => p.id.equals(id))).go();
+  }
+
   /// Count finished executions belonging to a given program.
   Future<int> getSessionCount(int programId) async {
     final count = countAll(

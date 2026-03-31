@@ -113,6 +113,16 @@ class ProgramRepositoryImpl implements ProgramRepository {
   }
 
   @override
+  Future<Result<void>> delete(int programId) async {
+    try {
+      await _dao.deleteProgram(programId);
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseException('Failed to delete program: $e'));
+    }
+  }
+
+  @override
   Future<Result<void>> setDeloadActive(
     int programId, {
     required bool active,

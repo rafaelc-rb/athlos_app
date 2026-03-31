@@ -262,6 +262,7 @@ class ActiveExecution extends _$ActiveExecution {
     double? leftWeight,
     int? rightReps,
     double? rightWeight,
+    bool isUnilateral = false,
   }) async {
     final current = state;
     if (current == null) return (0, null);
@@ -291,6 +292,7 @@ class ActiveExecution extends _$ActiveExecution {
       leftWeight: leftWeight,
       rightReps: rightReps,
       rightWeight: rightWeight,
+      isUnilateral: isUnilateral,
     );
 
     final domainSegments = effectiveSegments

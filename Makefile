@@ -9,13 +9,15 @@ ANDROID_EMULATOR ?= dev_pixel7_api34
 ANDROID_DEVICE ?= android
 
 CHIRON_DEBUG_TRACE ?= false
+SEED ?= 1
 
 DART_DEFINES = \
 	--dart-define=SUPABASE_URL=$(SUPABASE_URL) \
 	--dart-define=SUPABASE_ANON_KEY=$(SUPABASE_ANON_KEY) \
 	--dart-define=GEMINI_API_KEY=$(GEMINI_API_KEY)
 
-DEBUG_DART_DEFINES = $(DART_DEFINES)
+_SEED_DEFINE = $(if $(filter 0,$(SEED)),--dart-define=SKIP_DEV_SEED=true)
+DEBUG_DART_DEFINES = $(DART_DEFINES) $(_SEED_DEFINE)
 PROD_DART_DEFINES = $(DART_DEFINES) --dart-define=CHIRON_DEBUG_TRACE=$(CHIRON_DEBUG_TRACE) --dart-define=ENV=prod
 
 .PHONY: help run-ios run-ios-device run-android ios-sim-open ios-sim-list android-sim-open android-emu-list build-apk build-aab build-ipa gen gen-l10n analyze clean
@@ -42,6 +44,7 @@ help: ## Show organized command list
 	@echo ""
 	@echo "Exemplos:"
 	@echo "  make run-ios"
+	@echo "  make run-ios SEED=0"
 	@echo "  make run-ios-device IOS_DEVICE_UDID=<your_device_udid>"
 	@echo "  make run-android ANDROID_EMULATOR=dev_pixel7_api34"
 	@echo ""

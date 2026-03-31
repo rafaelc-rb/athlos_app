@@ -3,8 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/errors/result.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../data/repositories/training_providers.dart';
 import '../../domain/entities/deload_config.dart';
 import '../../domain/entities/training_program.dart';
 import '../../domain/enums/deload_strategy.dart';
@@ -100,7 +102,7 @@ class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
 
     setState(() => _saving = true);
     try {
-      final actions = ref.read(programActionsProvider.notifier);
+      final repo = ref.read(programRepositoryProvider);
 
       if (_isEditing) {
         final program = TrainingProgram(
@@ -113,7 +115,7 @@ class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
           deloadConfig: deloadConfig,
           createdAt: DateTime.now(),
         );
-        await actions.updateProgram(program);
+        (await repo.update(program)).getOrThrow();
       } else {
         final program = TrainingProgram(
           id: 0,
@@ -126,9 +128,9 @@ class _ProgramFormScreenState extends ConsumerState<ProgramFormScreen> {
           deloadConfig: deloadConfig,
           createdAt: DateTime.now(),
         );
-        final id = await actions.createProgram(program);
+        final id = (await repo.create(program)).getOrThrow();
         if (_activate) {
-          await actions.activateProgram(id);
+          (await repo.activate(id)).getOrThrow();
         }
       }
 

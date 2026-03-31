@@ -67,6 +67,7 @@ class _WorkoutExecutionScreenState
   double _currentDistance = 0;
   int? _selectedRpe;
   bool _isWarmup = false;
+  bool _isUnilateral = false;
   String? _setNotes;
   bool _showNotesField = false;
   List<_DropSegmentInput> _dropSegments = [];
@@ -122,8 +123,9 @@ class _WorkoutExecutionScreenState
         final l10n = AppLocalizations.of(context)!;
         final router = GoRouter.of(context);
         try {
+          final programRepo = ref.read(programRepositoryProvider);
           final activeProgram =
-              await ref.read(activeProgramProvider.future);
+              (await programRepo.getActive()).getOrThrow();
           if (activeProgram == null) throw Exception('No active program');
           final deloadConfig = activeProgram.isInDeload
               ? activeProgram.deloadConfig
@@ -395,6 +397,7 @@ class _WorkoutExecutionScreenState
           .map((s) => _DropSegmentInput(reps: s.reps, weight: s.weight ?? 0))
           .toList();
 
+      _isUnilateral = exec.exercises[exerciseIndex].isUnilateral;
       _leftReps = entry.leftReps ?? _currentReps;
       _leftWeight = entry.leftWeight ?? _currentWeight;
       _rightReps = entry.rightReps ?? _currentReps;
@@ -702,29 +705,57 @@ class _WorkoutExecutionScreenState
                   if (exercise.isUnilateral) ...[
                     if (group.isNotEmpty)
                       const SizedBox(width: AthlosSpacing.sm),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AthlosSpacing.sm,
-                        vertical: AthlosSpacing.xxs,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.secondaryContainer,
-                        borderRadius: AthlosRadius.fullAll,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.swap_horiz,
-                              size: 14,
-                              color: colorScheme.onSecondaryContainer),
-                          const SizedBox(width: AthlosSpacing.xs),
-                          Text(
-                            l10n.unilateralLabel,
-                            style: textTheme.labelMedium?.copyWith(
-                              color: colorScheme.onSecondaryContainer,
-                            ),
+                    GestureDetector(
+                      onTap: () => setState(() {
+                        _isUnilateral = !_isUnilateral;
+                        if (_isUnilateral) {
+                          _leftReps = _currentReps;
+                          _leftWeight = _currentWeight;
+                          _rightReps = _currentReps;
+                          _rightWeight = _currentWeight;
+                        } else {
+                          _currentReps = _leftReps;
+                          _currentWeight = _leftWeight;
+                        }
+                      }),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AthlosSpacing.sm,
+                          vertical: AthlosSpacing.xxs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _isUnilateral
+                              ? colorScheme.secondaryContainer
+                              : colorScheme.surfaceContainerHighest,
+                          borderRadius: AthlosRadius.fullAll,
+                          border: Border.all(
+                            color: _isUnilateral
+                                ? colorScheme.secondary
+                                    .withValues(alpha: 0.5)
+                                : colorScheme.outline
+                                    .withValues(alpha: 0.3),
                           ),
-                        ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.swap_horiz,
+                                size: 14,
+                                color: _isUnilateral
+                                    ? colorScheme.onSecondaryContainer
+                                    : colorScheme.onSurfaceVariant),
+                            const SizedBox(width: AthlosSpacing.xs),
+                            Text(
+                              l10n.unilateralLabel,
+                              style: textTheme.labelMedium?.copyWith(
+                                color: _isUnilateral
+                                    ? colorScheme.onSecondaryContainer
+                                    : colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -784,8 +815,8 @@ class _WorkoutExecutionScreenState
                 textTheme: textTheme,
                 colorScheme: colorScheme,
               ),
-            ] else ...[
-              // Weight input
+            ] else if (!_isUnilateral) ...[
+              // Bilateral: standard weight + reps inputs
               _NumberInput(
                 value: _currentWeight,
                 suffix: l10n.weightKgSuffix,
@@ -797,7 +828,6 @@ class _WorkoutExecutionScreenState
 
               const SizedBox(height: AthlosSpacing.xl),
 
-              // Reps input
               _NumberInput(
                 value: _currentReps.toDouble(),
                 suffix: l10n.repsShort,
@@ -815,72 +845,84 @@ class _WorkoutExecutionScreenState
                     exercise.isAmrap),
               ),
 
-              if (exercise.isUnilateral) ...[
-                const SizedBox(height: AthlosSpacing.lg),
-                Text(l10n.leftSideLabel,
-                    style: textTheme.labelMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant)),
-                const SizedBox(height: AthlosSpacing.xs),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _NumberInput(
-                        value: _leftReps.toDouble(),
-                        suffix: l10n.repsShort,
-                        step: 1,
-                        onChanged: (v) =>
-                            setState(() => _leftReps = v.toInt()),
-                        textTheme: textTheme,
-                        colorScheme: colorScheme,
-                      ),
+              const SizedBox(height: AthlosSpacing.md),
+            ] else ...[
+              // Unilateral: shared weight, per-side reps
+              _NumberInput(
+                value: _leftWeight,
+                suffix: l10n.weightKgSuffix,
+                step: 2.5,
+                onChanged: (v) => setState(() {
+                  _leftWeight = v;
+                  _rightWeight = v;
+                }),
+                textTheme: textTheme,
+                colorScheme: colorScheme,
+              ),
+
+              const SizedBox(height: AthlosSpacing.lg),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Text(l10n.leftSideLabel,
+                            style: textTheme.labelMedium?.copyWith(
+                                color: colorScheme.onSurfaceVariant)),
+                        const SizedBox(height: AthlosSpacing.xs),
+                        _NumberInput(
+                          value: _leftReps.toDouble(),
+                          suffix: l10n.repsShort,
+                          step: 1,
+                          compact: true,
+                          onChanged: (v) =>
+                              setState(() => _leftReps = v.toInt()),
+                          textTheme: textTheme,
+                          colorScheme: colorScheme,
+                          valueColor: repsDeviationColor(
+                              colorScheme,
+                              Theme.of(context)
+                                  .extension<AthlosCustomColors>()!,
+                              _leftReps,
+                              exercise.minReps ?? 0,
+                              exercise.maxReps ?? 0,
+                              exercise.isAmrap),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: AthlosSpacing.sm),
-                    Expanded(
-                      child: _NumberInput(
-                        value: _leftWeight,
-                        suffix: l10n.weightKgSuffix,
-                        step: 2.5,
-                        onChanged: (v) =>
-                            setState(() => _leftWeight = v),
-                        textTheme: textTheme,
-                        colorScheme: colorScheme,
-                      ),
+                  ),
+                  const SizedBox(width: AthlosSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Text(l10n.rightSideLabel,
+                            style: textTheme.labelMedium?.copyWith(
+                                color: colorScheme.onSurfaceVariant)),
+                        const SizedBox(height: AthlosSpacing.xs),
+                        _NumberInput(
+                          value: _rightReps.toDouble(),
+                          suffix: l10n.repsShort,
+                          step: 1,
+                          compact: true,
+                          onChanged: (v) =>
+                              setState(() => _rightReps = v.toInt()),
+                          textTheme: textTheme,
+                          colorScheme: colorScheme,
+                          valueColor: repsDeviationColor(
+                              colorScheme,
+                              Theme.of(context)
+                                  .extension<AthlosCustomColors>()!,
+                              _rightReps,
+                              exercise.minReps ?? 0,
+                              exercise.maxReps ?? 0,
+                              exercise.isAmrap),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: AthlosSpacing.sm),
-                Text(l10n.rightSideLabel,
-                    style: textTheme.labelMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant)),
-                const SizedBox(height: AthlosSpacing.xs),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _NumberInput(
-                        value: _rightReps.toDouble(),
-                        suffix: l10n.repsShort,
-                        step: 1,
-                        onChanged: (v) =>
-                            setState(() => _rightReps = v.toInt()),
-                        textTheme: textTheme,
-                        colorScheme: colorScheme,
-                      ),
-                    ),
-                    const SizedBox(width: AthlosSpacing.sm),
-                    Expanded(
-                      child: _NumberInput(
-                        value: _rightWeight,
-                        suffix: l10n.weightKgSuffix,
-                        step: 2.5,
-                        onChanged: (v) =>
-                            setState(() => _rightWeight = v),
-                        textTheme: textTheme,
-                        colorScheme: colorScheme,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
 
               const SizedBox(height: AthlosSpacing.md),
 
@@ -1831,20 +1873,25 @@ class _WorkoutExecutionScreenState
     final exercise = exec.exercises[_focusedExerciseIndex];
     final isCardio = _isFocusedCardio(exec);
 
-    if (!isCardio && _currentReps <= 0) return;
+    final isUni = _isUnilateral;
+
+    if (!isCardio && !isUni && _currentReps <= 0) return;
+    if (!isCardio && isUni && _leftReps <= 0 && _rightReps <= 0) return;
+
+    final effectiveReps = isUni ? _leftReps : _currentReps;
+    final effectiveWeight = isUni ? _leftWeight : _currentWeight;
 
     final segments = isCardio || _dropSegments.isEmpty
         ? <SegmentEntry>[]
         : [
             SegmentEntry(
-              reps: _currentReps,
-              weight: _currentWeight > 0 ? _currentWeight : null,
+              reps: effectiveReps,
+              weight: effectiveWeight > 0 ? effectiveWeight : null,
             ),
             ..._dropSegments
                 .map((d) => SegmentEntry(reps: d.reps, weight: d.weight)),
           ];
 
-    final isUni = exercise.isUnilateral;
     final int rest;
     final double? suggestedWeight;
     try {
@@ -1852,9 +1899,9 @@ class _WorkoutExecutionScreenState
           await ref.read(activeExecutionProvider.notifier).completeSet(
             exercise.exerciseId,
             _focusedSetNumber,
-            reps: isCardio ? null : _currentReps,
+            reps: isCardio ? null : effectiveReps,
             weight:
-                isCardio ? null : (_currentWeight > 0 ? _currentWeight : null),
+                isCardio ? null : (effectiveWeight > 0 ? effectiveWeight : null),
             duration: isCardio ? _currentDuration : null,
             distance:
                 isCardio ? (_currentDistance > 0 ? _currentDistance : null) : null,
@@ -1866,6 +1913,7 @@ class _WorkoutExecutionScreenState
             leftWeight: isUni && _leftWeight > 0 ? _leftWeight : null,
             rightReps: isUni && _rightReps > 0 ? _rightReps : null,
             rightWeight: isUni && _rightWeight > 0 ? _rightWeight : null,
+            isUnilateral: isUni,
           );
       rest = result.$1;
       suggestedWeight = result.$2;
@@ -2041,6 +2089,8 @@ class _WorkoutExecutionScreenState
       await ref
           .read(programActionsProvider.notifier)
           .enterDeload(program.id);
+      ref.invalidate(programListProvider);
+      ref.invalidate(activeProgramProvider);
     }
   }
 
@@ -2072,6 +2122,7 @@ class _WorkoutExecutionScreenState
       await ref
           .read(programActionsProvider.notifier)
           .archiveProgram(program.id);
+      ref.invalidate(programListProvider);
       ref.invalidate(activeProgramProvider);
     }
   }
@@ -2393,6 +2444,7 @@ class _NumberInput extends StatelessWidget {
   final TextTheme textTheme;
   final ColorScheme colorScheme;
   final Color? valueColor;
+  final bool compact;
 
   const _NumberInput({
     required this.value,
@@ -2402,12 +2454,21 @@ class _NumberInput extends StatelessWidget {
     required this.textTheme,
     required this.colorScheme,
     this.valueColor,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final displayValue =
         value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(1);
+
+    final valueStyle = compact
+        ? textTheme.headlineMedium
+        : textTheme.displayMedium;
+    final suffixStyle = compact
+        ? textTheme.bodyMedium
+        : textTheme.titleMedium;
+    final spacing = compact ? AthlosSpacing.sm : AthlosSpacing.lg;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -2418,22 +2479,22 @@ class _NumberInput extends StatelessWidget {
               ? () => onChanged((value - step).clamp(0, 9999))
               : null,
           colorScheme: colorScheme,
+          compact: compact,
         ),
-        const SizedBox(width: AthlosSpacing.lg),
-        SizedBox(
-          width: 120,
+        SizedBox(width: spacing),
+        Flexible(
           child: GestureDetector(
             onTap: () => _showEditDialog(context),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 SizedBox(
-                  height: (textTheme.displayMedium?.fontSize ?? 45) * 1.2,
+                  height: (valueStyle?.fontSize ?? 45) * 1.2,
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
                       displayValue,
-                      style: textTheme.displayMedium?.copyWith(
+                      style: valueStyle?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: valueColor,
                       ),
@@ -2442,7 +2503,7 @@ class _NumberInput extends StatelessWidget {
                 ),
                 Text(
                   suffix,
-                  style: textTheme.titleMedium?.copyWith(
+                  style: suffixStyle?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
                   textAlign: TextAlign.center,
@@ -2451,11 +2512,12 @@ class _NumberInput extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: AthlosSpacing.lg),
+        SizedBox(width: spacing),
         _CircleButton(
           icon: Icons.add,
           onPressed: () => onChanged(value + step),
           colorScheme: colorScheme,
+          compact: compact,
         ),
       ],
     );
@@ -2510,15 +2572,20 @@ class _CircleButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onPressed;
   final ColorScheme colorScheme;
+  final bool compact;
 
   const _CircleButton({
     required this.icon,
     required this.onPressed,
     required this.colorScheme,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final padding = compact ? AthlosSpacing.sm : AthlosSpacing.md;
+    final iconSize = compact ? 20.0 : 28.0;
+
     return Material(
       shape: const CircleBorder(),
       color: onPressed != null
@@ -2528,13 +2595,13 @@ class _CircleButton extends StatelessWidget {
         onTap: onPressed,
         customBorder: const CircleBorder(),
         child: Padding(
-          padding: const EdgeInsets.all(AthlosSpacing.md),
+          padding: EdgeInsets.all(padding),
           child: Icon(
             icon,
             color: onPressed != null
                 ? colorScheme.onSurface
                 : colorScheme.onSurface.withAlpha(80),
-            size: 28,
+            size: iconSize,
           ),
         ),
       ),

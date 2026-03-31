@@ -89,8 +89,9 @@ class _TrainingHomeScreenState extends ConsumerState<TrainingHomeScreen> {
     WorkoutExecution execution,
   ) async {
     final l10n = AppLocalizations.of(context)!;
+    final workoutRepo = ref.read(workoutRepositoryProvider);
     final workout =
-        await ref.read(workoutByIdProvider(execution.workoutId).future);
+        (await workoutRepo.getById(execution.workoutId)).getOrThrow();
     final workoutName = workout?.name ?? '—';
     if (!context.mounted) return;
 
@@ -117,9 +118,11 @@ class _TrainingHomeScreenState extends ConsumerState<TrainingHomeScreen> {
 
     if (resumed == true) {
       try {
-        final exercises = await ref
-            .read(workoutExercisesProvider(execution.workoutId).future);
-        final program = await ref.read(activeProgramProvider.future);
+        final wRepo = ref.read(workoutRepositoryProvider);
+        final pRepo = ref.read(programRepositoryProvider);
+        final exercises =
+            (await wRepo.getExercises(execution.workoutId)).getOrThrow();
+        final program = (await pRepo.getActive()).getOrThrow();
         await ref.read(activeExecutionProvider.notifier).resumeExecution(
               execution.id,
               execution.workoutId,

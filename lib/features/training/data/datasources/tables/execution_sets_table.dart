@@ -52,4 +52,8 @@ class ExecutionSets extends Table {
 
   /// Weight used for the right side (unilateral exercises only).
   RealColumn get rightWeight => real().nullable()();
+
+  /// Whether the set was performed unilaterally (one side at a time).
+  /// Null means the template default was used (legacy data).
+  BoolColumn get isUnilateral => boolean().nullable()();
 }

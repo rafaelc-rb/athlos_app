@@ -28,9 +28,8 @@ Future<List<TrainingProgram>> programList(Ref ref) async {
 
 /// Convenience: the active program's ID or null.
 @riverpod
-Future<int?> activeProgramId(Ref ref) async {
-  final program = await ref.watch(activeProgramProvider.future);
-  return program?.id;
+int? activeProgramId(Ref ref) {
+  return ref.watch(activeProgramProvider).value?.id;
 }
 
 /// Number of finished sessions for a given program.
@@ -116,49 +115,42 @@ class ProgramActions extends _$ProgramActions {
   Future<int> createProgram(TrainingProgram program) async {
     final repo = ref.read(programRepositoryProvider);
     final result = await repo.create(program);
-    final id = result.getOrThrow();
-    ref.invalidate(programListProvider);
-    ref.invalidate(activeProgramProvider);
-    return id;
+    return result.getOrThrow();
   }
 
   Future<void> updateProgram(TrainingProgram program) async {
     final repo = ref.read(programRepositoryProvider);
     final result = await repo.update(program);
     result.getOrThrow();
-    ref.invalidate(programListProvider);
-    ref.invalidate(activeProgramProvider);
   }
 
   Future<void> activateProgram(int programId) async {
     final repo = ref.read(programRepositoryProvider);
     final result = await repo.activate(programId);
     result.getOrThrow();
-    ref.invalidate(programListProvider);
-    ref.invalidate(activeProgramProvider);
   }
 
   Future<void> archiveProgram(int programId) async {
     final repo = ref.read(programRepositoryProvider);
     final result = await repo.archive(programId);
     result.getOrThrow();
-    ref.invalidate(programListProvider);
-    ref.invalidate(activeProgramProvider);
+  }
+
+  Future<void> deleteProgram(int programId) async {
+    final repo = ref.read(programRepositoryProvider);
+    final result = await repo.delete(programId);
+    result.getOrThrow();
   }
 
   Future<void> enterDeload(int programId) async {
     final repo = ref.read(programRepositoryProvider);
     final result = await repo.setDeloadActive(programId, active: true);
     result.getOrThrow();
-    ref.invalidate(activeProgramProvider);
-    ref.invalidate(programListProvider);
   }
 
   Future<void> exitDeload(int programId) async {
     final repo = ref.read(programRepositoryProvider);
     final result = await repo.setDeloadActive(programId, active: false);
     result.getOrThrow();
-    ref.invalidate(activeProgramProvider);
-    ref.invalidate(programListProvider);
   }
 }

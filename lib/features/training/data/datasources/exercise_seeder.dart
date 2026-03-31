@@ -668,6 +668,9 @@ final _seedItems = [
       type: ExerciseType.cardio, equipmentKeys: ['jumpRope']),
   _SeedExercise('jumpingJacks', MuscleGroup.cardio,
       type: ExerciseType.cardio),
+
+  // ── V6 additions ──
+  ..._v6SeedItems,
 ];
 
 /// Seeds only the cardio exercises added in schema version 2.
@@ -1313,13 +1316,12 @@ const _v6Variations = [
   _Variation('latPulldown', 'neutralGripPulldown'),
   _Variation('closeGripPulldown', 'neutralGripPulldown'),
   // ── Vertical pulls — cross equipment (same grip) ──
-  _Variation('pullUp', 'latPulldown'),
+  // pullUp↔latPulldown and chinUp↔latPulldown already in _variations
   _Variation('chinUp', 'closeGripPulldown'),
   _Variation('neutralGripPullUp', 'neutralGripPulldown'),
   // ── Vertical pulls — cross equipment (different grip) ──
   _Variation('pullUp', 'closeGripPulldown'),
   _Variation('pullUp', 'neutralGripPulldown'),
-  _Variation('chinUp', 'latPulldown'),
   _Variation('chinUp', 'neutralGripPulldown'),
   _Variation('neutralGripPullUp', 'latPulldown'),
   _Variation('neutralGripPullUp', 'closeGripPulldown'),
@@ -1445,4 +1447,7 @@ const _variations = [
   _Variation('crunch', 'abWheelRollout'),
   _Variation('hangingLegRaise', 'abWheelRollout'),
   _Variation('plank', 'abWheelRollout'),
+
+  // ── V6 additions ──
+  ..._v6Variations,
 ];

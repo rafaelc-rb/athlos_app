@@ -48,6 +48,10 @@ class ExecutionSet {
   /// Weight used for the right side (unilateral exercises).
   final double? rightWeight;
 
+  /// Whether the set was performed unilaterally (one side at a time).
+  /// Null means the template default was used (legacy data).
+  final bool? isUnilateral;
+
   /// Drop set segments. Empty for normal sets.
   final List<ExecutionSetSegment> segments;
 
@@ -70,6 +74,7 @@ class ExecutionSet {
     this.leftWeight,
     this.rightReps,
     this.rightWeight,
+    this.isUnilateral,
     this.segments = const [],
   });
 

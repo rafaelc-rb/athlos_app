@@ -11,10 +11,12 @@ import 'package:gap/gap.dart';
 import '../../../../core/data/repositories/local_backup_providers.dart';
 import '../../../../core/domain/entities/local_backup_models.dart';
 import '../../../../core/errors/result.dart';
+import '../../../../core/localization/domain_label_resolver.dart';
 import '../../../../core/theme/athlos_spacing.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../training/presentation/providers/equipment_notifier.dart';
 import '../../../training/presentation/providers/exercise_notifier.dart';
+import '../../../training/presentation/providers/program_notifier.dart';
 import '../../../training/presentation/providers/training_analytics_provider.dart';
 import '../../../training/presentation/providers/workout_execution_notifier.dart';
 import '../../../training/presentation/providers/workout_notifier.dart';
@@ -138,6 +140,8 @@ Future<void> runBackupImportFlow({
     final report = importResult.getOrThrow();
 
     ref.invalidate(profileProvider);
+    ref.invalidate(activeProgramProvider);
+    ref.invalidate(programListProvider);
     ref.invalidate(workoutListProvider);
     ref.invalidate(archivedWorkoutListProvider);
     ref.invalidate(lastFinishedWorkoutIdProvider);
@@ -218,8 +222,12 @@ Future<BackupConflictResolution?> _showConflictDialog({
               l10n.profileDataConflictType(_conflictTypeLabel(conflict, l10n)),
             ),
             const Gap(AthlosSpacing.sm),
-            Text(l10n.profileDataConflictExisting(conflict.existingLabel)),
-            Text(l10n.profileDataConflictImported(conflict.importedLabel)),
+            Text(l10n.profileDataConflictExisting(
+              _resolveEntityLabel(conflict.type, conflict.existingLabel, l10n),
+            )),
+            Text(l10n.profileDataConflictImported(
+              _resolveEntityLabel(conflict.type, conflict.importedLabel, l10n),
+            )),
           ],
         ),
         actions: [
@@ -239,9 +247,18 @@ Future<BackupPendingReviewResolution?> _showPendingReviewDialog({
   required BackupPendingReview review,
   required AppLocalizations l10n,
 }) {
-  final suggestionText = review.suggestedLabel != null
+  final importedDisplay =
+      _resolveEntityLabel(review.entityType, review.importedLabel, l10n);
+  final existingDisplay = review.existingLabel != null
+      ? _resolveEntityLabel(review.entityType, review.existingLabel!, l10n)
+      : null;
+  final suggestedDisplay = review.suggestedLabel != null
+      ? _resolveEntityLabel(review.entityType, review.suggestedLabel!, l10n)
+      : null;
+
+  final suggestionText = suggestedDisplay != null
       ? l10n.profileDataPendingSuggested(
-          review.suggestedLabel!,
+          suggestedDisplay,
           review.similarityScore?.toStringAsFixed(2) ?? '-',
         )
       : l10n.profileDataPendingNoSuggestion;
@@ -265,9 +282,9 @@ Future<BackupPendingReviewResolution?> _showPendingReviewDialog({
               ),
             ),
             const Gap(AthlosSpacing.sm),
-            Text(l10n.profileDataPendingImported(review.importedLabel)),
-            if (review.existingLabel != null)
-              Text(l10n.profileDataPendingExisting(review.existingLabel!)),
+            Text(l10n.profileDataPendingImported(importedDisplay)),
+            if (existingDisplay != null)
+              Text(l10n.profileDataPendingExisting(existingDisplay)),
             Text(suggestionText),
           ],
         ),
@@ -362,4 +379,28 @@ String _resolutionLabel(
       l10n.profileDataConflictOverwrite,
     BackupConflictResolution.keepBoth => l10n.profileDataConflictKeepBoth,
   };
+}
+
+String _resolveEntityLabel(
+  BackupConflictType entityType,
+  String label,
+  AppLocalizations l10n,
+) {
+  final trimmed = label.trim();
+  if (trimmed.isEmpty || trimmed == '-') return '-';
+
+  final kind = switch (entityType) {
+    BackupConflictType.equipment => DomainLabelKind.equipment,
+    BackupConflictType.exercise => DomainLabelKind.exercise,
+    BackupConflictType.profile || BackupConflictType.workout => null,
+  };
+  if (kind == null) return trimmed;
+
+  final resolver = DomainLabelResolver(l10n);
+  final canonical = resolver.toCanonicalName(kind: kind, candidate: trimmed);
+  return resolver.toDisplayName(
+    kind: kind,
+    canonicalName: canonical,
+    isVerified: true,
+  );
 }

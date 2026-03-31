@@ -282,6 +282,11 @@ class _ExecutionDetailBody extends StatelessWidget {
 
           final prSetIds = prSetIdsPerExercise[exId] ?? {};
 
+          final wasUnilateral = exerciseSets
+                  .any((s) => s.isUnilateral == true) ||
+              (exerciseSets.every((s) => s.isUnilateral == null) &&
+                  (unilateralMap[exId] ?? false));
+
           return SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(
@@ -289,7 +294,7 @@ class _ExecutionDetailBody extends StatelessWidget {
               child: _ExerciseBreakdown(
                 exerciseName: name,
                 muscleGroup: group,
-                isUnilateral: unilateralMap[exId] ?? false,
+                isUnilateral: wasUnilateral,
                 sets: exerciseSets,
                 prSetIds: prSetIds,
                 colorScheme: colorScheme,

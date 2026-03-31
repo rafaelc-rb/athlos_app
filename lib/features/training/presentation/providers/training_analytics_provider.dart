@@ -104,7 +104,7 @@ Future<({ExecutionComparison comparison, String workoutName})?>
 /// Ordered cycle steps for the active program.
 @riverpod
 Future<List<TrainingCycleStep>> cycleSteps(Ref ref) async {
-  final programId = await ref.watch(activeProgramIdProvider.future);
+  final programId = ref.watch(activeProgramIdProvider);
   if (programId == null) return [];
   final repo = ref.watch(cycleRepositoryProvider);
   final result = await repo.getSteps(programId);

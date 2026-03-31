@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/errors/result.dart';
 import '../../../../core/theme/athlos_durations.dart';
 import '../../../../core/theme/athlos_radius.dart';
 import '../../../../core/theme/athlos_spacing.dart';
@@ -14,6 +16,7 @@ import '../../domain/enums/experience_level.dart';
 import '../../domain/enums/gender.dart';
 import '../../domain/enums/training_goal.dart';
 import '../../domain/enums/training_style.dart';
+import '../../../training/data/repositories/training_providers.dart';
 import '../../../training/domain/entities/training_program.dart';
 import '../../../training/domain/enums/duration_mode.dart';
 import '../../../training/domain/enums/program_focus.dart';
@@ -436,9 +439,12 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     });
   }
 
-  Future<void> _saveProfile() async {
-    setState(() => _isSaving = true);
+  Future<void> _saveProfile() => _persist();
 
+  Future<void> _onSkip() => _persist();
+
+  Future<void> _persist() async {
+    setState(() => _isSaving = true);
     try {
       await ref
           .read(profileProvider.notifier)
@@ -468,48 +474,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       ref.read(hasProfileProvider.notifier).markAsCreated();
 
       if (mounted) context.go(RoutePaths.hub);
-    } on Exception catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.genericError)),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  Future<void> _onSkip() async {
-    setState(() => _isSaving = true);
-    try {
-      await ref
-          .read(profileProvider.notifier)
-          .create(
-            name: _name,
-            height: _height,
-            age: _age,
-            gender: _gender,
-            goal: _selectedGoal,
-            bodyAesthetic: _selectedAesthetic,
-            trainingStyle: _selectedStyle,
-            experienceLevel: _selectedExperience,
-            trainingFrequency: _trainingFrequency,
-            trainsAtGym: _trainsAtGym,
-            injuries: _injuries,
-            bio: _bio,
-          );
-
-      if (_weight != null) {
-        await ref
-            .read(bodyMetricListProvider.notifier)
-            .add(weight: _weight!);
-      }
-
-      await _ensureDefaultProgram();
-
-      ref.read(hasProfileProvider.notifier).markAsCreated();
-      if (mounted) context.go(RoutePaths.hub);
-    } on Exception catch (_) {
+    } on Exception catch (e, st) {
+      debugPrint('[ProfileSetup] Save failed: $e\n$st');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppLocalizations.of(context)!.genericError)),
@@ -521,8 +487,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   }
 
   Future<void> _ensureDefaultProgram() async {
-    final existing = await ref.read(activeProgramProvider.future);
-    if (existing != null) return;
+    final repo = ref.read(programRepositoryProvider);
+
+    final activeResult = await repo.getActive();
+    if (activeResult.getOrThrow() != null) return;
 
     final focus = switch (_selectedGoal) {
       TrainingGoal.hypertrophy => ProgramFocus.hypertrophy,
@@ -543,9 +511,11 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       createdAt: DateTime.now(),
     );
 
-    final actions = ref.read(programActionsProvider.notifier);
-    final id = await actions.createProgram(program);
-    await actions.activateProgram(id);
+    final id = (await repo.create(program)).getOrThrow();
+    (await repo.activate(id)).getOrThrow();
+
+    ref.invalidate(programListProvider);
+    ref.invalidate(activeProgramProvider);
   }
 
   @override

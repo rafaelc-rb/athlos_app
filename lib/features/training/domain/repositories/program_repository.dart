@@ -13,6 +13,9 @@ abstract interface class ProgramRepository {
   Future<Result<void>> activate(int programId);
   Future<Result<void>> archive(int programId);
 
+  /// Permanently deletes the program. Execution history is preserved.
+  Future<Result<void>> delete(int programId);
+
   /// Number of finished sessions for this program.
   Future<Result<int>> getSessionCount(int programId);
 

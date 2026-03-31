@@ -202,6 +202,7 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
           leftWeight: Value(set.leftWeight),
           rightReps: Value(set.rightReps),
           rightWeight: Value(set.rightWeight),
+          isUnilateral: Value(set.isUnilateral),
         ),
       );
       return Success(id);
@@ -224,6 +225,11 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
           isWarmup: Value(set.isWarmup),
           rpe: Value(set.rpe),
           notes: Value(set.notes),
+          leftReps: Value(set.leftReps),
+          leftWeight: Value(set.leftWeight),
+          rightReps: Value(set.rightReps),
+          rightWeight: Value(set.rightWeight),
+          isUnilateral: Value(set.isUnilateral),
         ),
       );
       return const Success(null);
@@ -350,6 +356,7 @@ class WorkoutExecutionRepositoryImpl implements WorkoutExecutionRepository {
         leftWeight: row.leftWeight as double?,
         rightReps: row.rightReps as int?,
         rightWeight: row.rightWeight as double?,
+        isUnilateral: row.isUnilateral as bool?,
       );
 
   domain.ExecutionSetSegment _segmentToDomain(dynamic row) =>

@@ -184,13 +184,11 @@ class _WorkoutFormScreenState extends ConsumerState<WorkoutFormScreen> {
               ))
           .toList();
 
-      final notifier = ref.read(workoutListProvider.notifier);
-
       if (widget.isEditing) {
         final existing =
             await ref.read(workoutByIdProvider(widget.workoutId!).future);
         if (existing != null) {
-          await notifier.updateWorkout(
+          await ref.read(workoutListProvider.notifier).updateWorkout(
             workout: Workout(
               id: existing.id,
               name: _nameController.text.trim(),
@@ -203,7 +201,7 @@ class _WorkoutFormScreenState extends ConsumerState<WorkoutFormScreen> {
           );
         }
       } else {
-        await notifier.createWorkout(
+        await ref.read(workoutListProvider.notifier).createWorkout(
           name: _nameController.text.trim(),
           description: _descController.text.trim().isEmpty
               ? null

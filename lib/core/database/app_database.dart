@@ -102,7 +102,7 @@ class AppDatabase extends _$AppDatabase {
   bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed && _enableDevSeed;
 
   @override
-  int get schemaVersion => 26;
+  int get schemaVersion => 27;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -113,7 +113,7 @@ class AppDatabase extends _$AppDatabase {
       if (_shouldSeedDevData) await seedDevData(this);
     },
     onUpgrade: (m, from, to) async {
-      if (_shouldSeedDevData && from >= 3 && from <= 25) {
+      if (_shouldSeedDevData && from >= 3 && from <= 26) {
         for (final table in allTables) {
           await m.deleteTable(table.actualTableName);
         }
@@ -567,6 +567,12 @@ class AppDatabase extends _$AppDatabase {
 
       if (from < 26) {
         await seedExercisesV6(this);
+      }
+
+      if (from < 27) {
+        await customStatement(
+          'ALTER TABLE execution_sets ADD COLUMN is_unilateral INTEGER',
+        );
       }
 
     },

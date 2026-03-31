@@ -200,11 +200,22 @@ class _ProgramCard extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton.icon(
+                      style: TextButton.styleFrom(
+                        foregroundColor: colorScheme.error,
+                      ),
+                      onPressed: () => _confirmDelete(context, ref, program),
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      label: Text(l10n.programDeleteAction),
+                    ),
+                    const SizedBox(width: AthlosSpacing.xs),
+                    TextButton.icon(
                       onPressed: () async {
                         try {
                           await ref
                               .read(programActionsProvider.notifier)
                               .activateProgram(program.id);
+                          ref.invalidate(programListProvider);
+                          ref.invalidate(activeProgramProvider);
                           ref.invalidate(cycleStepsProvider);
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -229,6 +240,53 @@ class _ProgramCard extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    TrainingProgram program,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.programDeleteTitle),
+        content: Text(l10n.programDeleteMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              try {
+                await ref
+                    .read(programActionsProvider.notifier)
+                    .deleteProgram(program.id);
+                ref.invalidate(programListProvider);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(l10n.programDeleted)),
+                  );
+                }
+              } on Exception catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(l10n.genericError)),
+                  );
+                }
+              }
+            },
+            child: Text(l10n.programDeleteAction),
+          ),
+        ],
       ),
     );
   }

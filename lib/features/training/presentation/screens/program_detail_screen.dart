@@ -375,9 +375,13 @@ class _ActionsSection extends ConsumerWidget {
           ),
         if (!program.isInDeload && program.deloadConfig != null)
           OutlinedButton.icon(
-            onPressed: () => ref
-                .read(programActionsProvider.notifier)
-                .enterDeload(program.id),
+            onPressed: () async {
+                await ref
+                    .read(programActionsProvider.notifier)
+                    .enterDeload(program.id);
+                ref.invalidate(programListProvider);
+                ref.invalidate(activeProgramProvider);
+              },
             icon: const Icon(Icons.spa),
             label: Text(l10n.deloadAccept),
           ),
@@ -391,6 +395,15 @@ class _ActionsSection extends ConsumerWidget {
             icon: const Icon(Icons.archive_outlined),
             label: Text(l10n.archiveProgramAction),
           ),
+        const Gap(AthlosSpacing.sm),
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: colorScheme.error,
+          ),
+          onPressed: () => _confirmDelete(context, ref),
+          icon: const Icon(Icons.delete_outline),
+          label: Text(l10n.programDeleteAction),
+        ),
         const Gap(AthlosSpacing.sm),
         TextButton(
           onPressed: () => context.go(RoutePaths.trainingPrograms),
@@ -413,13 +426,60 @@ class _ActionsSection extends ConsumerWidget {
             child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
-              ref
+              await ref
                   .read(programActionsProvider.notifier)
                   .exitDeload(program.id);
+              ref.invalidate(programListProvider);
+              ref.invalidate(activeProgramProvider);
             },
             child: Text(l10n.deloadEndAction),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.programDeleteTitle),
+        content: Text(l10n.programDeleteMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              try {
+                await ref
+                    .read(programActionsProvider.notifier)
+                    .deleteProgram(program.id);
+                ref.invalidate(programListProvider);
+                ref.invalidate(activeProgramProvider);
+                if (context.mounted) {
+                  context.go(RoutePaths.trainingHome);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(l10n.programDeleted)),
+                  );
+                }
+              } on Exception catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(l10n.genericError)),
+                  );
+                }
+              }
+            },
+            child: Text(l10n.programDeleteAction),
           ),
         ],
       ),
@@ -439,12 +499,14 @@ class _ActionsSection extends ConsumerWidget {
             child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
-              ref
+              await ref
                   .read(programActionsProvider.notifier)
                   .archiveProgram(program.id);
-              context.go(RoutePaths.trainingHome);
+              ref.invalidate(programListProvider);
+              ref.invalidate(activeProgramProvider);
+              if (context.mounted) context.go(RoutePaths.trainingHome);
             },
             child: Text(l10n.programCompletedArchive),
           ),

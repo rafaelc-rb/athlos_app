@@ -234,6 +234,13 @@ class _FakeWorkoutExecutionRepository implements WorkoutExecutionRepository {
   Future<Result<List<({ExecutionSet set, DateTime date})>>>
       getCompletedSetsWithDateForExercise(int exerciseId) =>
           _unsupported();
+  @override
+  Future<Result<List<WorkoutExecution>>> getDangling() => _unsupported();
+  @override
+  Future<Result<void>> deleteUnfinishedByWorkout(int workoutId) =>
+      _unsupported();
+  @override
+  Future<Result<void>> deleteOrphaned() => _unsupported();
 }
 
 Future<Result<T>> _unsupported<T>() async {

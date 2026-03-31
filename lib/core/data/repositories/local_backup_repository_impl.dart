@@ -275,6 +275,16 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
                 )) {
                   continue;
                 }
+                final importedEmpty = _isProfileValueEmpty(importedValue);
+                final existingEmpty = _isProfileValueEmpty(existingValue);
+                if (existingEmpty && !importedEmpty) {
+                  mergedProfile[key] = importedValue;
+                  hasFieldUpdate = true;
+                  continue;
+                }
+                if (importedEmpty && !existingEmpty) {
+                  continue;
+                }
                 final resolution =
                     request.conflictResolutions['profile:$key'] ??
                     BackupConflictResolution.keepExisting;
@@ -523,9 +533,17 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         // Programs
         final programRows = payload.tables[_tablePrograms] ?? const [];
         final programIdMap = <int, int>{};
+        var hasActiveProgram = (await _db
+                .customSelect(
+                  'SELECT 1 FROM $_tablePrograms WHERE is_active = 1 LIMIT 1',
+                )
+                .get())
+            .isNotEmpty;
         for (final row in programRows) {
           final oldId = _asInt(row['id']);
           if (oldId == null) continue;
+          final importedActive = _asBool(row['is_active']);
+          final activateThis = importedActive && !hasActiveProgram;
           final newId = await _insertRow(
             _tablePrograms,
             {
@@ -534,7 +552,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
               'duration_mode': row['duration_mode'] ?? 'sessions',
               'duration_value': row['duration_value'] ?? 12,
               'default_rest_seconds': row['default_rest_seconds'],
-              'is_active': row['is_active'] ?? 0,
+              'is_active': activateThis ? 1 : 0,
               'is_in_deload': row['is_in_deload'] ?? 0,
               'deload_frequency': row['deload_frequency'],
               'deload_strategy': row['deload_strategy'],
@@ -546,6 +564,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
             },
             excludeKeys: const {'id'},
           );
+          if (activateThis) hasActiveProgram = true;
           programIdMap[oldId] = newId;
         }
 
@@ -680,6 +699,11 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
               'is_warmup': row['is_warmup'] ?? 0,
               'rpe': row['rpe'],
               'notes': row['notes'],
+              'left_reps': row['left_reps'],
+              'left_weight': row['left_weight'],
+              'right_reps': row['right_reps'],
+              'right_weight': row['right_weight'],
+              'is_unilateral': row['is_unilateral'],
             },
             excludeKeys: const {'id'},
           );
@@ -859,6 +883,9 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           .firstWhere((r) => _asInt(r.data['id']) == rightEntityId)
           .data;
 
+      final bothVerified =
+          _asBool(left['is_verified']) && _asBool(right['is_verified']);
+
       final leftFingerprint = _buildDuplicateFingerprint(
         tableName: tableName,
         label: left['name']?.toString() ?? '',
@@ -875,6 +902,15 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           rightFingerprint: rightFingerprint,
         );
         return const Success(null);
+      }
+
+      if (bothVerified) {
+        return const Failure(
+          ValidationException(
+            'Cannot merge two verified catalog entries. '
+            'Only a developer can modify the catalog.',
+          ),
+        );
       }
 
       final resolvedWinnerId =
@@ -1087,13 +1123,21 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     required List<Map<String, dynamic>> verifiedRows,
     required BackupImportRequest request,
   }) async {
-    final byRemote = verifiedRows.firstWhere(
-      (row) => row['catalog_remote_id']?.toString() == ref.catalogRemoteId,
-      orElse: () => const {},
-    );
-    if (byRemote.isNotEmpty) return _asInt(byRemote['id']);
+    if (ref.catalogRemoteId.isNotEmpty) {
+      final byRemote = verifiedRows.firstWhere(
+        (row) => row['catalog_remote_id']?.toString() == ref.catalogRemoteId,
+        orElse: () => const {},
+      );
+      if (byRemote.isNotEmpty) return _asInt(byRemote['id']);
+    }
 
     final suggestions = _topFuzzyCandidates(ref.name, verifiedRows, limit: 1);
+
+    if (suggestions.isNotEmpty &&
+        (suggestions.first['score'] as double) >= _strongMatchThreshold) {
+      return _asInt(suggestions.first['id']);
+    }
+
     final pendingId = 'missing_${entityType.name}_${ref.localId}';
     final resolution = request.pendingReviewResolutions[pendingId];
 
@@ -1348,6 +1392,9 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
           )) {
             continue;
           }
+          final importedEmpty = _isProfileValueEmpty(importedValue);
+          final existingEmpty = _isProfileValueEmpty(existingValue);
+          if (importedEmpty || existingEmpty) continue;
           conflicts.add(
             BackupImportConflict(
               conflictId: 'profile:$key',
@@ -1387,6 +1434,9 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     final right = _normalizeProfileFieldValue(key, existingValue);
     return left == right;
   }
+
+  bool _isProfileValueEmpty(dynamic value) =>
+      _normalizeProfileValue(value) == null;
 
   Object? _normalizeProfileFieldValue(String key, dynamic value) {
     if (key == 'trains_at_gym') {
@@ -1530,16 +1580,23 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     final equipmentRefs =
         payload.catalogReferences[_catalogEquipments] ?? const [];
     for (final ref in equipmentRefs) {
-      final byRemote = verifiedEquipments.any(
-        (row) => row['catalog_remote_id']?.toString() == ref.catalogRemoteId,
-      );
-      if (byRemote) continue;
+      if (ref.catalogRemoteId.isNotEmpty) {
+        final byRemote = verifiedEquipments.any(
+          (row) =>
+              row['catalog_remote_id']?.toString() == ref.catalogRemoteId,
+        );
+        if (byRemote) continue;
+      }
 
       final suggestion = _topFuzzyCandidates(
         ref.name,
         verifiedEquipments,
         limit: 1,
       );
+      if (suggestion.isNotEmpty &&
+          (suggestion.first['score'] as double) >= _strongMatchThreshold) {
+        continue;
+      }
       pending.add(
         BackupPendingReview(
           reviewId: 'missing_equipment_${ref.localId}',
@@ -1561,16 +1618,23 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
     final exerciseRefs =
         payload.catalogReferences[_catalogExercises] ?? const [];
     for (final ref in exerciseRefs) {
-      final byRemote = verifiedExercises.any(
-        (row) => row['catalog_remote_id']?.toString() == ref.catalogRemoteId,
-      );
-      if (byRemote) continue;
+      if (ref.catalogRemoteId.isNotEmpty) {
+        final byRemote = verifiedExercises.any(
+          (row) =>
+              row['catalog_remote_id']?.toString() == ref.catalogRemoteId,
+        );
+        if (byRemote) continue;
+      }
 
       final suggestion = _topFuzzyCandidates(
         ref.name,
         verifiedExercises,
         limit: 1,
       );
+      if (suggestion.isNotEmpty &&
+          (suggestion.first['score'] as double) >= _strongMatchThreshold) {
+        continue;
+      }
       pending.add(
         BackupPendingReview(
           reviewId: 'missing_exercise_${ref.localId}',
@@ -1778,6 +1842,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       for (var j = 0; j < candidates.length; j++) {
         if (i == j) continue;
         final other = candidates[j];
+        if (current.isVerified && other.isVerified) continue;
         final score = _runtimeDuplicateScore(current, other);
         if (score > bestScore) {
           bestScore = score;
@@ -2138,9 +2203,9 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
       if (item is! Map) continue;
       final map = item.cast<String, dynamic>();
       final localId = _asInt(map['localId']);
-      final remoteId = map['catalogRemoteId']?.toString();
+      final remoteId = map['catalogRemoteId']?.toString() ?? '';
       final name = map['name']?.toString();
-      if (localId == null || remoteId == null || name == null) continue;
+      if (localId == null || name == null) continue;
       refs.add(
         BackupCatalogReference(
           localId: localId,
@@ -2236,12 +2301,11 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
 
   Map<String, dynamic>? _toEquipmentCatalogRef(Map<String, dynamic> row) {
     final id = _asInt(row['id']);
-    final remoteId = row['catalog_remote_id']?.toString();
     final name = row['name'] as String?;
-    if (id == null || remoteId == null || name == null) return null;
+    if (id == null || name == null) return null;
     return {
       'localId': id,
-      'catalogRemoteId': remoteId,
+      'catalogRemoteId': row['catalog_remote_id']?.toString() ?? '',
       'name': name,
       'fallbackData': {
         'name': name,
@@ -2254,12 +2318,11 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
 
   Map<String, dynamic>? _toExerciseCatalogRef(Map<String, dynamic> row) {
     final id = _asInt(row['id']);
-    final remoteId = row['catalog_remote_id']?.toString();
     final name = row['name'] as String?;
-    if (id == null || remoteId == null || name == null) return null;
+    if (id == null || name == null) return null;
     return {
       'localId': id,
-      'catalogRemoteId': remoteId,
+      'catalogRemoteId': row['catalog_remote_id']?.toString() ?? '',
       'name': name,
       'fallbackData': {
         'name': name,

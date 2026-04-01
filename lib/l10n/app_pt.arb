@@ -2389,14 +2389,14 @@
       "duration": { "type": "String" }
     }
   },
-  "isometricOverGoal": "+{seconds}s",
+  "isometricOverGoal": "+{seconds}",
   "@isometricOverGoal": {
     "description": "Time over goal indicator",
     "placeholders": {
       "seconds": { "type": "String" }
     }
   },
-  "isometricUnderGoal": "-{seconds}s",
+  "isometricUnderGoal": "-{seconds}",
   "@isometricUnderGoal": {
     "description": "Time under goal indicator",
     "placeholders": {

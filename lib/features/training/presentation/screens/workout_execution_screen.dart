@@ -492,6 +492,24 @@ class _WorkoutExecutionScreenState
     return sets.every((s) => s.isCompleted);
   }
 
+  void _navigateAfterSet(ActiveExecutionState exec, int rest) {
+    final hasMoreWork = _findNextPendingSet(exec) != null;
+
+    if (rest > 0 && hasMoreWork) {
+      ref.read(restTimerProvider.notifier).start(rest);
+      setState(() => _viewMode = _ViewMode.timer);
+    } else if (_isExerciseComplete(exec)) {
+      setState(() => _viewMode = _ViewMode.exerciseTransition);
+    } else {
+      final next = _findNextPendingSet(exec);
+      if (next != null) {
+        _goToFocused(exec, next.$1, next.$2);
+      } else {
+        setState(() => _viewMode = _ViewMode.overview);
+      }
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // View 1: Overview
   // ---------------------------------------------------------------------------
@@ -1202,13 +1220,28 @@ class _WorkoutExecutionScreenState
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    final next = _findNextPendingSet(exec);
-    final nextLabel = next != null
-        ? l10n.nextUpLabel(
-            _exerciseName(exec.exercises[next.$1].exerciseId),
-            next.$2,
-          )
-        : l10n.allSetsComplete;
+    final focusedExId = exec.exercises[_focusedExerciseIndex].exerciseId;
+    final focusedSets = exec.exerciseSets[focusedExId] ?? [];
+    final nextInFocused = focusedSets.cast<SetEntry?>().firstWhere(
+          (s) => !s!.isCompleted,
+          orElse: () => null,
+        );
+
+    final String nextLabel;
+    if (nextInFocused != null) {
+      nextLabel = l10n.nextUpLabel(
+        _exerciseName(focusedExId),
+        nextInFocused.setNumber,
+      );
+    } else {
+      final next = _findNextPendingSet(exec);
+      nextLabel = next != null
+          ? l10n.nextUpLabel(
+              _exerciseName(exec.exercises[next.$1].exerciseId),
+              next.$2,
+            )
+          : l10n.allSetsComplete;
+    }
 
     final minutes = timerState.remainingSeconds ~/ 60;
     final seconds = timerState.remainingSeconds % 60;
@@ -2108,19 +2141,6 @@ class _WorkoutExecutionScreenState
               ),
             ),
 
-            if (hasReachedGoal && cardioState.overtimeSeconds > 0)
-              Padding(
-                padding: const EdgeInsets.only(top: AthlosSpacing.xs),
-                child: Text(
-                  l10n.isometricOverGoal(
-                      formatDuration(cardioState.overtimeSeconds)),
-                  style: textTheme.titleMedium?.copyWith(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-
             const SizedBox(height: AthlosSpacing.lg),
 
             if (cardioState.goalSeconds > 0) ...[
@@ -2135,11 +2155,34 @@ class _WorkoutExecutionScreenState
                 ),
               ),
               const SizedBox(height: AthlosSpacing.sm),
-              Text(
-                l10n.isometricGoalLabel(
-                    formatDuration(cardioState.goalSeconds)),
-                style: textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: l10n.isometricGoalLabel(
+                          formatDuration(cardioState.goalSeconds)),
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (hasReachedGoal &&
+                        cardioState.overtimeSeconds > 0) ...[
+                      TextSpan(
+                        text: ' · ',
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      TextSpan(
+                        text: l10n.isometricOverGoal(
+                            formatDuration(cardioState.overtimeSeconds)),
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],
@@ -2219,25 +2262,35 @@ class _WorkoutExecutionScreenState
               ),
             ),
 
-            if (diffLabel.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: AthlosSpacing.xs),
-                child: Text(
-                  diffLabel,
-                  style: textTheme.titleMedium?.copyWith(
-                    color: diffColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-
             if (goalSeconds > 0)
               Padding(
                 padding: const EdgeInsets.only(top: AthlosSpacing.sm),
-                child: Text(
-                  l10n.isometricGoalLabel(formatDuration(goalSeconds)),
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: l10n.isometricGoalLabel(
+                            formatDuration(goalSeconds)),
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      if (diffLabel.isNotEmpty) ...[
+                        TextSpan(
+                          text: ' · ',
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        TextSpan(
+                          text: diffLabel,
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: diffColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),
@@ -2387,21 +2440,7 @@ class _WorkoutExecutionScreenState
       return;
     }
 
-    if (rest > 0) {
-      ref.read(restTimerProvider.notifier).start(rest);
-      setState(() => _viewMode = _ViewMode.timer);
-    } else {
-      if (_isExerciseComplete(updatedExec)) {
-        setState(() => _viewMode = _ViewMode.exerciseTransition);
-      } else {
-        final next = _findNextPendingSet(updatedExec);
-        if (next != null) {
-          _goToFocused(updatedExec, next.$1, next.$2);
-        } else {
-          setState(() => _viewMode = _ViewMode.overview);
-        }
-      }
-    }
+    _navigateAfterSet(updatedExec, rest);
   }
 
   // ---------------------------------------------------------------------------
@@ -2489,21 +2528,7 @@ class _WorkoutExecutionScreenState
       return;
     }
 
-    if (rest > 0) {
-      ref.read(restTimerProvider.notifier).start(rest);
-      setState(() => _viewMode = _ViewMode.timer);
-    } else {
-      if (_isExerciseComplete(updatedExec)) {
-        setState(() => _viewMode = _ViewMode.exerciseTransition);
-      } else {
-        final next = _findNextPendingSet(updatedExec);
-        if (next != null) {
-          _goToFocused(updatedExec, next.$1, next.$2);
-        } else {
-          setState(() => _viewMode = _ViewMode.overview);
-        }
-      }
-    }
+    _navigateAfterSet(updatedExec, rest);
   }
 
   Future<void> _onCompleteCardioSet(ActiveExecutionState exec) async {
@@ -2539,21 +2564,7 @@ class _WorkoutExecutionScreenState
     final updatedExec = ref.read(activeExecutionProvider);
     if (updatedExec == null) return;
 
-    if (rest > 0) {
-      ref.read(restTimerProvider.notifier).start(rest);
-      setState(() => _viewMode = _ViewMode.timer);
-    } else {
-      if (_isExerciseComplete(updatedExec)) {
-        setState(() => _viewMode = _ViewMode.exerciseTransition);
-      } else {
-        final next = _findNextPendingSet(updatedExec);
-        if (next != null) {
-          _goToFocused(updatedExec, next.$1, next.$2);
-        } else {
-          setState(() => _viewMode = _ViewMode.overview);
-        }
-      }
-    }
+    _navigateAfterSet(updatedExec, rest);
   }
 
   Future<void> _onFinish(BuildContext context) async {

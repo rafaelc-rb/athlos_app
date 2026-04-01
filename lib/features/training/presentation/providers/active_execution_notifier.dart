@@ -38,6 +38,7 @@ class ActiveExecution extends _$ActiveExecution {
     DeloadConfig? deloadConfig,
     List<ProgressionRule> progressionRules = const [],
     int defaultRestSeconds = 0,
+    Set<int> isometricExerciseIds = const {},
   }) async {
     final repo = ref.read(workoutExecutionRepositoryProvider);
     final snapshot = _buildExerciseConfigSnapshot(exercises);
@@ -67,8 +68,11 @@ class ActiveExecution extends _$ActiveExecution {
     final exerciseSets = <int, List<SetEntry>>{};
     for (final ex in exercises) {
       var lastWeight = lastWeights[ex.exerciseId];
-      final isCardio = ex.duration != null;
-      var repsTarget = isCardio ? null : ex.targetReps;
+      final isCardio = ex.duration != null &&
+          !isometricExerciseIds.contains(ex.exerciseId);
+      final isIsometric = isometricExerciseIds.contains(ex.exerciseId);
+      final usesDuration = isCardio || isIsometric;
+      var repsTarget = usesDuration ? null : ex.targetReps;
       var sets = ex.sets;
 
       if (deloadConfig == null) {
@@ -105,8 +109,9 @@ class ActiveExecution extends _$ActiveExecution {
           setNumber: i + 1,
           plannedReps: repsTarget,
           plannedWeight: isCardio ? null : effectiveWeight,
+          plannedDuration: usesDuration ? ex.duration : null,
           reps: repsTarget,
-          duration: isCardio ? ex.duration : null,
+          duration: usesDuration ? ex.duration : null,
         ),
       );
     }
@@ -391,6 +396,7 @@ class ActiveExecution extends _$ActiveExecution {
     List<WorkoutExercise> exercises, {
     required int programId,
     int defaultRestSeconds = 0,
+    Set<int> isometricExerciseIds = const {},
   }) async {
     final repo = ref.read(workoutExecutionRepositoryProvider);
 
@@ -411,11 +417,14 @@ class ActiveExecution extends _$ActiveExecution {
         final setNum = i + 1;
         final existing = completed.where((s) => s.setNumber == setNum).firstOrNull;
         if (existing != null) {
+          final isIso = isometricExerciseIds.contains(ex.exerciseId);
+          final usesDur = (ex.duration != null) || isIso;
           return SetEntry(
             id: existing.id,
             setNumber: setNum,
             plannedReps: existing.plannedReps,
             plannedWeight: existing.plannedWeight,
+            plannedDuration: usesDur ? ex.duration : null,
             reps: existing.reps,
             weight: existing.weight,
             duration: existing.duration,
@@ -430,12 +439,15 @@ class ActiveExecution extends _$ActiveExecution {
             rightWeight: existing.rightWeight,
           );
         }
-        final isCardio = ex.duration != null;
+        final isIso = isometricExerciseIds.contains(ex.exerciseId);
+        final isCardio = ex.duration != null && !isIso;
+        final usesDuration = isCardio || isIso;
         return SetEntry(
           setNumber: setNum,
-          plannedReps: isCardio ? null : ex.targetReps,
-          reps: isCardio ? null : ex.targetReps,
-          duration: isCardio ? ex.duration : null,
+          plannedReps: usesDuration ? null : ex.targetReps,
+          plannedDuration: usesDuration ? ex.duration : null,
+          reps: usesDuration ? null : ex.targetReps,
+          duration: usesDuration ? ex.duration : null,
         );
       });
     }

@@ -2361,5 +2361,52 @@
   "danglingExecutionResume": "Retomar",
   "@danglingExecutionResume": { "description": "Button to resume unfinished workout" },
   "danglingExecutionDiscard": "Descartar",
-  "@danglingExecutionDiscard": { "description": "Button to discard unfinished workout" }
+  "@danglingExecutionDiscard": { "description": "Button to discard unfinished workout" },
+
+  "exerciseSidePlank": "Prancha lateral",
+  "@exerciseSidePlank": { "description": "Side plank exercise name" },
+  "exerciseHollowHold": "Hollow hold",
+  "@exerciseHollowHold": { "description": "Hollow hold exercise name" },
+  "exerciseLSit": "L-sit",
+  "@exerciseLSit": { "description": "L-sit exercise name" },
+  "exerciseWallSit": "Wall sit",
+  "@exerciseWallSit": { "description": "Wall sit exercise name" },
+  "exerciseDeadHang": "Dead hang",
+  "@exerciseDeadHang": { "description": "Dead hang exercise name" },
+
+  "isometricLabel": "Isométrico",
+  "@isometricLabel": { "description": "Label for isometric exercise type" },
+  "isometricHint": "Exercício medido em duração (prancha, dead hang, etc.)",
+  "@isometricHint": { "description": "Hint for isometric exercise toggle" },
+  "isometricStart": "Iniciar",
+  "@isometricStart": { "description": "Start button for isometric set timer" },
+  "isometricFinish": "Finalizar",
+  "@isometricFinish": { "description": "Finish button during isometric timer" },
+  "isometricGoalLabel": "Meta: {duration}",
+  "@isometricGoalLabel": {
+    "description": "Goal label for isometric set",
+    "placeholders": {
+      "duration": { "type": "String" }
+    }
+  },
+  "isometricOverGoal": "+{seconds}s",
+  "@isometricOverGoal": {
+    "description": "Time over goal indicator",
+    "placeholders": {
+      "seconds": { "type": "String" }
+    }
+  },
+  "isometricUnderGoal": "-{seconds}s",
+  "@isometricUnderGoal": {
+    "description": "Time under goal indicator",
+    "placeholders": {
+      "seconds": { "type": "String" }
+    }
+  },
+  "isometricManualEntry": "Registrar manualmente",
+  "@isometricManualEntry": { "description": "Link to skip timer and enter duration manually" },
+  "isometricSaveSet": "Salvar série",
+  "@isometricSaveSet": { "description": "Save isometric set button" },
+  "isometricGetReady": "Prepare-se",
+  "@isometricGetReady": { "description": "Get ready message before countdown" }
 }

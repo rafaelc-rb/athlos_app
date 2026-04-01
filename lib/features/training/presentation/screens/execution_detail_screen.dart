@@ -295,6 +295,7 @@ class _ExecutionDetailBody extends StatelessWidget {
                 exerciseName: name,
                 muscleGroup: group,
                 isUnilateral: wasUnilateral,
+                isIsometric: ex?.isIsometric ?? false,
                 sets: exerciseSets,
                 prSetIds: prSetIds,
                 colorScheme: colorScheme,
@@ -357,6 +358,7 @@ class _ExerciseBreakdown extends StatelessWidget {
   final String exerciseName;
   final String muscleGroup;
   final bool isUnilateral;
+  final bool isIsometric;
   final List<ExecutionSet> sets;
   final Set<int> prSetIds;
   final ColorScheme colorScheme;
@@ -367,6 +369,7 @@ class _ExerciseBreakdown extends StatelessWidget {
     required this.exerciseName,
     required this.muscleGroup,
     this.isUnilateral = false,
+    this.isIsometric = false,
     required this.sets,
     this.prSetIds = const {},
     required this.colorScheme,
@@ -449,6 +452,16 @@ class _ExerciseBreakdown extends StatelessWidget {
                         child: Text(l10n.distanceLabel,
                             style: textTheme.labelSmall?.copyWith(
                                 color: colorScheme.onSurfaceVariant))),
+                  ] else if (isIsometric) ...[
+                    Expanded(
+                        child: Text(l10n.durationLabel,
+                            style: textTheme.labelSmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant))),
+                    SizedBox(
+                        width: 60,
+                        child: Text(l10n.weightColumnLabel,
+                            style: textTheme.labelSmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant))),
                   ] else ...[
                     Expanded(
                         child: Text(l10n.repsLabel,
@@ -468,6 +481,7 @@ class _ExerciseBreakdown extends StatelessWidget {
             ...sets.map((s) => _SetRow(
                   setEntry: s,
                   isCardio: _isCardio,
+                  isIsometric: isIsometric,
                   isPR: prSetIds.contains(s.id),
                   colorScheme: colorScheme,
                   textTheme: textTheme,
@@ -481,10 +495,11 @@ class _ExerciseBreakdown extends StatelessWidget {
     );
   }
 
-  bool get _isCardio => sets.isNotEmpty && sets.first.reps == null;
+  bool get _usesDuration => sets.isNotEmpty && sets.first.reps == null;
+  bool get _isCardio => _usesDuration && !isIsometric;
 
   Widget? _feedbackChip(BuildContext context) {
-    if (_isCardio) return null;
+    if (_usesDuration) return null;
 
     final workingSets =
         sets.where((s) => s.isCompleted && !s.isWarmup).toList();
@@ -523,6 +538,7 @@ class _ExerciseBreakdown extends StatelessWidget {
 class _SetRow extends StatelessWidget {
   final ExecutionSet setEntry;
   final bool isCardio;
+  final bool isIsometric;
   final bool isPR;
   final ColorScheme colorScheme;
   final TextTheme textTheme;
@@ -531,6 +547,7 @@ class _SetRow extends StatelessWidget {
   const _SetRow({
     required this.setEntry,
     this.isCardio = false,
+    this.isIsometric = false,
     this.isPR = false,
     required this.colorScheme,
     required this.textTheme,
@@ -539,6 +556,7 @@ class _SetRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isIsometric) return _buildIsometricRow(context);
     if (isCardio) return _buildCardioRow(context);
     return _buildStrengthRow(context);
   }
@@ -548,6 +566,48 @@ class _SetRow extends StatelessWidget {
     return w % 1 == 0
         ? '${w.toInt()}${l10n.weightUnit}'
         : '${w.toStringAsFixed(1)}${l10n.weightUnit}';
+  }
+
+  Widget _buildIsometricRow(BuildContext context) {
+    final statusColor = setEntry.isCompleted
+        ? colorScheme.primary
+        : colorScheme.onSurfaceVariant;
+
+    final durationStr = setEntry.duration != null
+        ? formatDuration(setEntry.duration!)
+        : '-';
+    final weightStr = _fmtWeight(setEntry.weight);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AthlosSpacing.xs),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 40,
+            child: Text('${setEntry.setNumber}', style: textTheme.bodyMedium),
+          ),
+          Expanded(
+            child: Text(durationStr,
+                style: textTheme.bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w600, color: statusColor)),
+          ),
+          SizedBox(
+            width: 60,
+            child: Text(weightStr, style: textTheme.bodyMedium),
+          ),
+          SizedBox(
+            width: 24,
+            child: Icon(
+              setEntry.isCompleted
+                  ? Icons.check_circle
+                  : Icons.radio_button_unchecked,
+              size: 18,
+              color: statusColor,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCardioRow(BuildContext context) {

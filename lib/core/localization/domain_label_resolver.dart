@@ -215,6 +215,11 @@ Map<String, String> _exerciseNameMap(AppLocalizations l10n) => {
   'wideGripSeatedRow': l10n.exerciseWideGripSeatedRow,
   'ropeTricepsPushdown': l10n.exerciseRopeTricepsPushdown,
   'declineBarbellBenchPress': l10n.exerciseDeclineBarbellBenchPress,
+  'sidePlank': l10n.exerciseSidePlank,
+  'hollowHold': l10n.exerciseHollowHold,
+  'lSit': l10n.exerciseLSit,
+  'wallSit': l10n.exerciseWallSit,
+  'deadHang': l10n.exerciseDeadHang,
 };
 
 Map<String, String> _muscleGroupMap(AppLocalizations l10n) => {

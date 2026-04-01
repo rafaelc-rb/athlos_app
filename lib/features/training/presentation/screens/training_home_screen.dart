@@ -126,6 +126,11 @@ class _TrainingHomeScreenState extends ConsumerState<TrainingHomeScreen> {
           execution.workoutId,
         )).getOrThrow();
         final program = (await pRepo.getActive()).getOrThrow();
+        final allExercises = ref.read(exerciseListProvider).value ?? [];
+        final isometricIds = {
+          for (final e in allExercises)
+            if (e.isIsometric) e.id,
+        };
         await ref
             .read(activeExecutionProvider.notifier)
             .resumeExecution(
@@ -134,6 +139,7 @@ class _TrainingHomeScreenState extends ConsumerState<TrainingHomeScreen> {
               exercises,
               programId: execution.programId,
               defaultRestSeconds: program?.defaultRestSeconds ?? 0,
+              isometricExerciseIds: isometricIds,
             );
         if (context.mounted) {
           context.push(

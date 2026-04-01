@@ -29,6 +29,7 @@ class ExerciseList extends _$ExerciseList {
     ExerciseType type = ExerciseType.strength,
     MovementPattern? movementPattern,
     String? description,
+    bool isIsometric = false,
     List<int> equipmentIds = const [],
     List<({TargetMuscle muscle, MuscleRegion? region, MuscleRole role})>
         muscles =
@@ -42,6 +43,7 @@ class ExerciseList extends _$ExerciseList {
       type: type,
       movementPattern: movementPattern,
       description: description,
+      isIsometric: isIsometric,
     );
     final result = await repo.create(
       exercise,

@@ -102,7 +102,7 @@ class AppDatabase extends _$AppDatabase {
   bool get _shouldSeedDevData => kDebugMode && !_skipDevSeed && _enableDevSeed;
 
   @override
-  int get schemaVersion => 27;
+  int get schemaVersion => 28;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -113,7 +113,7 @@ class AppDatabase extends _$AppDatabase {
       if (_shouldSeedDevData) await seedDevData(this);
     },
     onUpgrade: (m, from, to) async {
-      if (_shouldSeedDevData && from >= 3 && from <= 26) {
+      if (_shouldSeedDevData && from >= 3 && from <= 27) {
         for (final table in allTables) {
           await m.deleteTable(table.actualTableName);
         }
@@ -573,6 +573,25 @@ class AppDatabase extends _$AppDatabase {
         await customStatement(
           'ALTER TABLE execution_sets ADD COLUMN is_unilateral INTEGER',
         );
+      }
+
+      if (from < 28) {
+        await customStatement(
+          'ALTER TABLE exercises ADD COLUMN is_isometric INTEGER NOT NULL DEFAULT 0',
+        );
+        await customStatement(
+          "UPDATE exercises SET is_isometric = 1 WHERE name = 'plank'",
+        );
+        // Convert legacy reps → duration for historical sets of isometric exercises.
+        // Users stored seconds in the reps field as a workaround.
+        await customStatement('''
+          UPDATE execution_sets
+          SET duration = reps, reps = NULL
+          WHERE exercise_id IN (SELECT id FROM exercises WHERE is_isometric = 1)
+            AND duration IS NULL
+            AND reps IS NOT NULL
+        ''');
+        await seedExercisesV7(this);
       }
 
     },

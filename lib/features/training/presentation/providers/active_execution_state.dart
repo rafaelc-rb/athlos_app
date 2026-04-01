@@ -35,7 +35,10 @@ class SetEntry {
   final int? reps;
   final double? weight;
 
-  /// Duration in seconds for cardio exercises.
+  /// Target duration in seconds (for cardio/isometric exercises).
+  final int? plannedDuration;
+
+  /// Actual duration in seconds for cardio/isometric exercises.
   final int? duration;
 
   /// Distance in meters for cardio exercises.
@@ -62,6 +65,7 @@ class SetEntry {
     required this.setNumber,
     this.plannedReps,
     this.plannedWeight,
+    this.plannedDuration,
     this.reps,
     this.weight,
     this.duration,
@@ -84,6 +88,7 @@ class SetEntry {
     int? setNumber,
     int? Function()? plannedReps,
     double? Function()? plannedWeight,
+    int? Function()? plannedDuration,
     int? Function()? reps,
     double? Function()? weight,
     int? Function()? duration,
@@ -105,6 +110,8 @@ class SetEntry {
             plannedReps != null ? plannedReps() : this.plannedReps,
         plannedWeight:
             plannedWeight != null ? plannedWeight() : this.plannedWeight,
+        plannedDuration:
+            plannedDuration != null ? plannedDuration() : this.plannedDuration,
         reps: reps != null ? reps() : this.reps,
         weight: weight != null ? weight() : this.weight,
         duration: duration != null ? duration() : this.duration,
@@ -129,6 +136,7 @@ class SetEntry {
           setNumber == other.setNumber &&
           plannedReps == other.plannedReps &&
           plannedWeight == other.plannedWeight &&
+          plannedDuration == other.plannedDuration &&
           reps == other.reps &&
           weight == other.weight &&
           duration == other.duration &&
@@ -143,8 +151,8 @@ class SetEntry {
 
   @override
   int get hashCode => Object.hash(id, setNumber, plannedReps, plannedWeight,
-      reps, weight, duration, distance, isCompleted, isWarmup, rpe,
-      leftReps, leftWeight, rightReps, rightWeight);
+      plannedDuration, reps, weight, duration, distance, isCompleted, isWarmup,
+      rpe, leftReps, leftWeight, rightReps, rightWeight);
 }
 
 /// Holds the full state of an active workout execution in progress.

@@ -39,6 +39,10 @@ class WorkoutExerciseEntry {
   });
 
   bool get isCardio => exercise.isCardio;
+  bool get isIsometric => exercise.isIsometric;
+
+  /// True when the exercise uses duration instead of reps (cardio or isometric).
+  bool get usesDuration => isCardio || isIsometric;
 }
 
 /// Tile for an exercise inside the workout builder form.
@@ -258,7 +262,7 @@ class _WorkoutExerciseTileState extends State<WorkoutExerciseTile> {
                           ),
                         ),
                         const SizedBox(width: AthlosSpacing.sm),
-                        if (entry.isCardio)
+                        if (entry.usesDuration)
                           Expanded(
                             child: _NumberField(
                               label: l10n.durationSecondsLabel,
@@ -282,7 +286,7 @@ class _WorkoutExerciseTileState extends State<WorkoutExerciseTile> {
                         ),
                       ],
                     ),
-                    if (!entry.isCardio)
+                    if (!entry.usesDuration)
                       Padding(
                         padding: const EdgeInsets.only(
                             top: AthlosSpacing.xs),
@@ -321,7 +325,7 @@ class _WorkoutExerciseTileState extends State<WorkoutExerciseTile> {
                           ],
                         ),
                       ),
-                    if (!entry.isCardio)
+                    if (!entry.usesDuration)
                       Padding(
                         padding:
                             const EdgeInsets.only(top: AthlosSpacing.xs),

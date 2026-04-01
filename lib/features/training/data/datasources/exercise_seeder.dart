@@ -34,6 +34,7 @@ Future<void> seedExercises(AppDatabase db) async {
             movementPattern: Value(item.movementPattern),
             isVerified: const Value(true),
             isBodyweight: Value(item.isBodyweight),
+            isIsometric: Value(item.isIsometric),
             description: const Value.absent(),
           ),
         );
@@ -96,6 +97,7 @@ class _SeedExercise {
   final List<_MF> muscles;
   final List<String> equipmentKeys;
   final bool isBodyweight;
+  final bool isIsometric;
 
   const _SeedExercise(
     this.name,
@@ -105,6 +107,7 @@ class _SeedExercise {
     this.muscles = const [],
     this.equipmentKeys = const [],
     this.isBodyweight = false,
+    this.isIsometric = false,
   });
 }
 
@@ -605,11 +608,46 @@ final _seedItems = [
       muscles: [
         _p(TargetMuscle.rectusAbdominis, MuscleRegion.upper),
       ]),
-  _SeedExercise('plank', MuscleGroup.abs, isBodyweight: true, muscles: [
+  _SeedExercise('plank', MuscleGroup.abs,
+      isBodyweight: true, isIsometric: true, muscles: [
     _p(TargetMuscle.rectusAbdominis),
     _p(TargetMuscle.transverseAbdominis),
     _s(TargetMuscle.obliques),
   ]),
+  _SeedExercise('sidePlank', MuscleGroup.abs,
+      isBodyweight: true, isIsometric: true, muscles: [
+    _p(TargetMuscle.obliques),
+    _s(TargetMuscle.transverseAbdominis),
+    _s(TargetMuscle.gluteusMedius),
+  ]),
+  _SeedExercise('hollowHold', MuscleGroup.abs,
+      isBodyweight: true, isIsometric: true, muscles: [
+    _p(TargetMuscle.rectusAbdominis),
+    _p(TargetMuscle.transverseAbdominis),
+    _s(TargetMuscle.hipFlexors),
+  ]),
+  _SeedExercise('lSit', MuscleGroup.abs,
+      isBodyweight: true, isIsometric: true, muscles: [
+    _p(TargetMuscle.rectusAbdominis),
+    _p(TargetMuscle.hipFlexors),
+    _s(TargetMuscle.transverseAbdominis),
+    _s(TargetMuscle.tricepsBrachii),
+  ]),
+  _SeedExercise('wallSit', MuscleGroup.quadriceps,
+      isBodyweight: true, isIsometric: true, muscles: [
+    _p(TargetMuscle.rectusFemoris),
+    _p(TargetMuscle.vastusLateralis),
+    _p(TargetMuscle.vastusMedialis),
+    _s(TargetMuscle.gluteusMaximus),
+  ]),
+  _SeedExercise('deadHang', MuscleGroup.back,
+      isBodyweight: true, isIsometric: true, muscles: [
+    _p(TargetMuscle.latissimusDorsi),
+    _p(TargetMuscle.wristFlexors),
+    _s(TargetMuscle.trapezius),
+    _s(TargetMuscle.rhomboids),
+  ],
+  equipmentKeys: ['pullUpBar']),
   _SeedExercise('hangingLegRaise', MuscleGroup.abs, isBodyweight: true,
       movementPattern: MovementPattern.isolation,
       muscles: [
@@ -1447,7 +1485,135 @@ const _variations = [
   _Variation('crunch', 'abWheelRollout'),
   _Variation('hangingLegRaise', 'abWheelRollout'),
   _Variation('plank', 'abWheelRollout'),
+  // ── Abs — isometric (core holds) ──
+  _Variation('plank', 'sidePlank'),
+  _Variation('plank', 'hollowHold'),
+  _Variation('sidePlank', 'hollowHold'),
+  _Variation('hollowHold', 'lSit'),
+  // ── Back — isometric (dead hang) ──
+  _Variation('deadHang', 'pullUp'),
+  _Variation('deadHang', 'chinUp'),
 
   // ── V6 additions ──
   ..._v6Variations,
+];
+
+/// Seeds the isometric exercises added in schema version 28.
+/// Called from migration onUpgrade when upgrading from < 28.
+Future<void> seedExercisesV7(AppDatabase db) async {
+  final equipmentIds = await _resolveEquipmentIds(db);
+  final exerciseIds = <String, int>{};
+
+  final existingRows = await db.select(db.exercises).get();
+  for (final row in existingRows) {
+    exerciseIds[row.name] = row.id;
+  }
+
+  for (final item in _v7SeedItems) {
+    if (exerciseIds.containsKey(item.name)) continue;
+
+    final id = await db.into(db.exercises).insert(
+          ExercisesCompanion.insert(
+            name: item.name,
+            muscleGroup: item.muscleGroup,
+            type: Value(item.type),
+            movementPattern: Value(item.movementPattern),
+            isVerified: const Value(true),
+            isBodyweight: Value(item.isBodyweight),
+            isIsometric: Value(item.isIsometric),
+            description: const Value.absent(),
+          ),
+        );
+    exerciseIds[item.name] = id;
+
+    for (final focus in item.muscles) {
+      await db.into(db.exerciseTargetMuscles).insert(
+            ExerciseTargetMusclesCompanion(
+              exerciseId: Value(id),
+              targetMuscle: Value(focus.muscle),
+              muscleRegion: Value(focus.region),
+              role: Value(focus.role),
+            ),
+          );
+    }
+
+    for (final eqName in item.equipmentKeys) {
+      final eqId = equipmentIds[eqName];
+      if (eqId != null) {
+        await db.into(db.exerciseEquipments).insert(
+              ExerciseEquipmentsCompanion(
+                exerciseId: Value(id),
+                equipmentId: Value(eqId),
+              ),
+            );
+      }
+    }
+  }
+
+  for (final link in _v7Variations) {
+    final fromId = exerciseIds[link.from];
+    final toId = exerciseIds[link.to];
+    if (fromId != null && toId != null) {
+      await db.into(db.exerciseVariations).insert(
+            ExerciseVariationsCompanion(
+              exerciseId: Value(fromId),
+              variationId: Value(toId),
+            ),
+            mode: InsertMode.insertOrIgnore,
+          );
+      await db.into(db.exerciseVariations).insert(
+            ExerciseVariationsCompanion(
+              exerciseId: Value(toId),
+              variationId: Value(fromId),
+            ),
+            mode: InsertMode.insertOrIgnore,
+          );
+    }
+  }
+}
+
+final _v7SeedItems = [
+  _SeedExercise('sidePlank', MuscleGroup.abs,
+      isBodyweight: true, isIsometric: true, muscles: [
+    _p(TargetMuscle.obliques),
+    _s(TargetMuscle.transverseAbdominis),
+    _s(TargetMuscle.gluteusMedius),
+  ]),
+  _SeedExercise('hollowHold', MuscleGroup.abs,
+      isBodyweight: true, isIsometric: true, muscles: [
+    _p(TargetMuscle.rectusAbdominis),
+    _p(TargetMuscle.transverseAbdominis),
+    _s(TargetMuscle.hipFlexors),
+  ]),
+  _SeedExercise('lSit', MuscleGroup.abs,
+      isBodyweight: true, isIsometric: true, muscles: [
+    _p(TargetMuscle.rectusAbdominis),
+    _p(TargetMuscle.hipFlexors),
+    _s(TargetMuscle.transverseAbdominis),
+    _s(TargetMuscle.tricepsBrachii),
+  ]),
+  _SeedExercise('wallSit', MuscleGroup.quadriceps,
+      isBodyweight: true, isIsometric: true, muscles: [
+    _p(TargetMuscle.rectusFemoris),
+    _p(TargetMuscle.vastusLateralis),
+    _p(TargetMuscle.vastusMedialis),
+    _s(TargetMuscle.gluteusMaximus),
+  ]),
+  _SeedExercise('deadHang', MuscleGroup.back,
+      isBodyweight: true, isIsometric: true, muscles: [
+    _p(TargetMuscle.latissimusDorsi),
+    _p(TargetMuscle.wristFlexors),
+    _s(TargetMuscle.trapezius),
+    _s(TargetMuscle.rhomboids),
+  ],
+  equipmentKeys: ['pullUpBar']),
+];
+
+const _v7Variations = [
+  _Variation('plank', 'sidePlank'),
+  _Variation('plank', 'hollowHold'),
+  _Variation('sidePlank', 'hollowHold'),
+  _Variation('hollowHold', 'lSit'),
+  _Variation('deadHang', 'pullUp'),
+  _Variation('deadHang', 'chinUp'),
 ];

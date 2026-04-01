@@ -22,10 +22,21 @@ import '../providers/rest_timer_notifier.dart';
 import '../providers/workout_notifier.dart';
 import '../widgets/workout_exercise_tile.dart' show supersetColorFor;
 
-enum _ViewMode { overview, focused, timer, cardioTimer, exerciseTransition }
+enum _ViewMode { overview, focused, timer, cardioTimer, timedSet, exerciseTransition }
 
-/// Formats a completed set as "Wkg x R" or "Wkg x R → Wkg x R → ..." for drop sets.
+enum _TimedSubState { ready, countdown, running, finishing }
+
+/// Formats a completed set as "Wkg x R", duration, or drop set chain.
 String _formatSetSummary(SetEntry set) {
+  if (set.duration != null && set.reps == null) {
+    final dur = formatDuration(set.duration!);
+    final w = set.weight;
+    if (w != null && w > 0) {
+      return '${w.toStringAsFixed(w % 1 == 0 ? 0 : 1)}kg x $dur';
+    }
+    return dur;
+  }
+
   String part(double? w, int r) {
     final weight = w ?? 0.0;
     return '${weight.toStringAsFixed(weight % 1 == 0 ? 0 : 1)}kg x $r';
@@ -71,6 +82,8 @@ class _WorkoutExecutionScreenState
   String? _setNotes;
   bool _showNotesField = false;
   List<_DropSegmentInput> _dropSegments = [];
+  _TimedSubState _timedSubState = _TimedSubState.ready;
+  int _countdownValue = 3;
 
   @override
   void initState() {
@@ -134,6 +147,11 @@ class _WorkoutExecutionScreenState
               .read(progressionRuleRepositoryProvider)
               .getByProgram(activeProgram.id)
               .then((r) => r.getOrThrow());
+          final allExercises = ref.read(exerciseListProvider).value ?? [];
+          final isometricIds = {
+            for (final e in allExercises)
+              if (e.isIsometric) e.id,
+          };
           await ref
               .read(activeExecutionProvider.notifier)
               .startExecution(
@@ -144,6 +162,7 @@ class _WorkoutExecutionScreenState
                 progressionRules: progressionRules,
                 defaultRestSeconds:
                     activeProgram.defaultRestSeconds ?? 0,
+                isometricExerciseIds: isometricIds,
               );
         } on Exception catch (_) {
           messenger.showSnackBar(
@@ -167,6 +186,7 @@ class _WorkoutExecutionScreenState
         }
         if (_viewMode == _ViewMode.focused ||
             _viewMode == _ViewMode.cardioTimer ||
+            _viewMode == _ViewMode.timedSet ||
             _viewMode == _ViewMode.exerciseTransition) {
           ref.read(cardioTimerProvider.notifier).reset();
           setState(() => _viewMode = _ViewMode.overview);
@@ -185,6 +205,8 @@ class _WorkoutExecutionScreenState
                 _buildTimer(context, execState, timerState),
               _ViewMode.cardioTimer =>
                 _buildCardioTimer(context, execState, cardioState),
+              _ViewMode.timedSet =>
+                _buildTimedSet(context, execState, cardioState),
               _ViewMode.exerciseTransition =>
                 _buildExerciseCompleteTransition(context, execState),
             },
@@ -337,8 +359,18 @@ class _WorkoutExecutionScreenState
   }
 
 
+  bool _isExerciseIsometric(int exerciseId) {
+    final allExercises = ref.read(exerciseListProvider).value;
+    return allExercises?.any((e) => e.id == exerciseId && e.isIsometric) ??
+        false;
+  }
+
+  bool _isFocusedIsometric(ActiveExecutionState exec) =>
+      _isExerciseIsometric(exec.exercises[_focusedExerciseIndex].exerciseId);
+
   bool _isFocusedCardio(ActiveExecutionState exec) =>
-      exec.exercises[_focusedExerciseIndex].duration != null;
+      exec.exercises[_focusedExerciseIndex].duration != null &&
+      !_isFocusedIsometric(exec);
 
   void _goToFocused(ActiveExecutionState exec, int exerciseIndex,
       [int? setNumber]) {
@@ -361,13 +393,26 @@ class _WorkoutExecutionScreenState
         .where((s) => s.isCompleted && s.setNumber < targetSet)
         .toList();
 
-    final isCardio = exec.exercises[exerciseIndex].duration != null;
+    final isIsometric = _isExerciseIsometric(exId);
+    final isCardio = exec.exercises[exerciseIndex].duration != null && !isIsometric;
 
     setState(() {
       _focusedExerciseIndex = exerciseIndex;
       _focusedSetNumber = targetSet;
 
-      if (isCardio) {
+      if (isIsometric) {
+        _viewMode = _ViewMode.timedSet;
+        _timedSubState = _TimedSubState.ready;
+        _currentDuration = entry.duration ??
+            (prevCompleted.isNotEmpty
+                ? prevCompleted.last.duration ?? 0
+                : exec.exercises[exerciseIndex].duration ?? 0);
+        _currentWeight = entry.weight ??
+            (prevCompleted.isNotEmpty
+                ? prevCompleted.last.weight ?? 0
+                : entry.plannedWeight ?? 0);
+        ref.read(cardioTimerProvider.notifier).reset();
+      } else if (isCardio) {
         _viewMode = _ViewMode.cardioTimer;
         _currentDuration = entry.duration ??
             (prevCompleted.isNotEmpty
@@ -1863,6 +1908,500 @@ class _WorkoutExecutionScreenState
         ),
       ),
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // View: Timed Set (Isometric)
+  // ---------------------------------------------------------------------------
+
+  Widget _buildTimedSet(
+    BuildContext context,
+    ActiveExecutionState exec,
+    CardioTimerState cardioState,
+  ) {
+    final exercise = exec.exercises[_focusedExerciseIndex];
+    final sets = exec.exerciseSets[exercise.exerciseId] ?? [];
+    final currentSetEntry = sets.firstWhere(
+      (s) => s.setNumber == _focusedSetNumber,
+      orElse: () => sets.first,
+    );
+
+    if (currentSetEntry.isCompleted) {
+      return _buildTimedCompleted(exec, sets);
+    }
+
+    return switch (_timedSubState) {
+      _TimedSubState.ready => _buildTimedReady(exec),
+      _TimedSubState.countdown => _buildTimedCountdown(exec),
+      _TimedSubState.running => _buildTimedRunning(exec, cardioState),
+      _TimedSubState.finishing => _buildTimedFinishing(exec, cardioState),
+    };
+  }
+
+  PreferredSizeWidget _timedAppBar(String name, int totalSets,
+          {VoidCallback? onBack}) =>
+      AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: onBack ??
+              () {
+                ref.read(cardioTimerProvider.notifier).reset();
+                setState(() => _viewMode = _ViewMode.overview);
+              },
+        ),
+        title: Text(name),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: AthlosSpacing.md),
+            child: Center(
+              child: Text(
+                '$_focusedSetNumber / $totalSets',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+          ),
+        ],
+      );
+
+  Widget _buildTimedReady(ActiveExecutionState exec) {
+    final l10n = AppLocalizations.of(context)!;
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final exercise = exec.exercises[_focusedExerciseIndex];
+    final sets = exec.exerciseSets[exercise.exerciseId] ?? [];
+    final name = _exerciseName(exercise.exerciseId);
+    final goalSeconds = exercise.duration ?? 0;
+
+    return Scaffold(
+      appBar: _timedAppBar(name, sets.length),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AthlosSpacing.lg),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Spacer(flex: 2),
+
+              if (goalSeconds > 0) ...[
+                Text(
+                  l10n.isometricGoalLabel(formatDuration(goalSeconds)),
+                  style: textTheme.titleLarge?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: AthlosSpacing.xl),
+              ],
+
+              SizedBox(
+                width: 120,
+                height: 120,
+                child: FilledButton(
+                  onPressed: () {
+                    setState(() {
+                      _timedSubState = _TimedSubState.countdown;
+                      _countdownValue = 3;
+                    });
+                    _startCountdown(exec);
+                  },
+                  style: FilledButton.styleFrom(
+                    shape: const CircleBorder(),
+                    padding: EdgeInsets.zero,
+                  ),
+                  child: Text(
+                    l10n.isometricStart,
+                    style: const TextStyle(fontSize: 20),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: AthlosSpacing.xl),
+
+              TextButton(
+                onPressed: () => setState(() => _viewMode = _ViewMode.focused),
+                child: Text(l10n.isometricManualEntry),
+              ),
+
+              const Spacer(flex: 3),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _startCountdown(ActiveExecutionState exec) {
+    Future.delayed(const Duration(seconds: 1), () {
+      if (!mounted || _viewMode != _ViewMode.timedSet) return;
+      if (_countdownValue > 1) {
+        setState(() => _countdownValue--);
+        _startCountdown(exec);
+      } else {
+        final exercise = exec.exercises[_focusedExerciseIndex];
+        final goalSeconds = exercise.duration ?? 0;
+        ref.read(cardioTimerProvider.notifier).start(goalSeconds);
+        setState(() => _timedSubState = _TimedSubState.running);
+      }
+    });
+  }
+
+  Widget _buildTimedCountdown(ActiveExecutionState exec) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    final exercise = exec.exercises[_focusedExerciseIndex];
+    final sets = exec.exerciseSets[exercise.exerciseId] ?? [];
+    final name = _exerciseName(exercise.exerciseId);
+
+    return Scaffold(
+      appBar: _timedAppBar(name, sets.length),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '$_countdownValue',
+              style: textTheme.displayLarge?.copyWith(
+                fontSize: 120,
+                fontWeight: FontWeight.w200,
+                color: colorScheme.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimedRunning(
+    ActiveExecutionState exec,
+    CardioTimerState cardioState,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    final exercise = exec.exercises[_focusedExerciseIndex];
+    final sets = exec.exerciseSets[exercise.exerciseId] ?? [];
+    final name = _exerciseName(exercise.exerciseId);
+    final hasReachedGoal = cardioState.hasReachedGoal;
+
+    final timerColor = hasReachedGoal
+        ? colorScheme.primary
+        : colorScheme.onSurface;
+
+    return Scaffold(
+      appBar: _timedAppBar(name, sets.length),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AthlosSpacing.lg),
+        child: Column(
+          children: [
+            const Spacer(flex: 2),
+
+            if (hasReachedGoal) _goalReachedBadge(),
+
+            Text(
+              formatDuration(cardioState.elapsedSeconds),
+              style: textTheme.displayLarge?.copyWith(
+                fontSize: 72,
+                fontWeight: FontWeight.w300,
+                color: timerColor,
+              ),
+            ),
+
+            if (hasReachedGoal && cardioState.overtimeSeconds > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: AthlosSpacing.xs),
+                child: Text(
+                  l10n.isometricOverGoal(
+                      formatDuration(cardioState.overtimeSeconds)),
+                  style: textTheme.titleMedium?.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+
+            const SizedBox(height: AthlosSpacing.lg),
+
+            if (cardioState.goalSeconds > 0) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AthlosSpacing.xxl),
+                child: LinearProgressIndicator(
+                  value: cardioState.progress,
+                  borderRadius: AthlosRadius.fullAll,
+                  minHeight: 6,
+                  color: hasReachedGoal ? colorScheme.primary : null,
+                ),
+              ),
+              const SizedBox(height: AthlosSpacing.sm),
+              Text(
+                l10n.isometricGoalLabel(
+                    formatDuration(cardioState.goalSeconds)),
+                style: textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+
+            const Spacer(flex: 3),
+
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: FilledButton.icon(
+                onPressed: () {
+                  ref.read(cardioTimerProvider.notifier).stop();
+                  setState(() {
+                    _currentDuration = cardioState.elapsedSeconds;
+                    _timedSubState = _TimedSubState.finishing;
+                  });
+                },
+                icon: const Icon(Icons.stop),
+                label: Text(
+                  l10n.isometricFinish,
+                  style: const TextStyle(fontSize: 18),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: AthlosSpacing.xl),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimedFinishing(
+    ActiveExecutionState exec,
+    CardioTimerState cardioState,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final customColors =
+        Theme.of(context).extension<AthlosCustomColors>()!;
+
+    final exercise = exec.exercises[_focusedExerciseIndex];
+    final sets = exec.exerciseSets[exercise.exerciseId] ?? [];
+    final name = _exerciseName(exercise.exerciseId);
+    final goalSeconds = exercise.duration ?? 0;
+
+    final diff = goalSeconds > 0 ? _currentDuration - goalSeconds : 0;
+    final Color? diffColor;
+    final String diffLabel;
+    if (diff > 0) {
+      diffColor = colorScheme.primary;
+      diffLabel = l10n.isometricOverGoal(formatDuration(diff));
+    } else if (diff < 0) {
+      final absDiff = diff.abs();
+      diffColor = absDiff >= 10 ? colorScheme.error : customColors.warning;
+      diffLabel = l10n.isometricUnderGoal(formatDuration(absDiff));
+    } else {
+      diffColor = null;
+      diffLabel = '';
+    }
+
+    return Scaffold(
+      appBar: _timedAppBar(name, sets.length),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AthlosSpacing.lg),
+        child: Column(
+          children: [
+            const Spacer(flex: 2),
+
+            Text(
+              formatDuration(_currentDuration),
+              style: textTheme.displayLarge?.copyWith(
+                fontSize: 56,
+                fontWeight: FontWeight.w300,
+                color: diffColor ?? colorScheme.onSurface,
+              ),
+            ),
+
+            if (diffLabel.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: AthlosSpacing.xs),
+                child: Text(
+                  diffLabel,
+                  style: textTheme.titleMedium?.copyWith(
+                    color: diffColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+
+            if (goalSeconds > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: AthlosSpacing.sm),
+                child: Text(
+                  l10n.isometricGoalLabel(formatDuration(goalSeconds)),
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+
+            const SizedBox(height: AthlosSpacing.xl),
+
+            _NumberInput(
+              value: _currentWeight,
+              suffix: 'kg',
+              step: 2.5,
+              onChanged: (v) => setState(() => _currentWeight = v),
+              textTheme: textTheme,
+              colorScheme: colorScheme,
+            ),
+
+            const SizedBox(height: AthlosSpacing.md),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: _RpeSelector(
+                    value: _selectedRpe,
+                    onChanged: (v) =>
+                        setState(() => _selectedRpe = v),
+                  ),
+                ),
+              ],
+            ),
+
+            const Spacer(flex: 3),
+
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: FilledButton.icon(
+                onPressed: () => _onCompleteTimedSet(exec),
+                icon: const Icon(Icons.check),
+                label: Text(
+                  l10n.isometricSaveSet,
+                  style: const TextStyle(fontSize: 18),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: AthlosSpacing.xl),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimedCompleted(
+      ActiveExecutionState exec, List<SetEntry> sets) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    final exercise = exec.exercises[_focusedExerciseIndex];
+    final name = _exerciseName(exercise.exerciseId);
+    final nextInExercise = sets
+        .where(
+            (s) => !s.isCompleted && s.setNumber > _focusedSetNumber)
+        .toList();
+
+    return Scaffold(
+      appBar: _timedAppBar(name, sets.length,
+          onBack: () => setState(() => _viewMode = _ViewMode.overview)),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.check_circle,
+                size: 64, color: colorScheme.primary),
+            const SizedBox(height: AthlosSpacing.lg),
+            Text(
+              l10n.restComplete,
+              style: textTheme.headlineSmall,
+            ),
+            const SizedBox(height: AthlosSpacing.xl),
+            if (nextInExercise.isNotEmpty)
+              FilledButton.icon(
+                onPressed: () => _goToFocused(exec, _focusedExerciseIndex,
+                    nextInExercise.first.setNumber),
+                icon: const Icon(Icons.arrow_forward),
+                label: Text(l10n.nextSetLabel),
+              )
+            else ...[
+              FilledButton.icon(
+                onPressed: () => _goToNextExerciseOrOverview(exec),
+                icon: const Icon(Icons.arrow_forward),
+                label: Text(l10n.nextExerciseButton),
+              ),
+              const SizedBox(height: AthlosSpacing.md),
+              OutlinedButton.icon(
+                onPressed: () =>
+                    setState(() => _viewMode = _ViewMode.overview),
+                icon: const Icon(Icons.list_alt),
+                label: Text(l10n.backToOverview),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _onCompleteTimedSet(ActiveExecutionState exec) async {
+    final exercise = exec.exercises[_focusedExerciseIndex];
+
+    final int rest;
+    try {
+      final (r, _) = await ref
+          .read(activeExecutionProvider.notifier)
+          .completeSet(
+            exercise.exerciseId,
+            _focusedSetNumber,
+            duration: _currentDuration > 0 ? _currentDuration : null,
+            weight: _currentWeight > 0 ? _currentWeight : null,
+            isWarmup: _isWarmup,
+            rpe: _selectedRpe,
+            notes:
+                _setNotes?.trim().isNotEmpty == true ? _setNotes!.trim() : null,
+          );
+      rest = r;
+    } on Exception catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.genericError),
+          ),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+    ref.read(cardioTimerProvider.notifier).reset();
+
+    final updatedExec = ref.read(activeExecutionProvider);
+    if (updatedExec == null) return;
+
+    final nextInGroup = _nextInSupersetGroup(
+        updatedExec, _focusedExerciseIndex, _focusedSetNumber);
+    if (nextInGroup != null) {
+      _goToFocused(updatedExec, nextInGroup, _focusedSetNumber);
+      return;
+    }
+
+    if (rest > 0) {
+      ref.read(restTimerProvider.notifier).start(rest);
+      setState(() => _viewMode = _ViewMode.timer);
+    } else {
+      if (_isExerciseComplete(updatedExec)) {
+        setState(() => _viewMode = _ViewMode.exerciseTransition);
+      } else {
+        final next = _findNextPendingSet(updatedExec);
+        if (next != null) {
+          _goToFocused(updatedExec, next.$1, next.$2);
+        } else {
+          setState(() => _viewMode = _ViewMode.overview);
+        }
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------

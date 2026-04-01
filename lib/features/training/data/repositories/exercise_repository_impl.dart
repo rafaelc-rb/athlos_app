@@ -149,6 +149,7 @@ class ExerciseRepositoryImpl implements ExerciseRepository {
           description: Value(exercise.description),
           isVerified: Value(exercise.isVerified),
           isBodyweight: Value(exercise.isBodyweight),
+          isIsometric: Value(exercise.isIsometric),
         ),
       );
       if (equipmentIds.isNotEmpty) {
@@ -180,6 +181,7 @@ class ExerciseRepositoryImpl implements ExerciseRepository {
           movementPattern: Value(exercise.movementPattern),
           description: Value(exercise.description),
           isVerified: Value(exercise.isVerified),
+          isIsometric: Value(exercise.isIsometric),
         ),
       );
       if (equipmentIds != null) {
@@ -246,6 +248,7 @@ class ExerciseRepositoryImpl implements ExerciseRepository {
         description: row.description as String?,
         isVerified: row.isVerified as bool,
         isBodyweight: row.isBodyweight as bool,
+        isIsometric: row.isIsometric as bool,
         muscles: muscles,
       );
 }

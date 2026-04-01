@@ -271,6 +271,7 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
   final _descriptionController = TextEditingController();
   MuscleGroup _selectedGroup = MuscleGroup.chest;
   ExerciseType _selectedType = ExerciseType.strength;
+  bool _isIsometric = false;
   MovementPattern? _selectedMovementPattern;
   final Set<int> _selectedEquipmentIds = {};
   final List<({TargetMuscle muscle, MuscleRegion? region})> _primaryMuscles =
@@ -415,9 +416,24 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
                           ),
                         ],
                         selected: {_selectedType},
-                        onSelectionChanged: (v) =>
-                            setState(() => _selectedType = v.first),
+                        onSelectionChanged: (v) => setState(() {
+                          _selectedType = v.first;
+                          if (_selectedType == ExerciseType.cardio) {
+                            _isIsometric = false;
+                          }
+                        }),
                       ),
+                      if (_selectedType == ExerciseType.strength) ...[
+                        const Gap(AthlosSpacing.sm),
+                        SwitchListTile(
+                          title: Text(l10n.isometricLabel),
+                          subtitle: Text(l10n.isometricHint),
+                          value: _isIsometric,
+                          onChanged: (v) =>
+                              setState(() => _isIsometric = v),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ],
                       const Gap(AthlosSpacing.sm),
                       _buildAdvancedSection(l10n, textTheme, colorScheme),
                       const Gap(AthlosSpacing.xl),
@@ -701,6 +717,7 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
             type: _selectedType,
             movementPattern: _selectedMovementPattern,
             description: description.isEmpty ? null : description,
+            isIsometric: _isIsometric,
             equipmentIds: _selectedEquipmentIds.toList(),
             muscles: _allMuscles,
           );

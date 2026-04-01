@@ -32,6 +32,10 @@ class Exercise {
   /// Affects load calculation: total load = profile weight + added weight.
   final bool isBodyweight;
 
+  /// True for isometric exercises measured in duration rather than reps
+  /// (plank, wall sit, dead hang, L-sit, etc.).
+  final bool isIsometric;
+
   /// Muscles this exercise targets, loaded from the junction table.
   final List<ExerciseMuscleFocus> muscles;
 
@@ -44,6 +48,7 @@ class Exercise {
     this.description,
     this.isVerified = false,
     this.isBodyweight = false,
+    this.isIsometric = false,
     this.muscles = const [],
   });
 

@@ -159,6 +159,17 @@ class ExerciseDetailScreen extends ConsumerWidget {
                   textTheme: textTheme,
                 ),
               ],
+              if (displayExercise.isIsometric) ...[
+                const Gap(AthlosSpacing.md),
+                _buildInfoSection(
+                  context,
+                  icon: Icons.timer,
+                  title: l10n.isometricLabel,
+                  value: '',
+                  colorScheme: colorScheme,
+                  textTheme: textTheme,
+                ),
+              ],
               const Gap(AthlosSpacing.lg),
               _PRSection(exerciseId: exerciseId),
               const Gap(AthlosSpacing.lg),
@@ -320,6 +331,7 @@ class _EditExerciseSheetState extends ConsumerState<_EditExerciseSheet> {
   late final TextEditingController _descriptionController;
   late MuscleGroup _selectedGroup;
   late ExerciseType _selectedType;
+  late bool _isIsometric;
   MovementPattern? _selectedMovementPattern;
   final Set<int> _selectedEquipmentIds = {};
   final List<({TargetMuscle muscle, MuscleRegion? region})> _primaryMuscles =
@@ -337,6 +349,7 @@ class _EditExerciseSheetState extends ConsumerState<_EditExerciseSheet> {
         TextEditingController(text: widget.exercise.description ?? '');
     _selectedGroup = widget.exercise.muscleGroup;
     _selectedType = widget.exercise.type;
+    _isIsometric = widget.exercise.isIsometric;
     _selectedMovementPattern = widget.exercise.movementPattern;
     for (final f in widget.exercise.muscles) {
       final entry = (muscle: f.muscle, region: f.region);
@@ -479,9 +492,24 @@ class _EditExerciseSheetState extends ConsumerState<_EditExerciseSheet> {
                           ),
                         ],
                         selected: {_selectedType},
-                        onSelectionChanged: (v) =>
-                            setState(() => _selectedType = v.first),
+                        onSelectionChanged: (v) => setState(() {
+                          _selectedType = v.first;
+                          if (_selectedType == ExerciseType.cardio) {
+                            _isIsometric = false;
+                          }
+                        }),
                       ),
+                      if (_selectedType == ExerciseType.strength) ...[
+                        const Gap(AthlosSpacing.sm),
+                        SwitchListTile(
+                          title: Text(l10n.isometricLabel),
+                          subtitle: Text(l10n.isometricHint),
+                          value: _isIsometric,
+                          onChanged: (v) =>
+                              setState(() => _isIsometric = v),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ],
                       const Gap(AthlosSpacing.sm),
                       _buildAdvancedSection(l10n, textTheme, colorScheme),
                       const Gap(AthlosSpacing.xl),
@@ -733,6 +761,7 @@ class _EditExerciseSheetState extends ConsumerState<_EditExerciseSheet> {
         type: _selectedType,
         movementPattern: _selectedMovementPattern,
         description: description.isEmpty ? null : description,
+        isIsometric: _isIsometric,
       );
 
       await ref.read(exerciseListProvider.notifier).updateExercise(

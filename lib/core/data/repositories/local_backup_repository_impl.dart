@@ -2332,6 +2332,7 @@ class LocalBackupRepositoryImpl implements LocalBackupRepository {
         'description': row['description'],
         'is_verified': 0,
         'is_bodyweight': row['is_bodyweight'] ?? 0,
+        'is_isometric': row['is_isometric'] ?? 0,
       },
     };
   }

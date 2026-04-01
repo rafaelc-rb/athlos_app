@@ -2201,6 +2201,21 @@
   "bodyMetricsChartTitle": "Evolução do peso",
   "bodyMetricsNoData": "Dados insuficientes para o gráfico",
 
+  "bodyMetricsDashboardUpdatedToday": "atualizado hoje",
+  "bodyMetricsDashboardUpdatedDaysAgo": "há {count,plural, =1{1 dia} other{{count} dias}}",
+  "@bodyMetricsDashboardUpdatedDaysAgo": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "bodyMetricsDashboardStaleHint": "Atualize — última medição há mais de uma semana",
+  "bodyMetricsDashboardBodyFat": "Gordura {value}%",
+  "@bodyMetricsDashboardBodyFat": {
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
+
   "loadChartTitle": "Evolução de 1RM estimado",
   "loadChartRange30": "30 dias",
   "loadChartRange90": "90 dias",

@@ -49,14 +49,3 @@ Future<double?> latestBodyWeight(Ref ref) async {
   return metrics.first.weight;
 }
 
-/// Whether the weekly body weight prompt should be shown.
-/// True if there are existing records but the most recent is > 7 days old.
-@riverpod
-Future<bool> shouldPromptBodyWeight(Ref ref) async {
-  final metrics = await ref.watch(bodyMetricListProvider.future);
-  if (metrics.isEmpty) return false;
-  final latest = metrics.first;
-  final daysSince =
-      DateTime.now().difference(latest.recordedAt).inDays;
-  return daysSince >= 7;
-}

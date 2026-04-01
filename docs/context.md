@@ -33,9 +33,10 @@ The app is designed as a **hub-based** system: a central screen (the Hub) provid
 
 See each module's documentation for details:
 
-- [Training Module](./modules/training.md)
-- [Training Periodization](./modules/training-periodization.md) — planned evolution (mesocycle, progression, metrics)
-- [Diet Module](./modules/diet.md)
+- [Modules Index](./modules/README.md)
+- [Training Module](./modules/training/README.md)
+- [Body Metrics Dashboard Spec](./modules/training/features/body_metrics_dashboard.md)
+- [Diet Module](./modules/diet/README.md)
 
 ## Navigation
 

@@ -1,36 +1,119 @@
-# Training Periodization
+# Training Module
+
+> Status: ✅ Feature-complete for 1.x — polish and maintenance.
+
+## Current Features
+
+### Exercise Registration
+
+Detailed exercise records with:
+
+- **Exercise type** — strength or cardio, determining which fields and UX apply
+- **Muscle group** targeted (chest, back, legs, cardio, etc.)
+- **Specific muscles** worked (e.g. biceps, triceps, rear deltoid)
+- **Muscle region** activated — the specific portion of the muscle the exercise emphasizes (e.g. upper chest on incline bench press vs. mid chest on flat bench press)
+- **Equipment** required or alternative options
+- **Variations** or substitute exercises — modeled as a self-relation between exercises, allowing navigation between alternatives
+- **Search-first selectors** for muscle and equipment fields to avoid dense chip walls in create/edit flows
+- **Inline equipment creation** while registering/editing exercises — when search returns no matches, users can create equipment in-context and auto-link it
+
+#### Cardio Exercises
+
+Pre-loaded cardio exercises include treadmill running, stationary bike, rowing machine, elliptical, jump rope, and jumping jacks. Cardio exercises use duration (seconds) and distance (meters) instead of reps and weight.
+
+### Equipment Registration
+
+- Equipment catalog is the primary view (same catalog-first concept as exercises)
+- Ownership is toggled directly in catalog rows and in equipment detail
+- New equipment registration is contextual: shown when a search has zero results
+- User-owned equipment management lives under the Profile categories (Equipment category)
+
+### Workout Builder
+
+- Build workouts as sets of exercises
+- Configure per exercise based on type:
+  - **Strength**: sets, reps, rest time
+  - **Cardio**: sets, duration (goal), rest time
+- **Supersets** — link two or more exercises to be executed in alternation without rest between them; rest is taken after completing one round of all linked exercises
+- **Training cycle** — ordered rotation of active workouts (e.g. A → B → C → A); managed via setCycle
+- **AI assist via Chiron** — create, update, and archive workouts through conversational commands; Chiron uses the exercise catalog and user equipment to build workouts
+
+### Execution Logging
+
+- Log a workout execution
+- **Strength exercises:**
+  - Record weight used per set (defaults to last recorded weight from history)
+  - Record reps per set (defaults dynamically to last completed set's reps within the session)
+  - **Drop sets** — add additional reduced-weight segments within a single set
+  - **Performance feedback** — color-coded reps indicate deviation from plan (neutral within +-1 rep of target, warning at +-2-3, error at +-4+)
+  - **Load suggestions** — aggregated feedback after completing sets suggesting to increase, decrease, or maintain weight based on rep performance
+- **Cardio exercises:**
+  - **Timer mode** — dedicated stopwatch that counts up with:
+    - Ready state with play button and goal display
+    - Running state with elapsed time, progress bar, and goal reference
+    - Goal reached badge and overtime tracking when exceeding planned duration
+    - Pause/resume support
+    - Finishing state with editable duration and optional distance input
+  - **Manual entry** — option to skip the timer and input duration/distance directly
+- **Rest timer** between sets with configurable duration, skip, and extend controls
+- **Superset flow** — after completing a set in a superset group, automatically transitions to the next exercise in the group before triggering rest
+
+### Execution History
+
+- View past workout executions with date, name, and duration
+- Detailed breakdown per exercise showing:
+  - **Strength**: sets with weight x reps, color-coded performance indicators, aggregated load feedback
+  - **Cardio**: sets with duration and distance
+- Performance feedback carried through to history (same color coding and suggestions as during execution)
+
+### User Training Profile
+
+Personal data tracking for progression and AI context:
+
+- Weight, height, age
+- Gender (male / female / not informed)
+- General goal (hypertrophy, weight loss, endurance, etc.)
+- Desired body aesthetic (athletic, hypertrophy, strength)
+- Experience level (beginner, intermediate, advanced)
+- Training frequency (days per week)
+- Trains at gym (yes/no) — determines equipment approach
+- Available training time (minutes per session)
+- Injuries — free-text list of current injuries for exercise selection
+- Bio — accumulated notes from Chiron conversations (preferences, context)
+
+## Periodization Roadmap
 
 > Status: ✅ Implemented — all phases (1-10) complete, plus supplementary improvements.
 
 Evolution of the training module to support real-world periodization concepts, structured progression, and advanced training metrics — while keeping the experience simple for casual users.
 
-## Design Principle
+### Design Principle
 
 **Depth for those who seek it, simplicity for those who don't.** Casual users open the app, execute their workout, log weight and reps, done. Advanced users get RPE, PRs, weekly volume, periodization — all available but never in the way.
 
-## Problems with the Current Model
+### Problems with the Current Model
 
-### 1. Rest days in the cycle are artificial
+#### 1. Rest days in the cycle are artificial
 
 `CycleStepType.rest` treats rest as a programmed step in the cycle. In reality, rest is simply the day the user doesn't train. The cycle should be a queue of workouts (A → B → C), not a sequence of workouts and rest days.
 
 If the user skips a day (sick, gym closed, travel), the cycle loses sync. Users who train 6x/week (e.g. PPL) have no rest in their cycle — it's Push → Pull → Legs → repeat.
 
-### 2. No concept of a training program (mesocycle)
+#### 2. No concept of a training program (mesocycle)
 
 Workouts exist in isolation. There's no grouping by purpose, duration, or training phase. A personal trainer builds a **program** — a package of workouts with a goal, a duration, and progression rules. The app doesn't have this.
 
-### 3. No structured progression
+#### 3. No structured progression
 
 No rules like "+2.5kg per week on squat" or "+1 set per week". All progression is reactive (user remembers, or Chiron notices from history) rather than proactive.
 
-### 4. No awareness of training phases
+#### 4. No awareness of training phases
 
 No distinction between hypertrophy, strength, endurance, or deload blocks. These phases dictate volume, intensity, rep ranges, and rest — but the app treats every session identically.
 
-## Planned Features
+### Planned Features
 
-### Phase 1: Simplify the Cycle
+#### Phase 1: Simplify the Cycle
 
 **Remove `CycleStepType.rest`** — the cycle becomes a simple ordered list of workout IDs. When the user executes, they pick up the next workout in the queue. Rest is implicit (the day the user doesn't train).
 
@@ -39,11 +122,11 @@ No distinction between hypertrophy, strength, endurance, or deload blocks. These
 - Migration: drop existing rest steps, compact ordering
 - Update Chiron's `setCycle` tool accordingly
 
-### Phase 2: Rep Ranges and Set Types
+#### Phase 2: Rep Ranges and Set Types
 
 Replace fixed `reps` with a range and introduce set types.
 
-#### 2a. Rep Ranges
+##### 2a. Rep Ranges
 
 Currently `WorkoutExercise.reps` is a fixed `int` (e.g. 10). Real programs prescribe **ranges** (e.g. 8-12). The user picks a weight where they can do at least the minimum; when they hit the maximum with good form, they increase weight. This is fundamental to how progression works.
 
@@ -51,7 +134,7 @@ Currently `WorkoutExercise.reps` is a fixed `int` (e.g. 10). Real programs presc
 - When min == max, it behaves as a fixed target (backward compatible)
 - Load suggestion logic: hit maxReps on all sets → suggest weight increase next session
 
-#### 2b. AMRAP Sets
+##### 2b. AMRAP Sets
 
 "As Many Reps As Possible" — common in programs like 5/3/1. The target is a minimum rep count but the user goes to near-failure.
 
@@ -59,7 +142,7 @@ Currently `WorkoutExercise.reps` is a fixed `int` (e.g. 10). Real programs presc
 - AMRAP sets show a distinct badge in execution UI
 - The recorded reps feed directly into 1RM estimation and progression decisions
 
-### Phase 3: Training Program (Mesocycle)
+#### Phase 3: Training Program (Mesocycle)
 
 Introduce the **Program** entity — a named, time-bound container for the training cycle.
 
@@ -87,7 +170,7 @@ Program
 - Starting a new program archives the previous one
 - Programs are optional — users can still train without one (free cycle mode)
 
-### Phase 4: Deload Strategy
+#### Phase 4: Deload Strategy
 
 Deload is a recovery mechanism, **not a separate program type**. It's a temporary reduction applied to the current program.
 
@@ -110,7 +193,7 @@ DeloadConfig (part of Program, nullable)
 - Deload sessions count toward program progress
 - Deload is optional — user can skip or trigger manually
 
-### Phase 5: Progression Rules
+#### Phase 5: Progression Rules
 
 Per-exercise progression rules within a program:
 
@@ -130,32 +213,32 @@ ProgressionRule
 - Chiron can create progression rules when building a program
 - Rules are optional — users who don't set them get the current behavior (manual)
 
-### Phase 6: Training Metrics
+#### Phase 6: Training Metrics
 
 New data points and computed analytics to enrich the training experience.
 
-#### 6a. RPE / RIR (optional per set)
+##### 6a. RPE / RIR (optional per set)
 
 - Add optional `rpe` field (integer 1-10) to `ExecutionSet`
 - UI: small optional input after completing a set (skip = not recorded)
 - Chiron uses RPE data for better load recommendations
 - Progression rules can use RPE as condition (e.g. increase weight when RPE < 7)
 
-#### 6b. Estimated 1RM and PRs
+##### 6b. Estimated 1RM and PRs
 
 - Computed from execution history using Epley formula: `1RM = weight × (1 + reps/30)`
 - For bodyweight exercises: use total load (body weight + added weight) in the formula
 - Show per-exercise PR badge in history and exercise detail
 - Chiron can reference 1RM for percentage-based programming
 
-#### 6c. Weekly Volume per Muscle Group
+##### 6c. Weekly Volume per Muscle Group
 
 - Aggregate working sets (excluding warmup) × muscle group from executions in the last 7 days
 - Display on Training Home dashboard (optional card)
 - Flag under-volume or over-volume based on experience level guidelines
 - Typical targets: beginner 10-14 sets/muscle/week, intermediate 14-20, advanced 20+
 
-#### 6d. Bodyweight Exercise Support
+##### 6d. Bodyweight Exercise Support
 
 Currently, the `Exercise` entity has no way to indicate it's a bodyweight exercise. This is needed for accurate load and volume calculations.
 
@@ -166,20 +249,20 @@ Currently, the `Exercise` entity has no way to indicate it's a bodyweight exerci
   - `set.weight` = 10 → weighted bodyweight with 10kg ballast (load = body weight + 10)
 - Used in volume totals, 1RM estimation, and progression tracking
 
-### Phase 7: Warmup Sets
+#### Phase 7: Warmup Sets
 
 - Add `isWarmup` boolean to `ExecutionSet` (default: false)
 - Warmup sets are visually distinct during execution (dimmed, smaller)
 - Excluded from volume calculations, load suggestions, progression tracking, and PR detection
 - Optional: Chiron can suggest a warmup ramp based on the working weight
 
-### Phase 8: Execution Notes per Exercise
+#### Phase 8: Execution Notes per Exercise
 
 - Add optional `notes` field to `ExecutionSet` (or per exercise within execution)
 - Allows context like "shoulder pain on last rep", "try wider grip next time"
 - Chiron can read these notes for future recommendations
 
-### Phase 9: Body Weight Timeline
+#### Phase 9: Body Weight Timeline
 
 - New `body_metrics` table: `id`, `weight`, `bodyFatPercent` (nullable), `recordedAt`
 - Profile `weight` becomes a convenience getter for the latest record
@@ -188,23 +271,23 @@ Currently, the `Exercise` entity has no way to indicate it's a bodyweight exerci
 - Chiron uses the timeline for cutting/bulking analysis
 - Bodyweight exercise load calculations reference the latest recorded weight
 
-### Phase 10: Progress Visualization
+#### Phase 10: Progress Visualization
 
 Charts and records computed from existing execution data — zero additional user input.
 
-#### 10a. Per-Exercise Load Chart
+##### 10a. Per-Exercise Load Chart
 
 - Line chart showing weight (or estimated 1RM) over time for a selected exercise
 - Accessible from exercise detail or execution history
 - Time range: last 30 days / 90 days / all time
 
-#### 10b. PR History
+##### 10b. PR History
 
 - Dedicated screen listing personal records across all exercises
 - Auto-detected from execution history (heaviest weight, most reps at a given weight, highest estimated 1RM)
 - PR badge shown inline in execution history entries
 
-#### 10c. Weekly Volume Trend
+##### 10c. Weekly Volume Trend
 
 - Bar/line chart showing total working sets per muscle group across weeks
 - Accessible from Training Home dashboard (tapping the volume card from Phase 6c)
@@ -214,7 +297,7 @@ Charts and records computed from existing execution data — zero additional use
 
 > **Note:** progress data (PRs, volume trends, consistency streaks) are the natural input for the future **Kleos** gamification module — achievements, streaks, and challenges built on top of real training metrics.
 
-## Future Considerations (low priority)
+### Future Considerations (low priority)
 
 - **Tempo / cadence** — prescribed speed per exercise phase (e.g. 3-1-2-0). Discarded: too much interaction overhead for most users.
 - **Chiron proactive** — Chiron initiating conversations based on events (program completion, PR, volume alerts). Mapped as future evolution.
@@ -231,7 +314,7 @@ Charts and records computed from existing execution data — zero additional use
 - **PR badge in execution history** — trophy icon on sets that match the exercise's current personal record.
 - **Set notes in Chiron context** — already included in prompt builder's execution history.
 
-## Chiron Integration
+### Chiron Integration
 
 With periodization, Chiron gains **proactive triggers**:
 
@@ -252,7 +335,7 @@ Implemented Chiron tools:
 - `suggestWarmup` — generate warmup ramp from working weight
 - `getTrainingState` — enhanced with program details, deload config, progression rules, body weight timeline, defaultRestSeconds
 
-## UX Principles
+### UX Principles
 
 - **All new features are optional** — casual users are unaffected
 - **No new mandatory fields** — RPE, warmup toggle, AMRAP, notes are all skippable
@@ -261,7 +344,7 @@ Implemented Chiron tools:
 - **Chiron as guide** — advanced features are discoverable through conversation ("Chiron, monta um programa pra mim")
 - **No UI pollution** — advanced fields (RPE, notes) appear as collapsed/optional inputs, not as mandatory form fields
 
-## Migration Strategy
+### Migration Strategy
 
 Each phase is a separate schema version bump. Phases are independent enough to ship incrementally:
 

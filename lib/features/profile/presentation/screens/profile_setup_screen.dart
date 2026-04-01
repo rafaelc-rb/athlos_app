@@ -24,6 +24,12 @@ import '../helpers/profile_l10n.dart';
 import '../providers/body_metric_notifier.dart';
 import '../providers/profile_notifier.dart';
 
+double? _tryParseDecimal(String value) {
+  final normalized = value.trim().replaceAll(',', '.');
+  if (normalized.isEmpty) return null;
+  return double.tryParse(normalized);
+}
+
 /// Chat-style profile setup screen shown on first launch.
 ///
 /// Presents an interactive conversation with Chiron (the AI assistant)
@@ -463,9 +469,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           );
 
       if (_weight != null) {
-        await ref
-            .read(bodyMetricListProvider.notifier)
-            .add(weight: _weight!);
+        await ref.read(bodyMetricListProvider.notifier).add(weight: _weight!);
       }
 
       await _ensureDefaultProgram();
@@ -495,8 +499,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       TrainingGoal.hypertrophy => ProgramFocus.hypertrophy,
       TrainingGoal.strength => ProgramFocus.strength,
       TrainingGoal.endurance => ProgramFocus.endurance,
-      TrainingGoal.weightLoss || TrainingGoal.generalFitness || null =>
-        ProgramFocus.hypertrophy,
+      TrainingGoal.weightLoss ||
+      TrainingGoal.generalFitness ||
+      null => ProgramFocus.hypertrophy,
     };
 
     final program = TrainingProgram(
@@ -851,7 +856,7 @@ class _BodyInputState extends State<_BodyInput> {
                   decimal: true,
                 ),
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
+                  FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
                 ],
               ),
             ),
@@ -873,7 +878,7 @@ class _BodyInputState extends State<_BodyInput> {
                   decimal: true,
                 ),
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
+                  FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
                 ],
               ),
             ),
@@ -902,8 +907,8 @@ class _BodyInputState extends State<_BodyInput> {
           width: double.infinity,
           child: FilledButton(
             onPressed: () {
-              widget.state._weight = double.tryParse(_weightCtrl.text);
-              widget.state._height = double.tryParse(_heightCtrl.text);
+              widget.state._weight = _tryParseDecimal(_weightCtrl.text);
+              widget.state._height = _tryParseDecimal(_heightCtrl.text);
               widget.state._age = int.tryParse(_ageCtrl.text);
               widget.state._onBodySubmitted();
             },

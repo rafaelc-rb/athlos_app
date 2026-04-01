@@ -33,6 +33,12 @@ import '../widgets/goal_selector.dart';
 import '../widgets/style_selector.dart';
 import '../../../training/presentation/widgets/equipment_management_body.dart';
 
+double? _tryParseDecimal(String value) {
+  final normalized = value.trim().replaceAll(',', '.');
+  if (normalized.isEmpty) return null;
+  return double.tryParse(normalized);
+}
+
 /// Profile view/edit screen (P-04).
 ///
 /// Displays the current profile data. Tapping "Edit" switches
@@ -131,8 +137,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ? Center(child: Text(l10n.genericError))
             : isEditing
             ? _editingTab == _EditingTab.overview
-                ? _buildOverviewEditView(resolved, l10n)
-                : _buildTrainingEditView(resolved, l10n)
+                  ? _buildOverviewEditView(resolved, l10n)
+                  : _buildTrainingEditView(resolved, l10n)
             : TabBarView(
                 children: [
                   Skeletonizer(
@@ -489,8 +495,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           children: [
             Expanded(
               child: OutlinedButton(
-                onPressed: () =>
-                    setState(() => _editingTab = _EditingTab.none),
+                onPressed: () => setState(() => _editingTab = _EditingTab.none),
                 child: Text(l10n.cancel),
               ),
             ),
@@ -538,12 +543,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       decimal: true,
                     ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
+                      FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
                     ],
                     validator: (value) {
                       if (value != null &&
                           value.isNotEmpty &&
-                          double.tryParse(value) == null) {
+                          _tryParseDecimal(value) == null) {
                         return l10n.invalidNumber;
                       }
                       return null;
@@ -643,8 +648,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const Gap(AthlosSpacing.sm),
                   GoalSelector(
                     selected: _selectedGoal,
-                    onSelected: (goal) =>
-                        setState(() => _selectedGoal = goal),
+                    onSelected: (goal) => setState(() => _selectedGoal = goal),
                   ),
                   const Gap(AthlosSpacing.md),
                   AestheticSelector(
@@ -694,8 +698,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     value: _availableWorkoutMinutes != null,
                     onChanged: (v) {
-                      setState(
-                          () => _availableWorkoutMinutes = v ? 60 : null);
+                      setState(() => _availableWorkoutMinutes = v ? 60 : null);
                       if (v) _workoutMinutesController.text = '60';
                     },
                   ),
@@ -704,8 +707,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       children: [
                         Expanded(
                           child: Slider(
-                            value:
-                                (_availableWorkoutMinutes!.toDouble()).clamp(
+                            value: (_availableWorkoutMinutes!.toDouble()).clamp(
                               15,
                               120,
                             ),
@@ -716,9 +718,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             onChanged: (v) {
                               final rounded = v.round();
                               setState(
-                                  () => _availableWorkoutMinutes = rounded);
-                              _workoutMinutesController.text =
-                                  rounded.toString();
+                                () => _availableWorkoutMinutes = rounded,
+                              );
+                              _workoutMinutesController.text = rounded
+                                  .toString();
                             },
                           ),
                         ),
@@ -742,7 +745,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               final parsed = int.tryParse(v);
                               if (parsed != null && parsed > 0) {
                                 setState(
-                                    () => _availableWorkoutMinutes = parsed);
+                                  () => _availableWorkoutMinutes = parsed,
+                                );
                               }
                             },
                           ),
@@ -779,7 +783,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       final bio = _bioController.text.trim();
       updated = profile.copyWith(
         name: () => name.isEmpty ? null : name,
-        height: () => heightText.isEmpty ? null : double.tryParse(heightText),
+        height: () => heightText.isEmpty ? null : _tryParseDecimal(heightText),
         age: () => ageText.isEmpty ? null : int.tryParse(ageText),
         gender: () => _selectedGender,
         injuries: () => injuries.isEmpty ? null : injuries,
@@ -935,8 +939,7 @@ class _BodyMetricsSection extends ConsumerWidget {
                       ),
                       const Gap(AthlosSpacing.sm),
                       FilledButton.tonal(
-                        onPressed: () =>
-                            _showRecordDialog(context, ref),
+                        onPressed: () => _showRecordDialog(context, ref),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -958,8 +961,11 @@ class _BodyMetricsSection extends ConsumerWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.monitor_weight_outlined,
-                            color: colorScheme.primary, size: 24),
+                        Icon(
+                          Icons.monitor_weight_outlined,
+                          color: colorScheme.primary,
+                          size: 24,
+                        ),
                         const Gap(AthlosSpacing.sm),
                         Text(
                           l10n.bodyMetricsLatest(weightStr),
@@ -969,8 +975,7 @@ class _BodyMetricsSection extends ConsumerWidget {
                         IconButton(
                           icon: const Icon(Icons.add),
                           tooltip: l10n.bodyMetricsRecordWeight,
-                          onPressed: () =>
-                              _showRecordDialog(context, ref),
+                          onPressed: () => _showRecordDialog(context, ref),
                         ),
                       ],
                     ),
@@ -1014,7 +1019,11 @@ class _BodyMetricsSection extends ConsumerWidget {
                 labelText: l10n.bodyMetricsWeightLabel,
               ),
               keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true),
+                decimal: true,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
+              ],
               autofocus: true,
             ),
             const Gap(AthlosSpacing.md),
@@ -1025,7 +1034,11 @@ class _BodyMetricsSection extends ConsumerWidget {
                 hintText: l10n.bodyMetricsBodyFatHint,
               ),
               keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true),
+                decimal: true,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
+              ],
             ),
           ],
         ),
@@ -1036,9 +1049,9 @@ class _BodyMetricsSection extends ConsumerWidget {
           ),
           FilledButton(
             onPressed: () {
-              final w = double.tryParse(weightCtrl.text.trim());
+              final w = _tryParseDecimal(weightCtrl.text);
               if (w == null || w <= 0) return;
-              final bf = double.tryParse(bfCtrl.text.trim());
+              final bf = _tryParseDecimal(bfCtrl.text);
               ref
                   .read(bodyMetricListProvider.notifier)
                   .add(weight: w, bodyFatPercent: bf);

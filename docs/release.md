@@ -114,7 +114,7 @@ The database schema version is an integer in `app_database.dart`:
 
 ```dart
 @override
-int get schemaVersion => 27;  // increment when schema changes
+int get schemaVersion => 28;  // increment when schema changes
 ```
 
 - **Version 1** baseline.
@@ -128,6 +128,7 @@ int get schemaVersion => 27;  // increment when schema changes
 - **Versions 14–21** training periodization foundation (cycle simplification, rep ranges/AMRAP, RPE, warmup sets, programs, deload, progression rules, bodyweight flag).
 - **Versions 22–24** profile/body metrics evolution (timeline table + weight migration from `user_profiles`).
 - **Versions 25–27** mandatory program model, execution snapshot support, catalog seed expansion, and unilateral execution flag.
+- **Version 28** isometric exercise flag, reps→duration migration for isometric history, and isometric catalog expansion (seedV7).
 
 ### How Migrations Work
 
@@ -250,7 +251,7 @@ Signing:
 - [x] Keystore backed up securely
 
 Database:
-- [x] Schema version set to 27 (includes periodization evolution, program model hardening, and execution data improvements)
+- [x] Schema version set to 28 (includes isometric exercise support and catalog expansion)
 - [x] Incremental migration strategy in place
 - [x] Destructive dev fallback guarded with kDebugMode (runs only in debug, never in release)
 

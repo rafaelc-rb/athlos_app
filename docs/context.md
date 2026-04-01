@@ -19,7 +19,7 @@ The app is designed as a **hub-based** system: a central screen (the Hub) provid
   - **Local x Verified** pair: user can mark "not duplicate" (suppressed) or "confirmed duplicate" (verified item wins; local is remapped and deleted).
   - **Local x Local** pair: user can mark "not duplicate", "keep A", "keep B", or **attribute-by-attribute merge** (user picks each field, associations are unified, loser is remapped and deleted).
 - Global catalog governance (verified x verified conflicts, rule application across devices) is **out of scope for this project** and will be handled in a separate maintenance project.
-- The local database currently runs with schema version **13**.
+- The local database currently runs with schema version **28**.
 - Automated tests are in place for core backup flows (including duplicate resolution: suppression, confirmDuplicate, mergeAttributes), training/profile repositories, use cases, provider wiring, and error/result contracts.
 
 ## Modules
